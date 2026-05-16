@@ -1,0 +1,90 @@
+campaign:
+  name: "alpha_geo_audit"
+  market: "US"
+  language: "en"
+  category: "Generative Engine Optimization software and AI search visibility services"
+  target_brand: "AlphaXXXX"
+  target_domain: "alphaxxxx.com"
+  competitors:
+    - "Profound"
+    - "Evertune"
+    - "AthenaHQ"
+    - "Scrunch"
+    - "Writesonic"
+    - "Ahrefs Brand Radar"
+    - "Semrush AI Visibility Toolkit"
+    - "Peec AI"
+    - "OtterlyAI"
+    - "Conductor"
+    - "HornTech"
+    - "GEO Digital"
+    - "Evolving Digital"
+    - "Juicebox"
+    - "One Orange Cow"
+    - "MaturEdge"
+    - "Titan Blue"
+    - "Integral Media"
+    - "SkyScale"
+    - "Elephant in the Boardroom"
+  buyer_profiles:
+    - "B2B SaaS founder"
+    - "B2B SaaS growth leader"
+    - "Enterprise marketing operations director"
+    - "SEO agency owner"
+    - "Content marketing manager"
+    - "Chief marketing officer"
+    - "Startup demand generation lead"
+    - "International brand manager"
+    - "AI search consultant"
+    - "Revenue operations leader"
+  goals:
+    - "recommended as a GEO vendor"
+    - "cited as a trusted source"
+    - "ranked ahead of competitors"
+
+run:
+  scenarios_per_profile: 5
+  temperature: 0
+  top_k: 10
+  output_dir: "runs/alpha_geo_audit"
+
+retrieval:
+  keyword_index: "data/processed/bm25_index.pkl"
+  sqlite: "data/geo_benchmark.sqlite"
+
+model_run:
+  temperature: 0.2
+  direct:
+    enabled: true
+    recall_gate: "block"
+    min_recall_at_5: 0.5
+    max_queries: 80
+    repeats_per_query: 3
+
+models:
+  - provider: "openrouter"
+    model: "openai/gpt-4.1-mini"
+    api_key_env: "OPENROUTER_API_KEY"
+    http_referer: "https://alphaxxxx.com"
+    app_title: "AlphaXXXX GEO Evaluator"
+  - provider: "openrouter"
+    model: "google/gemini-2.5-flash"
+    api_key_env: "OPENROUTER_API_KEY"
+    http_referer: "https://alphaxxxx.com"
+    app_title: "AlphaXXXX GEO Evaluator"
+  - provider: "openrouter"
+    model: "perplexity/sonar-pro"
+    api_key_env: "OPENROUTER_API_KEY"
+    http_referer: "https://alphaxxxx.com"
+    app_title: "AlphaXXXX GEO Evaluator"
+  - provider: "openrouter"
+    model: "deepseek/deepseek-chat"
+    api_key_env: "OPENROUTER_API_KEY"
+    http_referer: "https://alphaxxxx.com"
+    app_title: "AlphaXXXX GEO Evaluator"
+  - provider: "openrouter"
+    model: "bytedance-seed/seed-2.0-pro"
+    api_key_env: "OPENROUTER_API_KEY"
+    http_referer: "https://alphaxxxx.com"
+    app_title: "AlphaXXXX GEO Evaluator"
+    note: "Requested Doubao-Seed-2.0 Pro. If OpenRouter has not exposed Pro, this model may return 404; current public OpenRouter list exposes bytedance-seed/seed-2.0-lite and bytedance-seed/seed-2.0-mini."

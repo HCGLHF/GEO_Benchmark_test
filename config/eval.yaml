@@ -1,0 +1,6 @@
+top_k: 10
+retriever_type: "hybrid"
+embedding_model: "BAAI/bge-m3"
+generation:
+  mode: "grounded"
+  temperature: 0

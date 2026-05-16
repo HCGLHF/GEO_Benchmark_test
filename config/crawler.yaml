@@ -1,0 +1,11 @@
+quality_thresholds:
+  good: 0.7
+  partial: 0.4
+
+timeouts:
+  httpx_seconds: 20
+  playwright_seconds: 45
+
+paid_fallback:
+  enabled: true
+  default_provider: "firecrawl"

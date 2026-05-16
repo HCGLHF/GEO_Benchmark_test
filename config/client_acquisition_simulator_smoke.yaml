@@ -1,0 +1,36 @@
+campaign:
+  name: "client_acquisition_simulator_smoke"
+  market: "Australia"
+  language: "en"
+  category: "Generative Engine Optimization services and AI search visibility consulting"
+  target_brand: "AlphaXXXX"
+  target_domain: "alphaxxxx.com"
+  competitors:
+    - "HornTech"
+    - "Semrush AI Visibility Toolkit"
+    - "OtterlyAI"
+
+run:
+  output_dir: "runs/client_acquisition_simulator_smoke"
+  top_k: 5
+  candidate_pool_size: 10
+
+retrieval:
+  keyword_index: "data/processed/bm25_index.pkl"
+
+model_run:
+  temperature: 0.2
+
+client_acquisition:
+  queries_per_stage: 1
+  personas:
+    - "B2B SaaS founder"
+  journey_stages:
+    - "vendor_discovery"
+
+models:
+  - provider: "openrouter"
+    model: "openai/gpt-4.1-mini"
+    api_key_env: "OPENROUTER_API_KEY"
+    http_referer: "https://alphaxxxx.com"
+    app_title: "AlphaXXXX GEO Client Acquisition Simulator"

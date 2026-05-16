@@ -1,0 +1,368 @@
+own_site:
+  brand: "AlphaXXXX"
+  source_type: "official_site"
+  crawl_mode: "site"
+  seed_urls:
+    - "https://alphaxxxx.com/"
+  include_patterns:
+    - "/"
+  exclude_patterns:
+    - "/login"
+    - "/sign-in"
+    - "/privacy"
+    - "/terms"
+    - "/wp-admin"
+    - "/wp-login"
+  max_pages: 50
+  max_depth: 2
+
+competitors:
+  - brand: "HornTech"
+    source_type: "competitor_site"
+    crawl_mode: "site"
+    seed_urls:
+      - "https://horntech.com.au/"
+    include_patterns:
+      - "/"
+    exclude_patterns:
+      - "/wp-admin"
+      - "/wp-login"
+      - "/cart"
+      - "/checkout"
+      - "/privacy"
+      - "/terms"
+      - "/tag/"
+      - "/category/"
+    max_pages: 50
+    max_depth: 2
+  - brand: "GEO Digital"
+    source_type: "competitor_site"
+    crawl_mode: "site"
+    seed_urls:
+      - "https://geodigital.com.au/"
+    include_patterns:
+      - "/"
+    exclude_patterns:
+      - "/wp-admin"
+      - "/wp-login"
+      - "/cart"
+      - "/checkout"
+      - "/privacy"
+      - "/terms"
+      - "/tag/"
+      - "/category/"
+    max_pages: 50
+    max_depth: 2
+  - brand: "Evolving Digital"
+    source_type: "competitor_site"
+    crawl_mode: "site"
+    seed_urls:
+      - "https://evolvingdigital.com.au/"
+    include_patterns:
+      - "/"
+    exclude_patterns:
+      - "/wp-admin"
+      - "/wp-login"
+      - "/cart"
+      - "/checkout"
+      - "/privacy"
+      - "/terms"
+      - "/tag/"
+      - "/category/"
+    max_pages: 50
+    max_depth: 2
+  - brand: "Juicebox"
+    source_type: "competitor_site"
+    crawl_mode: "site"
+    seed_urls:
+      - "https://www.juicebox.com.au/"
+    include_patterns:
+      - "/"
+    exclude_patterns:
+      - "/wp-admin"
+      - "/wp-login"
+      - "/cart"
+      - "/checkout"
+      - "/privacy"
+      - "/terms"
+      - "/tag/"
+      - "/category/"
+    max_pages: 50
+    max_depth: 2
+  - brand: "One Orange Cow"
+    source_type: "competitor_site"
+    crawl_mode: "site"
+    seed_urls:
+      - "https://www.oneorangecow.com/"
+    include_patterns:
+      - "/"
+    exclude_patterns:
+      - "/wp-admin"
+      - "/wp-login"
+      - "/cart"
+      - "/checkout"
+      - "/privacy"
+      - "/terms"
+      - "/tag/"
+      - "/category/"
+    max_pages: 50
+    max_depth: 2
+  - brand: "MaturEdge"
+    source_type: "competitor_site"
+    crawl_mode: "site"
+    seed_urls:
+      - "https://maturedge.com.au/"
+    include_patterns:
+      - "/"
+    exclude_patterns:
+      - "/wp-admin"
+      - "/wp-login"
+      - "/cart"
+      - "/checkout"
+      - "/privacy"
+      - "/terms"
+      - "/tag/"
+      - "/category/"
+    max_pages: 50
+    max_depth: 2
+  - brand: "Titan Blue"
+    source_type: "competitor_site"
+    crawl_mode: "site"
+    seed_urls:
+      - "https://titanblue.com.au/"
+    include_patterns:
+      - "/"
+    exclude_patterns:
+      - "/wp-admin"
+      - "/wp-login"
+      - "/cart"
+      - "/checkout"
+      - "/privacy"
+      - "/terms"
+      - "/tag/"
+      - "/category/"
+    max_pages: 50
+    max_depth: 2
+  - brand: "Integral Media"
+    source_type: "competitor_site"
+    crawl_mode: "site"
+    seed_urls:
+      - "https://www.integralmedia.com.au/"
+    include_patterns:
+      - "/"
+    exclude_patterns:
+      - "/wp-admin"
+      - "/wp-login"
+      - "/cart"
+      - "/checkout"
+      - "/privacy"
+      - "/terms"
+      - "/tag/"
+      - "/category/"
+    max_pages: 50
+    max_depth: 2
+  - brand: "SkyScale"
+    source_type: "competitor_site"
+    crawl_mode: "site"
+    seed_urls:
+      - "https://skyscale.com.au/"
+    include_patterns:
+      - "/"
+    exclude_patterns:
+      - "/wp-admin"
+      - "/wp-login"
+      - "/cart"
+      - "/checkout"
+      - "/privacy"
+      - "/terms"
+      - "/tag/"
+      - "/category/"
+    max_pages: 50
+    max_depth: 2
+  - brand: "Elephant in the Boardroom"
+    source_type: "competitor_site"
+    crawl_mode: "site"
+    seed_urls:
+      - "https://www.elephantintheboardroom.com.au/"
+    include_patterns:
+      - "/"
+    exclude_patterns:
+      - "/wp-admin"
+      - "/wp-login"
+      - "/cart"
+      - "/checkout"
+      - "/privacy"
+      - "/terms"
+      - "/tag/"
+      - "/category/"
+    max_pages: 50
+    max_depth: 2
+
+industry_sources:
+  - brand: "Profound"
+    source_type: "industry_platform"
+    crawl_mode: "site"
+    seed_urls:
+      - "https://www.tryprofound.com/"
+    include_patterns:
+      - "/"
+    exclude_patterns:
+      - "/login"
+      - "/sign-in"
+      - "/privacy"
+      - "/terms"
+      - "/careers"
+      - "/wp-admin"
+      - "/wp-login"
+    max_pages: 50
+    max_depth: 2
+  - brand: "Evertune"
+    source_type: "industry_platform"
+    crawl_mode: "site"
+    seed_urls:
+      - "https://www.evertune.ai/"
+    include_patterns:
+      - "/"
+    exclude_patterns:
+      - "/login"
+      - "/sign-in"
+      - "/privacy"
+      - "/terms"
+      - "/careers"
+      - "/wp-admin"
+      - "/wp-login"
+    max_pages: 50
+    max_depth: 2
+  - brand: "AthenaHQ"
+    source_type: "industry_platform"
+    crawl_mode: "site"
+    seed_urls:
+      - "https://athenahq.ai/"
+    include_patterns:
+      - "/"
+    exclude_patterns:
+      - "/login"
+      - "/sign-in"
+      - "/privacy"
+      - "/terms"
+      - "/careers"
+      - "/wp-admin"
+      - "/wp-login"
+    max_pages: 50
+    max_depth: 2
+  - brand: "Scrunch"
+    source_type: "industry_platform"
+    crawl_mode: "site"
+    seed_urls:
+      - "https://scrunch.com/"
+    include_patterns:
+      - "/"
+    exclude_patterns:
+      - "/login"
+      - "/sign-in"
+      - "/privacy"
+      - "/terms"
+      - "/careers"
+      - "/wp-admin"
+      - "/wp-login"
+    max_pages: 50
+    max_depth: 2
+  - brand: "Writesonic"
+    source_type: "industry_platform"
+    crawl_mode: "site"
+    seed_urls:
+      - "https://writesonic.com/"
+    include_patterns:
+      - "/"
+    exclude_patterns:
+      - "/login"
+      - "/sign-in"
+      - "/privacy"
+      - "/terms"
+      - "/careers"
+      - "/wp-admin"
+      - "/wp-login"
+    max_pages: 50
+    max_depth: 2
+  - brand: "Ahrefs Brand Radar"
+    source_type: "industry_platform"
+    crawl_mode: "site"
+    seed_urls:
+      - "https://ahrefs.com/brand-radar"
+    include_patterns:
+      - "/"
+    exclude_patterns:
+      - "/user"
+      - "/login"
+      - "/sign-in"
+      - "/privacy"
+      - "/terms"
+      - "/webmaster-tools"
+    max_pages: 50
+    max_depth: 2
+  - brand: "Semrush AI Visibility Toolkit"
+    source_type: "industry_platform"
+    crawl_mode: "site"
+    seed_urls:
+      - "https://www.semrush.com/kb/1496-getting-started-with-ai-visibility-toolkit"
+    include_patterns:
+      - "/"
+    exclude_patterns:
+      - "/login"
+      - "/signup"
+      - "/privacy"
+      - "/terms"
+      - "/company/legal"
+    max_pages: 50
+    max_depth: 2
+  - brand: "Peec AI"
+    source_type: "industry_platform"
+    crawl_mode: "site"
+    seed_urls:
+      - "https://peec.ai/"
+    include_patterns:
+      - "/"
+    exclude_patterns:
+      - "/login"
+      - "/sign-in"
+      - "/privacy"
+      - "/terms"
+      - "/careers"
+      - "/wp-admin"
+      - "/wp-login"
+    max_pages: 50
+    max_depth: 2
+  - brand: "OtterlyAI"
+    source_type: "industry_platform"
+    crawl_mode: "site"
+    seed_urls:
+      - "https://otterly.ai/"
+    include_patterns:
+      - "/"
+    exclude_patterns:
+      - "/login"
+      - "/sign-in"
+      - "/privacy"
+      - "/terms"
+      - "/careers"
+      - "/wp-admin"
+      - "/wp-login"
+    max_pages: 50
+    max_depth: 2
+  - brand: "Conductor"
+    source_type: "industry_platform"
+    crawl_mode: "site"
+    seed_urls:
+      - "https://www.conductor.com/"
+    include_patterns:
+      - "/"
+    exclude_patterns:
+      - "/login"
+      - "/sign-in"
+      - "/privacy"
+      - "/terms"
+      - "/careers"
+      - "/wp-admin"
+      - "/wp-login"
+    max_pages: 50
+    max_depth: 2
