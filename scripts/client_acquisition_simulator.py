@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import hashlib
 import json
 import pickle
 import sys
@@ -15,9 +16,48 @@ from scripts._common import stable_id, utc_now_iso
 from scripts.eval_retrieval import calculate_retrieval_metrics, keyword_search
 from scripts.geo_eval.io import load_config, write_jsonl
 from scripts.geo_eval.models import call_chat_model
+from scripts.geo_eval.orchestrator import ModelCallOrchestrator, canonical_hash
 
 
 ChatCaller = Callable[[dict[str, Any], str, float], dict[str, Any]]
+
+
+def path_content_hash(path: Path) -> str:
+    if not path.exists():
+        return canonical_hash({"missing": str(path)})
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def build_orchestrator_from_config(config: dict[str, Any], caller: ChatCaller = call_chat_model) -> ModelCallOrchestrator | None:
+    performance = config.get("performance", {})
+    llm_cache = performance.get("llm_cache", {})
+    if not llm_cache.get("enabled", False):
+        return None
+    run_dir = Path(config.get("run", {}).get("output_dir", "runs/client_acquisition_simulator"))
+    run_state = performance.get("run_state", {})
+    retrieval = config.get("retrieval", {})
+    matrix_path = Path(retrieval.get("matrix", "config/intent_signal_matrix.yaml"))
+    documents_path = Path(retrieval.get("documents", "data/processed/documents.jsonl"))
+    chunks_path = Path(retrieval.get("chunks", "data/processed/chunks.jsonl"))
+    corpus_hash = canonical_hash(
+        {
+            "documents": path_content_hash(documents_path),
+            "chunks": path_content_hash(chunks_path),
+        }
+    )
+    return ModelCallOrchestrator(
+        cache_path=Path(llm_cache.get("sqlite", "data/cache/llm_calls.sqlite")),
+        run_state_path=Path(run_state.get("sqlite", run_dir / "run_state.sqlite")),
+        attempts_path=run_dir / "api_orchestrator_attempts.jsonl",
+        config_hash=canonical_hash(config),
+        matrix_hash=path_content_hash(matrix_path),
+        corpus_hash=corpus_hash,
+        uncached_call=caller,
+    )
 
 
 QUERY_FIELDS = [
@@ -94,6 +134,8 @@ DIMENSION_FIELDS = [
     "leading_winner",
     "winner_count",
 ]
+
+API_CALL_SUMMARY_FIELDS = ["task_type", "provider", "model", "logical_calls", "api_calls", "cache_hits", "failures"]
 
 
 def pct(numerator: int, denominator: int) -> str:
@@ -205,6 +247,7 @@ def fallback_query(config: dict[str, Any], persona: str, journey_stage: str) -> 
 def generate_query_rows(
     config: dict[str, Any],
     caller: ChatCaller = call_chat_model,
+    orchestrator: Any | None = None,
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     matrix = default_scenario_matrix(config)
     target_brand = str(config.get("campaign", {}).get("target_brand", ""))
@@ -229,7 +272,19 @@ def generate_query_rows(
                 "created_at": utc_now_iso(),
             }
             try:
-                result = caller(model_config, prompt, float(config.get("model_run", {}).get("temperature", 0.2)))
+                temperature = float(config.get("model_run", {}).get("temperature", 0.2))
+                if orchestrator:
+                    result = orchestrator.call(
+                        model_config=model_config,
+                        prompt=prompt,
+                        temperature=temperature,
+                        task_type="scenario_generation",
+                        query_id=f"scenario:{provider}:{model}:{persona}:{stage}",
+                        input_hash=canonical_hash({"persona": persona, "journey_stage": stage, "query_count": query_count}),
+                        prompt_version="scenario_generation_v1",
+                    )
+                else:
+                    result = caller(model_config, prompt, temperature)
                 parsed = parse_json_object(str(result.get("raw_answer", "")))
                 queries = [sanitize_model_text(str(item).strip()) for item in parsed.get("queries", []) if str(item).strip()]
                 if not queries:
@@ -312,6 +367,7 @@ def rerank_candidates(
     models: list[dict[str, Any]],
     top_k: int,
     caller: ChatCaller = call_chat_model,
+    orchestrator: Any | None = None,
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]], list[dict[str, Any]]]:
     metric_rows: list[dict[str, Any]] = []
     evidence_rows: list[dict[str, Any]] = []
@@ -335,7 +391,34 @@ def rerank_candidates(
                 "created_at": utc_now_iso(),
             }
             try:
-                result = caller(model_config, prompt, 0)
+                if orchestrator:
+                    result = orchestrator.call(
+                        model_config=model_config,
+                        prompt=prompt,
+                        temperature=0,
+                        task_type="rerank",
+                        query_id=str(query["query_id"]),
+                        input_hash=canonical_hash(
+                            {
+                                "query_id": query["query_id"],
+                                "query": query["query"],
+                                "top_k": top_k,
+                                "candidates": [
+                                    {
+                                        "candidate_id": item.get("candidate_id"),
+                                        "url": item.get("url"),
+                                        "brand": item.get("brand"),
+                                        "title": item.get("title"),
+                                        "text": str(item.get("text", ""))[:700],
+                                    }
+                                    for item in candidates
+                                ],
+                            }
+                        ),
+                        prompt_version="rerank_v1",
+                    )
+                else:
+                    result = caller(model_config, prompt, 0)
                 ranked = parse_rerank_response(sanitize_model_text(str(result.get("raw_answer", ""))), candidates)
             except Exception as exc:
                 ranked = list(candidates)
@@ -415,6 +498,7 @@ def build_answer_rows(
     models: list[dict[str, Any]],
     rerank_evidence: list[dict[str, Any]],
     caller: ChatCaller = call_chat_model,
+    orchestrator: Any | None = None,
 ) -> list[dict[str, Any]]:
     query_by_id = {row["query_id"]: row for row in query_rows}
     evidence_by_key = {(row["provider"], row["model"], row["query_id"]): row for row in rerank_evidence}
@@ -431,7 +515,24 @@ def build_answer_rows(
             latency_ms = None
             answer = ""
             try:
-                result = caller(model_config, prompt, 0.2)
+                if orchestrator:
+                    result = orchestrator.call(
+                        model_config=model_config,
+                        prompt=prompt,
+                        temperature=0.2,
+                        task_type="answer",
+                        query_id=str(query["query_id"]),
+                        input_hash=canonical_hash(
+                            {
+                                "query_id": query["query_id"],
+                                "query": query["query"],
+                                "evidence": evidence.get("retrieved_chunks", [])[:5],
+                            }
+                        ),
+                        prompt_version="answer_v1",
+                    )
+                else:
+                    result = caller(model_config, prompt, 0.2)
                 answer = sanitize_model_text(str(result.get("raw_answer", "")))
                 latency_ms = result.get("latency_ms")
             except Exception as exc:
@@ -597,7 +698,6 @@ def aggregate_brand_rows(brand_rows: list[dict[str, Any]]) -> list[dict[str, Any
         top10_slot_count = sum(int(row.get("top10_slot_count") or 0) for row in rows)
         query_count = sum(int(row.get("query_count") or 0) for row in rows)
         mention_count = sum(int(row.get("model_mention_count") or 0) for row in rows)
-        response_count = len(rows)
         ranks = [int(row["best_rank"]) for row in rows if str(row.get("best_rank", "")).isdigit()]
         urls: list[str] = []
         for row in rows:
@@ -615,7 +715,7 @@ def aggregate_brand_rows(brand_rows: list[dict[str, Any]]) -> list[dict[str, Any
                 "top10_query_share": pct(top10_slots, query_count),
                 "top10_slot_count": top10_slot_count,
                 "best_rank": min(ranks) if ranks else "",
-                "model_mention_rate": pct(mention_count, response_count),
+                "model_mention_rate": pct(mention_count, query_count),
                 "top_urls": list(dict.fromkeys(urls))[:5],
             }
         )
@@ -783,13 +883,52 @@ def write_csv(path: Path, rows: list[dict[str, Any]], fields: list[str]) -> None
         writer.writerows(rows)
 
 
+def read_jsonl_rows(path: Path) -> list[dict[str, Any]]:
+    if not path.exists():
+        return []
+    rows = []
+    with path.open("r", encoding="utf-8") as handle:
+        for line in handle:
+            if line.strip():
+                rows.append(json.loads(line))
+    return rows
+
+
+def build_api_call_summary(attempt_rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    grouped: dict[tuple[str, str, str], list[dict[str, Any]]] = defaultdict(list)
+    for row in attempt_rows:
+        key = (str(row.get("task_type", "")), str(row.get("provider", "")), str(row.get("model", "")))
+        grouped[key].append(row)
+    summary = []
+    for (task_type, provider, model), rows in sorted(grouped.items()):
+        summary.append(
+            {
+                "task_type": task_type,
+                "provider": provider,
+                "model": model,
+                "logical_calls": len(rows),
+                "api_calls": sum(1 for row in rows if row.get("status") == "api_call"),
+                "cache_hits": sum(1 for row in rows if row.get("status") == "cache_hit" or str(row.get("cache_hit")).lower() == "true"),
+                "failures": sum(1 for row in rows if row.get("status") == "error"),
+            }
+        )
+    return summary
+
+
 def candidate_recall(config: dict[str, Any], query_rows: list[dict[str, Any]]) -> dict[str, list[dict[str, Any]]]:
     with Path(config.get("retrieval", {}).get("keyword_index", "data/processed/bm25_index.pkl")).open("rb") as handle:
         artifact = pickle.load(handle)
     pool_size = int(config.get("run", {}).get("candidate_pool_size", 30))
+    hybrid_enabled = bool(config.get("retrieval", {}).get("hybrid", {}).get("enabled", False))
     candidates_by_query: dict[str, list[dict[str, Any]]] = {}
     for query in query_rows:
-        candidates = keyword_search(str(query["query"]), artifact, pool_size)
+        bm25_candidates = keyword_search(str(query["query"]), artifact, pool_size)
+        if hybrid_enabled:
+            from scripts.geo_eval.hybrid_recall import fuse_candidate_lists
+
+            candidates = fuse_candidate_lists({"bm25": bm25_candidates}, top_n=pool_size)
+        else:
+            candidates = bm25_candidates
         candidates_by_query[str(query["query_id"])] = [
             candidate | {"candidate_id": f"c{index:03d}"}
             for index, candidate in enumerate(candidates, start=1)
@@ -801,7 +940,8 @@ def run_simulator(config: dict[str, Any], caller: ChatCaller = call_chat_model) 
     run_dir = Path(config.get("run", {}).get("output_dir", "runs/client_acquisition_simulator"))
     top_k = int(config.get("run", {}).get("top_k", 10))
     models = config.get("models", [])
-    query_rows, scenario_attempts = generate_query_rows(config, caller=caller)
+    orchestrator = build_orchestrator_from_config(config, caller=caller)
+    query_rows, scenario_attempts = generate_query_rows(config, caller=caller, orchestrator=orchestrator)
     write_csv(run_dir / "api_queries.csv", query_rows, QUERY_FIELDS)
     write_jsonl(run_dir / "api_scenario_attempts.jsonl", scenario_attempts)
 
@@ -812,12 +952,13 @@ def run_simulator(config: dict[str, Any], caller: ChatCaller = call_chat_model) 
         models=models,
         top_k=top_k,
         caller=caller,
+        orchestrator=orchestrator,
     )
     write_csv(run_dir / "retrieval_by_model.csv", retrieval_rows, RETRIEVAL_FIELDS)
     write_jsonl(run_dir / "retrieval_evidence_by_model.jsonl", retrieval_evidence)
     write_jsonl(run_dir / "api_rerank_attempts.jsonl", rerank_attempts)
 
-    answer_rows = build_answer_rows(query_rows, models, retrieval_evidence, caller=caller)
+    answer_rows = build_answer_rows(query_rows, models, retrieval_evidence, caller=caller, orchestrator=orchestrator)
     write_csv(run_dir / "model_answer_evaluations.csv", answer_rows, ANSWER_FIELDS)
     brand_rows = build_brand_performance_by_model(
         target_brand=str(config.get("campaign", {}).get("target_brand", "")),
@@ -837,6 +978,9 @@ def run_simulator(config: dict[str, Any], caller: ChatCaller = call_chat_model) 
         corpus_stats=load_corpus_stats(),
     )
     (run_dir / "competitive_gap_report.md").write_text(report, encoding="utf-8")
+    attempts_path = run_dir / "api_orchestrator_attempts.jsonl"
+    if attempts_path.exists():
+        write_csv(run_dir / "api_call_summary.csv", build_api_call_summary(read_jsonl_rows(attempts_path)), API_CALL_SUMMARY_FIELDS)
     return {
         "queries": len(query_rows),
         "scenario_api_attempts": len(scenario_attempts),

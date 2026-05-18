@@ -3,6 +3,10 @@ from collections import Counter
 from pathlib import Path
 
 from scripts.client_acquisition_simulator import (
+    API_CALL_SUMMARY_FIELDS,
+    aggregate_brand_rows,
+    build_orchestrator_from_config,
+    build_api_call_summary,
     build_answer_rows,
     build_brand_performance_by_model,
     build_competitive_gap_report,
@@ -16,6 +20,7 @@ from scripts.client_acquisition_simulator import (
     sanitize_model_text,
     scenario_counts_for_model,
 )
+from scripts.geo_eval.io import load_config
 
 
 def sample_config(tmp_path: Path) -> dict:
@@ -96,6 +101,24 @@ def test_generate_query_rows_uses_api_response_and_records_model(tmp_path):
     assert rows[0]["journey_stage"] == "problem_aware"
     assert attempts[0]["status"] == "success"
     assert attempts[0]["used_api"] is True
+
+
+def test_generate_query_rows_can_use_orchestrator(tmp_path):
+    class FakeOrchestrator:
+        def __init__(self):
+            self.calls = []
+
+        def call(self, **kwargs):
+            self.calls.append(kwargs)
+            return {"raw_answer": json.dumps({"queries": ["How can my company get AI recommendations?"]})}
+
+    orchestrator = FakeOrchestrator()
+    rows, attempts = generate_query_rows(sample_config(tmp_path), orchestrator=orchestrator)
+
+    assert rows[0]["query"] == "How can my company get AI recommendations?"
+    assert attempts[0]["status"] == "success"
+    assert orchestrator.calls[0]["task_type"] == "scenario_generation"
+    assert orchestrator.calls[0]["prompt_version"] == "scenario_generation_v1"
 
 
 def test_generate_query_rows_falls_back_and_records_error(tmp_path):
@@ -235,6 +258,38 @@ def test_rerank_candidates_keeps_each_model_on_its_own_queries():
     assert {(row["model"], row["query_id"]) for row in rows} == {("model-a", "q001"), ("model-b", "q002")}
 
 
+def test_rerank_candidates_can_use_orchestrator():
+    class FakeOrchestrator:
+        def __init__(self):
+            self.calls = []
+
+        def call(self, **kwargs):
+            self.calls.append(kwargs)
+            return {"raw_answer": '{"ranked_candidate_ids": ["c1"]}', "latency_ms": 7}
+
+    orchestrator = FakeOrchestrator()
+    rows, evidence, attempts = rerank_candidates(
+        query_rows=[
+            {
+                "query_id": "q001",
+                "query": "Question from model A",
+                "target_brand": "AlphaXXXX",
+                "scenario_provider": "openrouter",
+                "scenario_model": "model-a",
+            }
+        ],
+        candidates_by_query={"q001": [{"candidate_id": "c1", "brand": "AlphaXXXX", "url": "https://alphaxxxx.com"}]},
+        models=[{"provider": "openrouter", "model": "model-a"}],
+        top_k=5,
+        orchestrator=orchestrator,
+    )
+
+    assert rows[0]["winning_brand"] == "AlphaXXXX"
+    assert attempts[0]["status"] == "success"
+    assert orchestrator.calls[0]["task_type"] == "rerank"
+    assert orchestrator.calls[0]["prompt_version"] == "rerank_v1"
+
+
 def test_build_answer_rows_records_model_mentions():
     rows = build_answer_rows(
         query_rows=[{"query_id": "q001", "query": "Who can help?", "target_brand": "AlphaXXXX"}],
@@ -252,6 +307,43 @@ def test_build_answer_rows_records_model_mentions():
 
     assert rows[0]["brand_mentioned"] == "True"
     assert rows[0]["model"] == "openai/gpt-4.1-mini"
+
+
+def test_build_answer_rows_can_use_orchestrator():
+    class FakeOrchestrator:
+        def __init__(self):
+            self.calls = []
+
+        def call(self, **kwargs):
+            self.calls.append(kwargs)
+            return {"raw_answer": "AlphaXXXX can help.", "latency_ms": 5}
+
+    orchestrator = FakeOrchestrator()
+    rows = build_answer_rows(
+        query_rows=[
+            {
+                "query_id": "q001",
+                "query": "Who can help?",
+                "target_brand": "AlphaXXXX",
+                "scenario_provider": "openrouter",
+                "scenario_model": "model-a",
+            }
+        ],
+        models=[{"provider": "openrouter", "model": "model-a"}],
+        rerank_evidence=[
+            {
+                "query_id": "q001",
+                "provider": "openrouter",
+                "model": "model-a",
+                "retrieved_chunks": [{"brand": "AlphaXXXX", "url": "https://alphaxxxx.com", "text_preview": "GEO agency"}],
+            }
+        ],
+        orchestrator=orchestrator,
+    )
+
+    assert rows[0]["brand_mentioned"] == "True"
+    assert orchestrator.calls[0]["task_type"] == "answer"
+    assert orchestrator.calls[0]["prompt_version"] == "answer_v1"
 
 
 def test_build_brand_performance_by_model_groups_retrieval_and_answers():
@@ -284,6 +376,37 @@ def test_build_brand_performance_by_model_groups_retrieval_and_answers():
     assert target["top5_query_share"] == "100.0%"
     assert target["model_mention_rate"] == "100.0%"
     assert horntech["best_rank"] == 1
+
+
+def test_aggregate_brand_rows_uses_query_count_for_mention_rate():
+    rows = aggregate_brand_rows(
+        [
+            {
+                "brand": "HornTech",
+                "is_target": "False",
+                "query_count": 200,
+                "top5_count": 200,
+                "top10_count": 200,
+                "top10_slot_count": 1200,
+                "best_rank": 1,
+                "model_mention_count": 200,
+                "top_urls_json": "[]",
+            },
+            {
+                "brand": "HornTech",
+                "is_target": "False",
+                "query_count": 200,
+                "top5_count": 200,
+                "top10_count": 200,
+                "top10_slot_count": 1200,
+                "best_rank": 1,
+                "model_mention_count": 200,
+                "top_urls_json": "[]",
+            },
+        ]
+    )
+
+    assert rows[0]["model_mention_rate"] == "100.0%"
 
 
 def test_build_dimension_breakdown_shows_weak_stage_and_winner():
@@ -380,3 +503,60 @@ def test_build_competitive_gap_report_lists_brands_above_target_and_gaps():
     assert "HornTech" in report
     assert "custom AI development services" in report
     assert "Content Gap Signals" in report
+
+
+def test_full_config_contains_performance_pipeline_paths():
+    config = load_config(Path("config/client_acquisition_simulator.yaml"))
+
+    assert config["performance"]["llm_cache"]["enabled"] is True
+    assert config["retrieval"]["hybrid"]["enabled"] is True
+    assert config["retrieval"]["matrix"] == "config/intent_signal_matrix.yaml"
+    assert config["retrieval"]["evidence_cards"] == "data/processed/evidence_cards.jsonl"
+
+
+def test_build_orchestrator_from_config_respects_enabled_flag(tmp_path):
+    config = sample_config(tmp_path)
+    config["performance"] = {"llm_cache": {"enabled": False}}
+
+    assert build_orchestrator_from_config(config, lambda model_config, prompt, temperature: {}) is None
+
+    config["performance"] = {
+        "llm_cache": {"enabled": True, "sqlite": str(tmp_path / "cache.sqlite")},
+        "run_state": {"enabled": True, "sqlite": str(tmp_path / "state.sqlite")},
+    }
+    config["retrieval"] = {"matrix": "config/intent_signal_matrix.yaml"}
+    orchestrator = build_orchestrator_from_config(config, lambda model_config, prompt, temperature: {})
+
+    assert orchestrator is not None
+    assert orchestrator.attempts_path.name == "api_orchestrator_attempts.jsonl"
+
+
+def test_build_api_call_summary_groups_attempt_statuses():
+    rows = build_api_call_summary(
+        [
+            {"task_type": "rerank", "provider": "openrouter", "model": "model-a", "status": "api_call", "cache_hit": False},
+            {"task_type": "rerank", "provider": "openrouter", "model": "model-a", "status": "cache_hit", "cache_hit": True},
+            {"task_type": "answer", "provider": "openrouter", "model": "model-a", "status": "error", "cache_hit": False},
+        ]
+    )
+
+    assert API_CALL_SUMMARY_FIELDS == ["task_type", "provider", "model", "logical_calls", "api_calls", "cache_hits", "failures"]
+    rerank = next(row for row in rows if row["task_type"] == "rerank")
+    answer = next(row for row in rows if row["task_type"] == "answer")
+    assert rerank["logical_calls"] == 2
+    assert rerank["api_calls"] == 1
+    assert rerank["cache_hits"] == 1
+    assert answer["failures"] == 1
+
+
+def test_competitive_gap_report_handles_empty_inputs():
+    report = build_competitive_gap_report(
+        target_brand="AlphaXXXX",
+        brand_rows=[],
+        retrieval_rows=[],
+        retrieval_evidence=[],
+        answer_rows=[],
+        corpus_stats={},
+    )
+
+    assert "Competitive Gap Report" in report

@@ -24,8 +24,24 @@ run:
   top_k: 10
   candidate_pool_size: 30
 
+performance:
+  llm_cache:
+    enabled: true
+    sqlite: "data/cache/llm_calls.sqlite"
+  run_state:
+    enabled: true
+    sqlite: "runs/client_acquisition_simulator/run_state.sqlite"
+
 retrieval:
   keyword_index: "data/processed/bm25_index.pkl"
+  matrix: "config/intent_signal_matrix.yaml"
+  evidence_cards: "data/processed/evidence_cards.jsonl"
+  page_signals: "data/processed/page_signals.jsonl"
+  hybrid:
+    enabled: true
+    fusion_top_n: 60
+    rerank_top_n: 40
+    max_per_brand: 6
 
 model_run:
   temperature: 0.2

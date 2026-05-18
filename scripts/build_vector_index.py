@@ -30,6 +30,7 @@ def build_vector_index(
     qdrant_path: Path,
     embedding_model: str,
     status_output: Path,
+    batch_size: int = 32,
     strict: bool = False,
     dependency_loader: Callable[[], tuple[Any, Any, Any, Any, Any]] = load_vector_dependencies,
 ) -> dict[str, Any]:
@@ -52,38 +53,52 @@ def build_vector_index(
 
     chunks = read_jsonl(input_path)
     model = BGEM3FlagModel(embedding_model, use_fp16=True)
-    embeddings = model.encode([chunk["text"] for chunk in chunks])["dense_vecs"]
-    vector_size = len(embeddings[0]) if len(embeddings) else 1024
+    effective_batch_size = max(1, batch_size)
+    first_batch = chunks[:effective_batch_size]
+    first_batch_embeddings = model.encode([chunk["text"] for chunk in first_batch])["dense_vecs"] if first_batch else []
+    vector_size = len(first_batch_embeddings[0]) if len(first_batch_embeddings) else 1024
 
     client = QdrantClient(path=str(qdrant_path))
     client.recreate_collection(
         collection_name=collection,
         vectors_config=VectorParams(size=vector_size, distance=Distance.COSINE),
     )
-    points = []
-    for index, (chunk, vector) in enumerate(zip(chunks, embeddings), start=1):
-        points.append(
-            PointStruct(
-                id=index,
-                vector=vector.tolist() if hasattr(vector, "tolist") else vector,
-                payload={
-                    key: chunk.get(key)
-                    for key in (
-                        "chunk_id",
-                        "document_id",
-                        "url",
-                        "brand",
-                        "title",
-                        "source_type",
-                        "page_type",
-                        "heading",
-                        "token_count",
-                    )
-                }
-                | {"text": chunk.get("text", "")},
+    point_id = 1
+    total_points = 0
+    for batch_start in range(0, len(chunks), effective_batch_size):
+        batch = chunks[batch_start : batch_start + effective_batch_size]
+        if batch_start == 0:
+            embeddings = first_batch_embeddings
+        else:
+            embeddings = model.encode([chunk["text"] for chunk in batch])["dense_vecs"]
+
+        points = []
+        for chunk, vector in zip(batch, embeddings):
+            points.append(
+                PointStruct(
+                    id=point_id,
+                    vector=vector.tolist() if hasattr(vector, "tolist") else vector,
+                    payload={
+                        key: chunk.get(key)
+                        for key in (
+                            "chunk_id",
+                            "document_id",
+                            "url",
+                            "brand",
+                            "title",
+                            "source_type",
+                            "page_type",
+                            "heading",
+                            "token_count",
+                        )
+                    }
+                    | {"text": chunk.get("text", "")},
+                )
             )
-        )
-    client.upsert(collection_name=collection, points=points)
+            point_id += 1
+        if points:
+            client.upsert(collection_name=collection, points=points)
+            total_points += len(points)
     status = {
         "status": "indexed",
         "reason": None,
@@ -91,7 +106,8 @@ def build_vector_index(
         "collection": collection,
         "qdrant_path": str(qdrant_path),
         "embedding_model": embedding_model,
-        "chunk_count": len(points),
+        "batch_size": effective_batch_size,
+        "chunk_count": total_points,
     }
     write_status(status_output, status)
     return status
@@ -104,6 +120,7 @@ def main() -> None:
     parser.add_argument("--qdrant-path", default="vector_db/qdrant")
     parser.add_argument("--embedding-model", default="BAAI/bge-m3")
     parser.add_argument("--status-output", default="data/processed/vector_index_status.json")
+    parser.add_argument("--batch-size", type=int, default=32)
     parser.add_argument("--strict", action="store_true")
     args = parser.parse_args()
 
@@ -113,6 +130,7 @@ def main() -> None:
         qdrant_path=Path(args.qdrant_path),
         embedding_model=args.embedding_model,
         status_output=Path(args.status_output),
+        batch_size=args.batch_size,
         strict=args.strict,
     )
     if status["status"] == "indexed":

@@ -16,6 +16,7 @@ import yaml
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from scripts.collect_urls import collect_url_rows, normalize_url
+from scripts.crawl_pages import DEFAULT_HTTP_HEADERS, decode_response_text
 
 
 SKIP_EXTENSIONS = {
@@ -77,10 +78,10 @@ def should_keep_url(url: str, seed: str, include_patterns: list[str], exclude_pa
 
 def fetch_text(url: str, timeout: float) -> str:
     try:
-        response = httpx.get(url, follow_redirects=True, timeout=timeout)
+        response = httpx.get(url, follow_redirects=True, timeout=timeout, headers=DEFAULT_HTTP_HEADERS)
         if response.status_code >= 400:
             return ""
-        return response.text
+        return decode_response_text(response)
     except Exception:
         return ""
 

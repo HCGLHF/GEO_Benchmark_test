@@ -2,11 +2,15 @@ from __future__ import annotations
 
 import os
 import time
+from pathlib import Path
 from typing import Any
+from typing import Callable
 
 import httpx
 
 from scripts._common import load_dotenv, stable_id, utc_now_iso
+from scripts.geo_eval.llm_cache import LLMCache, cache_key_for_call
+from scripts.geo_eval.llm_cache import stable_hash
 from scripts.geo_eval.io import output_dir, read_csv, read_jsonl, write_json, write_jsonl
 from scripts.geo_eval.retrieval import retrieval_summary
 
@@ -93,6 +97,37 @@ def call_chat_model(model_config: dict[str, Any], prompt: str, temperature: floa
     text = payload.get("choices", [{}])[0].get("message", {}).get("content", "")
     citations = payload.get("citations") or payload.get("search_results") or []
     return {"raw_answer": text, "citations": citations, "latency_ms": latency_ms, "raw": payload}
+
+
+def cached_chat_call(
+    model_config: dict[str, Any],
+    prompt: str,
+    temperature: float,
+    task_type: str,
+    input_hash: str,
+    config_hash: str,
+    cache_path: Path,
+    uncached_call: Callable[[dict[str, Any], str, float], dict[str, Any]] = call_chat_model,
+) -> dict[str, Any]:
+    provider = str(model_config.get("provider", "openai"))
+    model = str(model_config.get("model", ""))
+    key = cache_key_for_call(provider, model, task_type, prompt, input_hash, config_hash)
+    cache = LLMCache(cache_path)
+    cached = cache.get(key)
+    if cached is not None:
+        return cached | {"cache_hit": True}
+    result = uncached_call(model_config, prompt, temperature)
+    cache.put(
+        key=key,
+        provider=provider,
+        model=model,
+        task_type=task_type,
+        prompt_hash=stable_hash(prompt),
+        input_hash=input_hash,
+        config_hash=config_hash,
+        response=result,
+    )
+    return result | {"cache_hit": False}
 
 
 def run_models(config: dict[str, Any]) -> list[dict[str, Any]]:

@@ -24,6 +24,17 @@ from scripts.paid_fetch_fallback import fetch_with_paid_provider
 from scripts.score_content_quality import score_content
 
 
+DEFAULT_HTTP_HEADERS = {
+    "User-Agent": (
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) "
+        "Chrome/124.0 Safari/537.36"
+    ),
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+    "Accept-Language": "en-US,en;q=0.9",
+}
+
+
 def load_inventory(path: Path) -> list[dict[str, str]]:
     with path.open("r", encoding="utf-8", newline="") as handle:
         return list(csv.DictReader(handle))
@@ -53,12 +64,37 @@ def extract_markdown(html: str) -> str:
     return extracted or fallback_html_to_text(html)
 
 
+def mojibake_score(text: str) -> int:
+    markers = ("Ã", "Â", "â€™", "â€œ", "â€", "�")
+    return sum(text.count(marker) for marker in markers)
+
+
+def decode_response_text(response: Any) -> str:
+    raw = response.content
+    declared_encoding = getattr(response, "encoding", None)
+    utf8_text: str | None = None
+    try:
+        utf8_text = raw.decode("utf-8")
+    except UnicodeDecodeError:
+        pass
+
+    if declared_encoding:
+        declared_text = raw.decode(declared_encoding, errors="replace")
+        if utf8_text is not None and mojibake_score(utf8_text) <= mojibake_score(declared_text):
+            return utf8_text
+        return declared_text
+
+    if utf8_text is not None:
+        return utf8_text
+    return raw.decode("utf-8", errors="replace")
+
+
 def fetch_httpx(url: str, timeout: float) -> tuple[str, str, int | None, str | None]:
     try:
         import httpx
 
-        response = httpx.get(url, timeout=timeout, follow_redirects=True)
-        return str(response.url), response.text, response.status_code, None
+        response = httpx.get(url, timeout=timeout, follow_redirects=True, headers=DEFAULT_HTTP_HEADERS)
+        return str(response.url), decode_response_text(response), response.status_code, None
     except Exception as exc:  # network boundary: preserve error and continue run
         return url, "", None, str(exc)
 
@@ -72,9 +108,17 @@ def fetch_playwright(url: str, timeout_ms: int) -> tuple[str, str, int | None, s
     try:
         with sync_playwright() as p:
             browser = p.chromium.launch(headless=True)
-            page = browser.new_page()
-            response = page.goto(url, wait_until="networkidle", timeout=timeout_ms)
+            page = browser.new_page(
+                user_agent=DEFAULT_HTTP_HEADERS["User-Agent"],
+                extra_http_headers={
+                    "Accept-Language": DEFAULT_HTTP_HEADERS["Accept-Language"],
+                },
+                ignore_https_errors=True,
+            )
+            response = page.goto(url, wait_until="domcontentloaded", timeout=timeout_ms)
+            page.wait_for_timeout(1500)
             page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
+            page.wait_for_timeout(500)
             html = page.content()
             final_url = page.url
             status_code = response.status if response else None
