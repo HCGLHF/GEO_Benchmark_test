@@ -10,6 +10,7 @@
 - `scripts/build_vector_index.py`: builds the local Qdrant vector index.
 - `scripts/client_acquisition_simulator.py`: orchestrates scenario generation, retrieval, rerank, answers, brand metrics, and competitive reports.
 - `scripts/run_full_api_client_acquisition.py`: user-run entrypoint for highest-fidelity external API evaluation.
+- `scripts/watch_full_api_run.py`: read-only monitor for long full API runs, summarizing progress from run output files without calling model APIs.
 - `scripts/merge_full_api_runs.py`: merges single-model runs into one report.
 
 ## Data Flow
