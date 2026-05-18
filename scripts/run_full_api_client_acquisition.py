@@ -47,6 +47,8 @@ def prepare_config(args: argparse.Namespace) -> dict[str, Any]:
     performance = config.setdefault("performance", {})
     performance.setdefault("llm_cache", {}).setdefault("enabled", True)
     performance.setdefault("llm_cache", {}).setdefault("sqlite", "data/cache/llm_calls.sqlite")
+    if getattr(args, "cache_path", None):
+        performance["llm_cache"]["sqlite"] = args.cache_path
     performance.setdefault("run_state", {})["enabled"] = True
     performance["run_state"]["sqlite"] = str(Path(run_config["output_dir"]) / "run_state.sqlite")
     return config
@@ -86,6 +88,7 @@ def main() -> None:
     parser.add_argument("--queries-per-model", type=int, default=None)
     parser.add_argument("--include-model", action="append", default=[])
     parser.add_argument("--exclude-model", action="append", default=[])
+    parser.add_argument("--cache-path", default=None, help="Override the LLM cache SQLite path for this run.")
     args = parser.parse_args()
 
     config = prepare_config(args)

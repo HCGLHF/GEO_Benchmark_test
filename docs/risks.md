@@ -20,3 +20,4 @@
 - Large raw page files are expensive to copy and should not be used as the primary downstream input when `documents.jsonl` or `chunks.jsonl` is enough.
 - Paid fallback usage should remain traceable by URL, reason, provider, and quality score.
 - API concurrency can increase rate limits, timeout, and partial-output risks unless retry/backoff and streaming writes are in place.
+- Parallel full API runs should use per-model cache files to avoid SQLite lock contention and preserve model-level independence.
