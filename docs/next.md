@@ -2,6 +2,9 @@
 
 ## Done
 
+- Added incremental output writing for full API simulator runs.
+- Scenario queries/attempts, rerank metrics/evidence/attempts, and answer rows now stream to disk as each unit completes.
+- Added interruption tests proving completed rows remain on disk when a later scenario, rerank, or answer call is interrupted.
 - Added `scripts/run_full_api_parallel_with_watch.ps1` for one-command single-model parallel full API runs.
 - Added `--cache-path` support to `scripts/run_full_api_client_acquisition.py` so parallel model workers can use independent SQLite caches.
 - Documented the watched parallel run command in project memory and the parallel full API run guide.
@@ -21,6 +24,7 @@
 - The GitHub CLI is not installed in this environment, so this publish uses direct `git` commands instead of a PR workflow.
 - The existing full API run has complete orchestrator attempts, so the monitor can report exact 1660/1660 completion from existing artifacts.
 - One-command parallel execution is safest when each model gets its own output directory, run-state SQLite, and LLM cache SQLite.
+- Incremental writes make `watch_full_api_run.py` useful during active runs because row counts update before the whole stage finishes.
 - The project now has an explicit rule that every development task must preserve engineering memory, architecture boundaries, and next-step judgment.
 - Full API realism remains operationally useful but must be run by the user locally when it sends corpus excerpts to third-party APIs.
 
@@ -29,12 +33,12 @@
 - Publishing must continue to avoid local `.env`, `data/`, `runs/`, `reports/`, `output/`, and vector database artifacts.
 - Direct push to `main` has less review ceremony than a PR, so each publish needs an explicit local audit.
 - Future changes may accidentally skip this memory check unless it is treated as part of the normal development entry routine.
-- Existing scripts are useful but some paths still need better streaming and resume behavior for long full API runs.
-- The monitor reports from files that already exist; it cannot see in-flight API calls before the runner writes an attempt row.
+- Existing scripts are useful but still need stronger resume behavior for interrupted long full API runs.
+- The monitor reports from files that already exist; it still cannot see one currently in-flight API call before the runner writes an attempt row.
 - Parallel API execution can hit provider rate limits faster than serial execution, so failed model workers should be inspected before merge.
 
 ## Next
 
-1. Improve full API output streaming so rerank and answer rows are written incrementally.
+1. Add resume support that skips already-streamed scenario/rerank/answer rows after an interrupted run.
 2. Add a short release checklist for future direct pushes when `gh` is unavailable.
 3. Use `scripts/run_full_api_parallel_with_watch.ps1 -QueriesPerModel 200` for the next full API benchmark after AlphaXXXX content expansion.

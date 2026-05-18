@@ -8,7 +8,7 @@
 - `scripts/chunk_documents.py`: splits documents into retrieval chunks.
 - `scripts/build_keyword_index.py`: builds the local BM25-style keyword artifact.
 - `scripts/build_vector_index.py`: builds the local Qdrant vector index.
-- `scripts/client_acquisition_simulator.py`: orchestrates scenario generation, retrieval, rerank, answers, brand metrics, and competitive reports.
+- `scripts/client_acquisition_simulator.py`: orchestrates scenario generation, retrieval, rerank, answers, brand metrics, competitive reports, and incremental run-output writes.
 - `scripts/run_full_api_client_acquisition.py`: user-run entrypoint for highest-fidelity external API evaluation.
 - `scripts/run_full_api_parallel_with_watch.ps1`: one-command local orchestrator that launches one full API worker per model, monitors each run, and merges successful outputs.
 - `scripts/watch_full_api_run.py`: read-only monitor for long full API runs, summarizing progress from run output files without calling model APIs.
@@ -35,6 +35,7 @@
 - Retrieval and evaluation depend on processed documents, chunks, indexes, and evidence cards.
 - Report generation depends on evaluation outputs and corpus stats.
 - Full external API execution must be explicit and user-run.
+- Incremental output writing belongs inside the simulator orchestration layer; monitor scripts read those files and must not mutate run state.
 
 ## Boundaries
 

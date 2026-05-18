@@ -248,6 +248,7 @@ def generate_query_rows(
     config: dict[str, Any],
     caller: ChatCaller = call_chat_model,
     orchestrator: Any | None = None,
+    stream_writer: Any | None = None,
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     matrix = default_scenario_matrix(config)
     target_brand = str(config.get("campaign", {}).get("target_brand", ""))
@@ -296,7 +297,7 @@ def generate_query_rows(
             attempts.append(attempt)
             for query in queries[:query_count]:
                 rows.append(
-                    {
+                    row := {
                         "query_id": f"q{query_index:03d}",
                         "query": query,
                         "target_brand": target_brand,
@@ -308,7 +309,11 @@ def generate_query_rows(
                         "notes": "API-generated client acquisition query" if attempt["status"] == "success" else "Fallback query after API error",
                     }
                 )
+                if stream_writer:
+                    stream_writer.write_query(row)
                 query_index += 1
+            if stream_writer:
+                stream_writer.write_scenario_attempt(attempt)
     return rows, attempts
 
 
@@ -368,6 +373,7 @@ def rerank_candidates(
     top_k: int,
     caller: ChatCaller = call_chat_model,
     orchestrator: Any | None = None,
+    stream_writer: Any | None = None,
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]], list[dict[str, Any]]]:
     metric_rows: list[dict[str, Any]] = []
     evidence_rows: list[dict[str, Any]] = []
@@ -434,49 +440,49 @@ def rerank_candidates(
                 run_id=run_id,
             )
             data = record.model_dump()
-            metric_rows.append(
-                {
-                    "run_id": data["run_id"],
-                    "query_id": data["query_id"],
-                    "query": data["query"],
-                    "provider": provider,
-                    "model": model,
-                    "persona": query.get("persona", ""),
-                    "journey_stage": query.get("journey_stage", ""),
-                    "top_k": data["top_k"],
-                    "own_brand_rank": data["own_brand_rank"],
-                    "own_brand_in_top_3": data["own_brand_in_top_3"],
-                    "own_brand_in_top_5": data["own_brand_in_top_5"],
-                    "own_brand_in_top_10": data["own_brand_in_top_10"],
-                    "winning_brand": data["winning_brand"],
-                    "winning_source_type": data["winning_source_type"],
-                    "competitor_above_owned": data["competitor_above_owned"],
-                    "matched_urls_json": data["matched_urls_json"],
-                }
-            )
-            evidence_rows.append(
-                {
-                    "query_id": query["query_id"],
-                    "query": query["query"],
-                    "provider": provider,
-                    "model": model,
-                    "persona": query.get("persona", ""),
-                    "journey_stage": query.get("journey_stage", ""),
-                    "retrieved_chunks": [
-                        {
-                            "candidate_id": item.get("candidate_id"),
-                            "chunk_id": item.get("chunk_id"),
-                            "brand": item.get("brand"),
-                            "url": item.get("url"),
-                            "title": item.get("title"),
-                            "source_type": item.get("source_type"),
-                            "rerank_reason": item.get("rerank_reason", ""),
-                            "text_preview": str(item.get("text", ""))[:700],
-                        }
-                        for item in ranked[:top_k]
-                    ],
-                }
-            )
+            metric_row = {
+                "run_id": data["run_id"],
+                "query_id": data["query_id"],
+                "query": data["query"],
+                "provider": provider,
+                "model": model,
+                "persona": query.get("persona", ""),
+                "journey_stage": query.get("journey_stage", ""),
+                "top_k": data["top_k"],
+                "own_brand_rank": data["own_brand_rank"],
+                "own_brand_in_top_3": data["own_brand_in_top_3"],
+                "own_brand_in_top_5": data["own_brand_in_top_5"],
+                "own_brand_in_top_10": data["own_brand_in_top_10"],
+                "winning_brand": data["winning_brand"],
+                "winning_source_type": data["winning_source_type"],
+                "competitor_above_owned": data["competitor_above_owned"],
+                "matched_urls_json": data["matched_urls_json"],
+            }
+            evidence_row = {
+                "query_id": query["query_id"],
+                "query": query["query"],
+                "provider": provider,
+                "model": model,
+                "persona": query.get("persona", ""),
+                "journey_stage": query.get("journey_stage", ""),
+                "retrieved_chunks": [
+                    {
+                        "candidate_id": item.get("candidate_id"),
+                        "chunk_id": item.get("chunk_id"),
+                        "brand": item.get("brand"),
+                        "url": item.get("url"),
+                        "title": item.get("title"),
+                        "source_type": item.get("source_type"),
+                        "rerank_reason": item.get("rerank_reason", ""),
+                        "text_preview": str(item.get("text", ""))[:700],
+                    }
+                    for item in ranked[:top_k]
+                ],
+            }
+            metric_rows.append(metric_row)
+            evidence_rows.append(evidence_row)
+            if stream_writer:
+                stream_writer.write_rerank(metric_row, evidence_row, attempt)
     return metric_rows, evidence_rows, attempts
 
 
@@ -499,6 +505,7 @@ def build_answer_rows(
     rerank_evidence: list[dict[str, Any]],
     caller: ChatCaller = call_chat_model,
     orchestrator: Any | None = None,
+    stream_writer: Any | None = None,
 ) -> list[dict[str, Any]]:
     query_by_id = {row["query_id"]: row for row in query_rows}
     evidence_by_key = {(row["provider"], row["model"], row["query_id"]): row for row in rerank_evidence}
@@ -540,21 +547,22 @@ def build_answer_rows(
             target_brand = str(query.get("target_brand", ""))
             answer_lower = answer.lower()
             brand_mentioned = bool(target_brand and target_brand.lower() in answer_lower)
-            rows.append(
-                {
-                    "query_id": query["query_id"],
-                    "query": query["query"],
-                    "provider": provider,
-                    "model": model,
-                    "persona": query_by_id[query["query_id"]].get("persona", ""),
-                    "journey_stage": query_by_id[query["query_id"]].get("journey_stage", ""),
-                    "raw_answer": answer,
-                    "brand_mentioned": str(brand_mentioned),
-                    "recommended_own_brand": str(brand_mentioned and "recommend" in answer_lower),
-                    "latency_ms": latency_ms,
-                    "error": error,
-                }
-            )
+            answer_row = {
+                "query_id": query["query_id"],
+                "query": query["query"],
+                "provider": provider,
+                "model": model,
+                "persona": query_by_id[query["query_id"]].get("persona", ""),
+                "journey_stage": query_by_id[query["query_id"]].get("journey_stage", ""),
+                "raw_answer": answer,
+                "brand_mentioned": str(brand_mentioned),
+                "recommended_own_brand": str(brand_mentioned and "recommend" in answer_lower),
+                "latency_ms": latency_ms,
+                "error": error,
+            }
+            rows.append(answer_row)
+            if stream_writer:
+                stream_writer.write_answer(answer_row)
     return rows
 
 
@@ -883,6 +891,53 @@ def write_csv(path: Path, rows: list[dict[str, Any]], fields: list[str]) -> None
         writer.writerows(rows)
 
 
+def append_csv_rows(path: Path, rows: list[dict[str, Any]], fields: list[str]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    write_header = not path.exists() or path.stat().st_size == 0
+    with path.open("a", encoding="utf-8", newline="") as handle:
+        writer = csv.DictWriter(handle, fieldnames=fields)
+        if write_header:
+            writer.writeheader()
+        writer.writerows(rows)
+
+
+def append_jsonl_rows(path: Path, rows: list[dict[str, Any]]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("a", encoding="utf-8") as handle:
+        for row in rows:
+            handle.write(json.dumps(row, ensure_ascii=False) + "\n")
+
+
+class IncrementalRunWriter:
+    def __init__(self, run_dir: Path) -> None:
+        self.run_dir = Path(run_dir)
+
+    def reset_stage_outputs(self, stage: str) -> None:
+        groups = {
+            "scenario": ["api_queries.csv", "api_scenario_attempts.jsonl"],
+            "rerank": ["retrieval_by_model.csv", "retrieval_evidence_by_model.jsonl", "api_rerank_attempts.jsonl"],
+            "answer": ["model_answer_evaluations.csv"],
+        }
+        for filename in groups.get(stage, []):
+            path = self.run_dir / filename
+            if path.exists():
+                path.unlink()
+
+    def write_query(self, row: dict[str, Any]) -> None:
+        append_csv_rows(self.run_dir / "api_queries.csv", [row], QUERY_FIELDS)
+
+    def write_scenario_attempt(self, row: dict[str, Any]) -> None:
+        append_jsonl_rows(self.run_dir / "api_scenario_attempts.jsonl", [row])
+
+    def write_rerank(self, metric_row: dict[str, Any], evidence_row: dict[str, Any], attempt_row: dict[str, Any]) -> None:
+        append_csv_rows(self.run_dir / "retrieval_by_model.csv", [metric_row], RETRIEVAL_FIELDS)
+        append_jsonl_rows(self.run_dir / "retrieval_evidence_by_model.jsonl", [evidence_row])
+        append_jsonl_rows(self.run_dir / "api_rerank_attempts.jsonl", [attempt_row])
+
+    def write_answer(self, row: dict[str, Any]) -> None:
+        append_csv_rows(self.run_dir / "model_answer_evaluations.csv", [row], ANSWER_FIELDS)
+
+
 def read_jsonl_rows(path: Path) -> list[dict[str, Any]]:
     if not path.exists():
         return []
@@ -941,11 +996,14 @@ def run_simulator(config: dict[str, Any], caller: ChatCaller = call_chat_model) 
     top_k = int(config.get("run", {}).get("top_k", 10))
     models = config.get("models", [])
     orchestrator = build_orchestrator_from_config(config, caller=caller)
-    query_rows, scenario_attempts = generate_query_rows(config, caller=caller, orchestrator=orchestrator)
+    stream_writer = IncrementalRunWriter(run_dir)
+    stream_writer.reset_stage_outputs("scenario")
+    query_rows, scenario_attempts = generate_query_rows(config, caller=caller, orchestrator=orchestrator, stream_writer=stream_writer)
     write_csv(run_dir / "api_queries.csv", query_rows, QUERY_FIELDS)
     write_jsonl(run_dir / "api_scenario_attempts.jsonl", scenario_attempts)
 
     candidates_by_query = candidate_recall(config, query_rows)
+    stream_writer.reset_stage_outputs("rerank")
     retrieval_rows, retrieval_evidence, rerank_attempts = rerank_candidates(
         query_rows=query_rows,
         candidates_by_query=candidates_by_query,
@@ -953,12 +1011,14 @@ def run_simulator(config: dict[str, Any], caller: ChatCaller = call_chat_model) 
         top_k=top_k,
         caller=caller,
         orchestrator=orchestrator,
+        stream_writer=stream_writer,
     )
     write_csv(run_dir / "retrieval_by_model.csv", retrieval_rows, RETRIEVAL_FIELDS)
     write_jsonl(run_dir / "retrieval_evidence_by_model.jsonl", retrieval_evidence)
     write_jsonl(run_dir / "api_rerank_attempts.jsonl", rerank_attempts)
 
-    answer_rows = build_answer_rows(query_rows, models, retrieval_evidence, caller=caller, orchestrator=orchestrator)
+    stream_writer.reset_stage_outputs("answer")
+    answer_rows = build_answer_rows(query_rows, models, retrieval_evidence, caller=caller, orchestrator=orchestrator, stream_writer=stream_writer)
     write_csv(run_dir / "model_answer_evaluations.csv", answer_rows, ANSWER_FIELDS)
     brand_rows = build_brand_performance_by_model(
         target_brand=str(config.get("campaign", {}).get("target_brand", "")),
