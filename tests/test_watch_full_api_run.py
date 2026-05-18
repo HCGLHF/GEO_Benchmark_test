@@ -102,6 +102,9 @@ def test_summarize_run_counts_attempts_by_model_and_task(tmp_path: Path):
     assert summary["totals"]["expected_api_calls"] == 5
     assert summary["totals"]["terminal_calls"] == 4
     assert summary["totals"]["failures"] == 1
+    assert summary["missing"]["retrieval_rows"] == 1
+    assert summary["missing"]["answer_rows"] == 1
+    assert summary["missing"]["terminal_calls"] == 1
     assert summary["tasks"]["scenario_generation"]["api_calls"] == 1
     assert summary["tasks"]["rerank"]["cache_hits"] == 1
     assert summary["tasks"]["rerank"]["failures"] == 1
@@ -146,6 +149,7 @@ def test_format_text_report_includes_progress_and_failures(tmp_path: Path):
 
     assert "Run:" in report
     assert "Progress: 4/5 terminal calls (80.0%)" in report
+    assert "Missing: retrieval 1, answers 1, terminal calls 1" in report
     assert "model-a" in report
     assert "Failures:" in report
     assert "rate limited" in report

@@ -118,7 +118,10 @@ def expected_counts(config: dict[str, Any], actual_queries: int) -> dict[str, in
     personas = list(client_config.get("personas") or DEFAULT_PERSONAS)
     stages = list(client_config.get("journey_stages") or DEFAULT_JOURNEY_STAGES)
     queries_per_model = int(client_config.get("queries_per_model") or 0)
-    expected_queries = actual_queries or (model_count * queries_per_model)
+    queries_per_stage = int(client_config.get("queries_per_stage") or 1)
+    expected_queries = model_count * queries_per_model if queries_per_model else model_count * len(personas) * len(stages) * queries_per_stage
+    if expected_queries == 0:
+        expected_queries = actual_queries
     return {
         "scenario_generation": model_count * len(personas) * len(stages),
         "rerank": expected_queries,
@@ -186,6 +189,7 @@ def summarize_run(
         last_activity = file_activity_time(run_path)
     expected_by_task = expected_counts(config, len(query_rows))
     expected_total = sum(expected_by_task.values())
+    expected_queries = max(expected_by_task.get("rerank", 0), expected_by_task.get("answer", 0), len(query_rows))
     terminal_calls = sum(int(row["terminal_calls"]) for row in tasks.values())
     api_calls = sum(int(row["api_calls"]) for row in tasks.values())
     cache_hits = sum(int(row["cache_hits"]) for row in tasks.values())
@@ -229,6 +233,12 @@ def summarize_run(
             "api_summary_rows": len(api_summary_rows),
             "report_exists": (run_path / "competitive_gap_report.md").exists(),
         },
+        "missing": {
+            "queries": max(expected_queries - len(query_rows), 0),
+            "retrieval_rows": max(expected_queries - len(retrieval_rows), 0),
+            "answer_rows": max(expected_queries - len(answer_rows), 0),
+            "terminal_calls": max(expected_total - terminal_calls, 0),
+        },
         "tasks": ordered_tasks,
         "models": dict(sorted(models.items())),
         "failures": failures,
@@ -254,6 +264,7 @@ def format_text_report(summary: dict[str, Any]) -> str:
         f"Progress: {totals['terminal_calls']}/{totals['expected_api_calls']} terminal calls ({pct(totals['progress'])})",
         f"API calls: {totals['api_calls']} | Cache hits: {totals['cache_hits']} | Failures: {totals['failures']}",
         f"Queries: {totals['queries']} | Retrieval rows: {summary['outputs']['retrieval_rows']} | Answer rows: {summary['outputs']['answer_rows']}",
+        f"Missing: retrieval {summary['missing']['retrieval_rows']}, answers {summary['missing']['answer_rows']}, terminal calls {summary['missing']['terminal_calls']}",
         f"Last activity: {summary['timing']['last_activity_at'] or 'unknown'} | Idle seconds: {summary['timing']['idle_seconds']}",
         "",
         "Tasks:",

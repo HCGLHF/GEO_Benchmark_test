@@ -2,6 +2,10 @@
 
 ## Done
 
+- Added resume support for interrupted full API simulator runs.
+- Scenario generation now skips existing provider/model/persona/stage slots and continues query IDs from the highest existing `qNNN`.
+- Rerank and answer stages now skip completed `provider + model + query_id` rows and only fill missing work.
+- `watch_full_api_run.py` now reports missing retrieval rows, answer rows, and terminal calls.
 - Added incremental output writing for full API simulator runs.
 - Scenario queries/attempts, rerank metrics/evidence/attempts, and answer rows now stream to disk as each unit completes.
 - Added interruption tests proving completed rows remain on disk when a later scenario, rerank, or answer call is interrupted.
@@ -25,6 +29,7 @@
 - The existing full API run has complete orchestrator attempts, so the monitor can report exact 1660/1660 completion from existing artifacts.
 - One-command parallel execution is safest when each model gets its own output directory, run-state SQLite, and LLM cache SQLite.
 - Incremental writes make `watch_full_api_run.py` useful during active runs because row counts update before the whole stage finishes.
+- Resume behavior now treats existing output rows as the source of truth for completed work.
 - The project now has an explicit rule that every development task must preserve engineering memory, architecture boundaries, and next-step judgment.
 - Full API realism remains operationally useful but must be run by the user locally when it sends corpus excerpts to third-party APIs.
 
@@ -33,12 +38,12 @@
 - Publishing must continue to avoid local `.env`, `data/`, `runs/`, `reports/`, `output/`, and vector database artifacts.
 - Direct push to `main` has less review ceremony than a PR, so each publish needs an explicit local audit.
 - Future changes may accidentally skip this memory check unless it is treated as part of the normal development entry routine.
-- Existing scripts are useful but still need stronger resume behavior for interrupted long full API runs.
+- Reusing an old output directory now resumes from existing rows; use a new output directory when a clean rerun is intended.
 - The monitor reports from files that already exist; it still cannot see one currently in-flight API call before the runner writes an attempt row.
 - Parallel API execution can hit provider rate limits faster than serial execution, so failed model workers should be inspected before merge.
 
 ## Next
 
-1. Add resume support that skips already-streamed scenario/rerank/answer rows after an interrupted run.
-2. Add a short release checklist for future direct pushes when `gh` is unavailable.
+1. Add a short release checklist for future direct pushes when `gh` is unavailable.
+2. Add a smoke command that runs one tiny local-safe/resume simulation end to end without external APIs.
 3. Use `scripts/run_full_api_parallel_with_watch.ps1 -QueriesPerModel 200` for the next full API benchmark after AlphaXXXX content expansion.

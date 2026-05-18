@@ -161,6 +161,42 @@ def test_generate_query_rows_streams_each_scenario_batch(tmp_path):
     assert (tmp_path / "api_scenario_attempts.jsonl").read_text(encoding="utf-8").count("\n") == 1
 
 
+def test_generate_query_rows_resumes_after_existing_scenario_slot(tmp_path):
+    calls = {"count": 0}
+
+    def fake_caller(model_config, prompt, temperature):
+        calls["count"] += 1
+        return {"raw_answer": json.dumps({"queries": ["Question for second slot"]})}
+
+    config = sample_config(tmp_path)
+    config["client_acquisition"] = {
+        "personas": ["p1"],
+        "journey_stages": ["s1", "s2"],
+        "queries_per_stage": 1,
+    }
+    existing_rows = [
+        {
+            "query_id": "q001",
+            "query": "Existing first slot question",
+            "target_brand": "AlphaXXXX",
+            "persona": "p1",
+            "journey_stage": "s1",
+            "scenario_provider": "openrouter",
+            "scenario_model": "openai/gpt-4.1-mini",
+            "api_status": "success",
+            "notes": "already streamed",
+        }
+    ]
+
+    rows, attempts = generate_query_rows(config, caller=fake_caller, existing_rows=existing_rows)
+
+    assert calls["count"] == 1
+    assert [row["query_id"] for row in rows] == ["q001", "q002"]
+    assert rows[0]["query"] == "Existing first slot question"
+    assert rows[1]["journey_stage"] == "s2"
+    assert len(attempts) == 1
+
+
 def test_generate_query_rows_creates_200_independent_queries_per_model(tmp_path):
     config = sample_config(tmp_path)
     config["client_acquisition"] = {
@@ -365,6 +401,51 @@ def test_rerank_candidates_streams_rows_before_later_interrupt(tmp_path):
     assert "q001" in (tmp_path / "api_rerank_attempts.jsonl").read_text(encoding="utf-8")
 
 
+def test_rerank_candidates_skips_completed_keys_when_resuming(tmp_path):
+    calls = {"count": 0}
+
+    def fake_caller(model_config, prompt, temperature):
+        calls["count"] += 1
+        return {"raw_answer": '{"ranked_candidate_ids": ["c1"]}', "latency_ms": 7}
+
+    writer = IncrementalRunWriter(tmp_path)
+    rows, evidence, attempts = rerank_candidates(
+        query_rows=[
+            {
+                "query_id": "q001",
+                "query": "Already reranked",
+                "target_brand": "AlphaXXXX",
+                "scenario_provider": "openrouter",
+                "scenario_model": "model-a",
+            },
+            {
+                "query_id": "q002",
+                "query": "Needs rerank",
+                "target_brand": "AlphaXXXX",
+                "scenario_provider": "openrouter",
+                "scenario_model": "model-a",
+            },
+        ],
+        candidates_by_query={
+            "q001": [{"candidate_id": "c1", "brand": "AlphaXXXX", "url": "https://alphaxxxx.com"}],
+            "q002": [{"candidate_id": "c1", "brand": "HornTech", "url": "https://horntech.com.au"}],
+        },
+        models=[{"provider": "openrouter", "model": "model-a"}],
+        top_k=5,
+        caller=fake_caller,
+        stream_writer=writer,
+        completed_keys={("openrouter", "model-a", "q001")},
+    )
+
+    assert calls["count"] == 1
+    assert [row["query_id"] for row in rows] == ["q002"]
+    assert [row["query_id"] for row in evidence] == ["q002"]
+    assert [row["query_id"] for row in attempts] == ["q002"]
+    output = (tmp_path / "retrieval_by_model.csv").read_text(encoding="utf-8")
+    assert "q002" in output
+    assert "q001" not in output
+
+
 def test_build_answer_rows_records_model_mentions():
     rows = build_answer_rows(
         query_rows=[{"query_id": "q001", "query": "Who can help?", "target_brand": "AlphaXXXX"}],
@@ -462,6 +543,36 @@ def test_build_answer_rows_streams_rows_before_later_interrupt(tmp_path):
     assert output.count("\n") == 2
     assert "q001" in output
     assert "q002" not in output
+
+
+def test_build_answer_rows_skips_completed_keys_when_resuming(tmp_path):
+    calls = {"count": 0}
+
+    def fake_caller(model_config, prompt, temperature):
+        calls["count"] += 1
+        return {"raw_answer": "HornTech can help.", "latency_ms": 5}
+
+    writer = IncrementalRunWriter(tmp_path)
+    rows = build_answer_rows(
+        query_rows=[
+            {"query_id": "q001", "query": "Already answered", "target_brand": "AlphaXXXX", "scenario_provider": "openrouter", "scenario_model": "model-a"},
+            {"query_id": "q002", "query": "Needs answer", "target_brand": "AlphaXXXX", "scenario_provider": "openrouter", "scenario_model": "model-a"},
+        ],
+        models=[{"provider": "openrouter", "model": "model-a"}],
+        rerank_evidence=[
+            {"query_id": "q001", "provider": "openrouter", "model": "model-a", "retrieved_chunks": []},
+            {"query_id": "q002", "provider": "openrouter", "model": "model-a", "retrieved_chunks": []},
+        ],
+        caller=fake_caller,
+        stream_writer=writer,
+        completed_keys={("openrouter", "model-a", "q001")},
+    )
+
+    assert calls["count"] == 1
+    assert [row["query_id"] for row in rows] == ["q002"]
+    output = (tmp_path / "model_answer_evaluations.csv").read_text(encoding="utf-8")
+    assert "q002" in output
+    assert "q001" not in output
 
 
 def test_build_brand_performance_by_model_groups_retrieval_and_answers():

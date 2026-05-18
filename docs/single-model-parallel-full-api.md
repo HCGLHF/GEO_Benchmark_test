@@ -19,6 +19,7 @@ This command:
 - gives every model its own LLM cache SQLite file to avoid cache lock contention
 - refreshes progress with `scripts\watch_full_api_run.py`
 - streams scenario, rerank, and answer outputs while the run is active
+- resumes from already-streamed rows if the same run directory is restarted
 - automatically runs `scripts\merge_full_api_runs.py` when every worker exits successfully
 - prints the merged `competitive_gap_report.md` path
 

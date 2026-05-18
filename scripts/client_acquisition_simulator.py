@@ -249,18 +249,31 @@ def generate_query_rows(
     caller: ChatCaller = call_chat_model,
     orchestrator: Any | None = None,
     stream_writer: Any | None = None,
+    existing_rows: list[dict[str, Any]] | None = None,
+    existing_attempts: list[dict[str, Any]] | None = None,
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     matrix = default_scenario_matrix(config)
     target_brand = str(config.get("campaign", {}).get("target_brand", ""))
     models = config.get("models", [])
-    rows: list[dict[str, Any]] = []
-    attempts: list[dict[str, Any]] = []
-    query_index = 1
+    rows: list[dict[str, Any]] = list(existing_rows or [])
+    attempts: list[dict[str, Any]] = list(existing_attempts or [])
+    query_index = next_query_index(rows)
     for model_config in models:
         provider = str(model_config.get("provider", ""))
         model = str(model_config.get("model", ""))
         for persona, stage, query_count in scenario_counts_for_model(matrix):
-            prompt = build_scenario_prompt(config, persona, stage, query_count)
+            existing_slot_count = sum(
+                1
+                for row in rows
+                if str(row.get("scenario_provider", "")) == provider
+                and str(row.get("scenario_model", "")) == model
+                and str(row.get("persona", "")) == persona
+                and str(row.get("journey_stage", "")) == stage
+            )
+            missing_query_count = max(query_count - existing_slot_count, 0)
+            if missing_query_count == 0:
+                continue
+            prompt = build_scenario_prompt(config, persona, stage, missing_query_count)
             attempt = {
                 "provider": provider,
                 "model": model,
@@ -269,7 +282,7 @@ def generate_query_rows(
                 "used_api": True,
                 "status": "success",
                 "error": None,
-                "requested_query_count": query_count,
+                "requested_query_count": missing_query_count,
                 "created_at": utc_now_iso(),
             }
             try:
@@ -281,7 +294,7 @@ def generate_query_rows(
                         temperature=temperature,
                         task_type="scenario_generation",
                         query_id=f"scenario:{provider}:{model}:{persona}:{stage}",
-                        input_hash=canonical_hash({"persona": persona, "journey_stage": stage, "query_count": query_count}),
+                        input_hash=canonical_hash({"persona": persona, "journey_stage": stage, "query_count": missing_query_count}),
                         prompt_version="scenario_generation_v1",
                     )
                 else:
@@ -295,7 +308,7 @@ def generate_query_rows(
                 attempt["status"] = "error"
                 attempt["error"] = str(exc)
             attempts.append(attempt)
-            for query in queries[:query_count]:
+            for query in queries[:missing_query_count]:
                 rows.append(
                     row := {
                         "query_id": f"q{query_index:03d}",
@@ -366,6 +379,19 @@ def query_matches_model(query: dict[str, Any], provider: str, model: str) -> boo
     return scenario_provider == provider and scenario_model == model
 
 
+def next_query_index(rows: list[dict[str, Any]]) -> int:
+    largest = 0
+    for row in rows:
+        query_id = str(row.get("query_id", ""))
+        if query_id.startswith("q") and query_id[1:].isdigit():
+            largest = max(largest, int(query_id[1:]))
+    return largest + 1
+
+
+def result_key(row: dict[str, Any]) -> tuple[str, str, str]:
+    return (str(row.get("provider", "")), str(row.get("model", "")), str(row.get("query_id", "")))
+
+
 def rerank_candidates(
     query_rows: list[dict[str, Any]],
     candidates_by_query: dict[str, list[dict[str, Any]]],
@@ -374,6 +400,7 @@ def rerank_candidates(
     caller: ChatCaller = call_chat_model,
     orchestrator: Any | None = None,
     stream_writer: Any | None = None,
+    completed_keys: set[tuple[str, str, str]] | None = None,
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]], list[dict[str, Any]]]:
     metric_rows: list[dict[str, Any]] = []
     evidence_rows: list[dict[str, Any]] = []
@@ -384,6 +411,8 @@ def rerank_candidates(
         model = str(model_config.get("model", ""))
         for query in query_rows:
             if not query_matches_model(query, provider, model):
+                continue
+            if completed_keys and (provider, model, str(query["query_id"])) in completed_keys:
                 continue
             candidates = candidates_by_query.get(str(query["query_id"]), [])
             prompt = build_rerank_prompt(str(query["query"]), candidates, top_k)
@@ -506,6 +535,7 @@ def build_answer_rows(
     caller: ChatCaller = call_chat_model,
     orchestrator: Any | None = None,
     stream_writer: Any | None = None,
+    completed_keys: set[tuple[str, str, str]] | None = None,
 ) -> list[dict[str, Any]]:
     query_by_id = {row["query_id"]: row for row in query_rows}
     evidence_by_key = {(row["provider"], row["model"], row["query_id"]): row for row in rerank_evidence}
@@ -515,6 +545,8 @@ def build_answer_rows(
         model = str(model_config.get("model", ""))
         for query in query_rows:
             if not query_matches_model(query, provider, model):
+                continue
+            if completed_keys and (provider, model, str(query["query_id"])) in completed_keys:
                 continue
             evidence = evidence_by_key.get((provider, model, query["query_id"]), {})
             prompt = build_answer_prompt(str(query["query"]), evidence)
@@ -891,6 +923,13 @@ def write_csv(path: Path, rows: list[dict[str, Any]], fields: list[str]) -> None
         writer.writerows(rows)
 
 
+def read_csv_rows(path: Path) -> list[dict[str, Any]]:
+    if not path.exists():
+        return []
+    with path.open("r", encoding="utf-8", newline="") as handle:
+        return [dict(row) for row in csv.DictReader(handle)]
+
+
 def append_csv_rows(path: Path, rows: list[dict[str, Any]], fields: list[str]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     write_header = not path.exists() or path.stat().st_size == 0
@@ -997,14 +1036,28 @@ def run_simulator(config: dict[str, Any], caller: ChatCaller = call_chat_model) 
     models = config.get("models", [])
     orchestrator = build_orchestrator_from_config(config, caller=caller)
     stream_writer = IncrementalRunWriter(run_dir)
-    stream_writer.reset_stage_outputs("scenario")
-    query_rows, scenario_attempts = generate_query_rows(config, caller=caller, orchestrator=orchestrator, stream_writer=stream_writer)
+    existing_query_rows = read_csv_rows(run_dir / "api_queries.csv")
+    existing_scenario_attempts = read_jsonl_rows(run_dir / "api_scenario_attempts.jsonl")
+    if not existing_query_rows and not existing_scenario_attempts:
+        stream_writer.reset_stage_outputs("scenario")
+    query_rows, scenario_attempts = generate_query_rows(
+        config,
+        caller=caller,
+        orchestrator=orchestrator,
+        stream_writer=stream_writer,
+        existing_rows=existing_query_rows,
+        existing_attempts=existing_scenario_attempts,
+    )
     write_csv(run_dir / "api_queries.csv", query_rows, QUERY_FIELDS)
     write_jsonl(run_dir / "api_scenario_attempts.jsonl", scenario_attempts)
 
     candidates_by_query = candidate_recall(config, query_rows)
-    stream_writer.reset_stage_outputs("rerank")
-    retrieval_rows, retrieval_evidence, rerank_attempts = rerank_candidates(
+    existing_retrieval_rows = read_csv_rows(run_dir / "retrieval_by_model.csv")
+    existing_retrieval_evidence = read_jsonl_rows(run_dir / "retrieval_evidence_by_model.jsonl")
+    existing_rerank_attempts = read_jsonl_rows(run_dir / "api_rerank_attempts.jsonl")
+    if not existing_retrieval_rows and not existing_retrieval_evidence and not existing_rerank_attempts:
+        stream_writer.reset_stage_outputs("rerank")
+    new_retrieval_rows, new_retrieval_evidence, new_rerank_attempts = rerank_candidates(
         query_rows=query_rows,
         candidates_by_query=candidates_by_query,
         models=models,
@@ -1012,13 +1065,28 @@ def run_simulator(config: dict[str, Any], caller: ChatCaller = call_chat_model) 
         caller=caller,
         orchestrator=orchestrator,
         stream_writer=stream_writer,
+        completed_keys={result_key(row) for row in existing_retrieval_rows},
     )
+    retrieval_rows = existing_retrieval_rows + new_retrieval_rows
+    retrieval_evidence = existing_retrieval_evidence + new_retrieval_evidence
+    rerank_attempts = existing_rerank_attempts + new_rerank_attempts
     write_csv(run_dir / "retrieval_by_model.csv", retrieval_rows, RETRIEVAL_FIELDS)
     write_jsonl(run_dir / "retrieval_evidence_by_model.jsonl", retrieval_evidence)
     write_jsonl(run_dir / "api_rerank_attempts.jsonl", rerank_attempts)
 
-    stream_writer.reset_stage_outputs("answer")
-    answer_rows = build_answer_rows(query_rows, models, retrieval_evidence, caller=caller, orchestrator=orchestrator, stream_writer=stream_writer)
+    existing_answer_rows = read_csv_rows(run_dir / "model_answer_evaluations.csv")
+    if not existing_answer_rows:
+        stream_writer.reset_stage_outputs("answer")
+    new_answer_rows = build_answer_rows(
+        query_rows,
+        models,
+        retrieval_evidence,
+        caller=caller,
+        orchestrator=orchestrator,
+        stream_writer=stream_writer,
+        completed_keys={result_key(row) for row in existing_answer_rows},
+    )
+    answer_rows = existing_answer_rows + new_answer_rows
     write_csv(run_dir / "model_answer_evaluations.csv", answer_rows, ANSWER_FIELDS)
     brand_rows = build_brand_performance_by_model(
         target_brand=str(config.get("campaign", {}).get("target_brand", "")),
