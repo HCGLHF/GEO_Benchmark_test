@@ -261,6 +261,16 @@ def generate_query_rows(
     for model_config in models:
         provider = str(model_config.get("provider", ""))
         model = str(model_config.get("model", ""))
+        queries_per_model = matrix.get("queries_per_model")
+        if queries_per_model:
+            existing_model_count = sum(
+                1
+                for row in rows
+                if str(row.get("scenario_provider", "")) == provider
+                and str(row.get("scenario_model", "")) == model
+            )
+            if existing_model_count >= int(queries_per_model):
+                continue
         for persona, stage, query_count in scenario_counts_for_model(matrix):
             existing_slot_count = sum(
                 1

@@ -111,7 +111,7 @@ def increment_counter(counter: dict[str, Any], attempt: dict[str, Any]) -> None:
         counter["last_activity_at"] = created_at.isoformat().replace("+00:00", "Z")
 
 
-def expected_counts(config: dict[str, Any], actual_queries: int) -> dict[str, int]:
+def expected_counts(config: dict[str, Any], actual_queries: int, attempts: list[dict[str, Any]] | None = None) -> dict[str, int]:
     models = list(config.get("models", []) or [])
     model_count = len(models)
     client_config = config.get("client_acquisition", {}) if isinstance(config.get("client_acquisition"), dict) else {}
@@ -122,8 +122,14 @@ def expected_counts(config: dict[str, Any], actual_queries: int) -> dict[str, in
     expected_queries = model_count * queries_per_model if queries_per_model else model_count * len(personas) * len(stages) * queries_per_stage
     if expected_queries == 0:
         expected_queries = actual_queries
+    scenario_attempts = [
+        attempt
+        for attempt in attempts or []
+        if str(attempt.get("task_type") or "") == "scenario_generation"
+    ]
+    scenario_expected = 0 if actual_queries and not scenario_attempts else model_count * len(personas) * len(stages)
     return {
-        "scenario_generation": model_count * len(personas) * len(stages),
+        "scenario_generation": scenario_expected,
         "rerank": expected_queries,
         "answer": expected_queries,
     }
@@ -187,7 +193,7 @@ def summarize_run(
 
     if last_activity is None:
         last_activity = file_activity_time(run_path)
-    expected_by_task = expected_counts(config, len(query_rows))
+    expected_by_task = expected_counts(config, len(query_rows), attempts)
     expected_total = sum(expected_by_task.values())
     expected_queries = max(expected_by_task.get("rerank", 0), expected_by_task.get("answer", 0), len(query_rows))
     terminal_calls = sum(int(row["terminal_calls"]) for row in tasks.values())

@@ -9,8 +9,18 @@ Do not use this to modify a run that is already in progress. Let the current run
 From `D:\GEO-ALPHA\Resourcepool_Gen`:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\run_full_api_parallel_with_watch.ps1 -QueriesPerModel 200
+powershell -ExecutionPolicy Bypass -File .\scripts\run_full_api_parallel_with_watch.ps1 -RunMode quick
 ```
+
+`quick` is the default ten-minute-class check. It uses 50 queries per model, which is about 100 API calls per model when seeded questions are reused because each query still needs rerank and answer calls.
+
+For the higher-confidence baseline:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\run_full_api_parallel_with_watch.ps1 -RunMode standard
+```
+
+`standard` keeps the previous 200 queries per model, which is about 400 API calls per model for seeded runs.
 
 This command:
 
@@ -26,13 +36,13 @@ This command:
 Before a real paid/API run, preview the exact commands without starting workers:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\run_full_api_parallel_with_watch.ps1 -QueriesPerModel 200 -DryRun
+powershell -ExecutionPolicy Bypass -File .\scripts\run_full_api_parallel_with_watch.ps1 -RunMode quick -DryRun
 ```
 
 To include Doubao:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\run_full_api_parallel_with_watch.ps1 -QueriesPerModel 200 -IncludeDoubao
+powershell -ExecutionPolicy Bypass -File .\scripts\run_full_api_parallel_with_watch.ps1 -RunMode quick -IncludeDoubao
 ```
 
 Doubao Pro is excluded by default because OpenRouter previously returned errors for the requested model id.
@@ -40,7 +50,13 @@ Doubao Pro is excluded by default because OpenRouter previously returned errors 
 To skip automatic merge and merge manually later:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\run_full_api_parallel_with_watch.ps1 -QueriesPerModel 200 -SkipMerge
+powershell -ExecutionPolicy Bypass -File .\scripts\run_full_api_parallel_with_watch.ps1 -RunMode quick -SkipMerge
+```
+
+Manual override is still available when a specific sample size is needed:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\run_full_api_parallel_with_watch.ps1 -RunMode quick -QueriesPerModel 25
 ```
 
 ## Start Parallel Runs
@@ -50,7 +66,7 @@ The older launcher is still available if you only want to start workers and merg
 From `D:\GEO-ALPHA\Resourcepool_Gen`:
 
 ```powershell
-.\scripts\run_full_api_parallel.ps1 -QueriesPerModel 200
+.\scripts\run_full_api_parallel.ps1 -RunMode quick
 ```
 
 By default this runs:
@@ -65,7 +81,7 @@ Doubao Pro is excluded by default because OpenRouter previously returned `400 Ba
 To include Doubao:
 
 ```powershell
-.\scripts\run_full_api_parallel.ps1 -QueriesPerModel 200 -IncludeDoubao
+.\scripts\run_full_api_parallel.ps1 -RunMode quick -IncludeDoubao
 ```
 
 ## Smoke Test

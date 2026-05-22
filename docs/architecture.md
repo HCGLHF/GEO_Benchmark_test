@@ -10,9 +10,14 @@
 - `scripts/build_vector_index.py`: builds the local Qdrant vector index.
 - `scripts/client_acquisition_simulator.py`: orchestrates scenario generation, retrieval, rerank, answers, brand metrics, competitive reports, incremental run-output writes, and resume skipping for completed rows.
 - `scripts/run_full_api_client_acquisition.py`: user-run entrypoint for highest-fidelity external API evaluation.
-- `scripts/run_full_api_parallel_with_watch.ps1`: one-command local orchestrator that launches one full API worker per model, monitors each run, and merges successful outputs.
+- `scripts/run_full_api_parallel_with_watch.ps1`: one-command local orchestrator that launches one full API worker per model, supports `quick` and `standard` run modes, monitors each run, and merges successful outputs.
+- `scripts/seed_api_queries.py`: copies a bounded set of existing API-generated scenario queries into a single-model run directory so refreshed-corpus runs can skip scenario generation.
 - `scripts/watch_full_api_run.py`: read-only monitor for long full API runs, summarizing progress and missing rows from run output files without calling model APIs.
+- `scripts/render_full_api_progress_html.py`: renders a static auto-refreshing HTML dashboard from full API run output files.
 - `scripts/merge_full_api_runs.py`: merges single-model runs into one report.
+- `scripts/alphaxxxx_llms_router.py`: generates the AlphaXXXX `llms.txt` intent router used to direct AI crawlers and retrieval toward the strongest canonical pages.
+- `scripts/build_corpus_variant.py`: builds evaluation corpus variants, currently `without_llms`, from processed artifacts without mutating the main corpus.
+- `scripts/compare_llms_ab_reports.py`: compares with-`llms.txt` and without-`llms.txt` merged benchmark reports for target-brand lift.
 
 ## Data Flow
 
@@ -27,6 +32,7 @@
 9. BM25 and Qdrant indexing
 10. Retrieval / rerank / answer evaluation
 11. Brand and gap reports
+12. Optional corpus-variant comparison for with/without `llms.txt` experiments
 
 ## Dependency Direction
 
@@ -37,6 +43,9 @@
 - Full external API execution must be explicit and user-run.
 - Incremental output writing belongs inside the simulator orchestration layer; monitor scripts read those files and must not mutate run state.
 - Resume behavior uses persisted output files as the contract: scenario rows, rerank rows, and answer rows determine what is already complete.
+- Seeded parallel runs reuse `api_queries.csv` per model so scenario generation remains fixed while retrieval, rerank, and answer evaluation use the refreshed corpus; the seeded row count must be capped to the effective `queries_per_model`.
+- Corpus variants must write to separate directories such as `data/experiments/without_llms/processed` and separate config files so control experiments cannot overwrite the main resource library.
+- Run-mode selection belongs in the PowerShell orchestration layer: `quick` maps to 50 queries per model, while `standard` maps to 200 queries per model unless `-QueriesPerModel` explicitly overrides it.
 
 ## Boundaries
 
@@ -45,3 +54,4 @@
 - Do not add broad "manager" or "service" modules that hide unrelated responsibilities.
 - Do not bypass existing cache/run-state abstractions without documenting why.
 - Do not let one-off scripts become the main path without either tests or a documented migration note.
+- Do not compare `llms.txt` effects by changing scenario questions at the same time; A/B runs must use the same seeded query set and differ only in corpus inputs.

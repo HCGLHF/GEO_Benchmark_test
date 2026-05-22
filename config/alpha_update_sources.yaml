@@ -1,0 +1,20 @@
+own_site:
+  brand: "AlphaXXXX"
+  source_type: "official_site"
+  crawl_mode: "site"
+  seed_urls:
+    - "https://alphaxxxx.com/"
+  include_patterns:
+    - "/"
+  exclude_patterns:
+    - "/login"
+    - "/sign-in"
+    - "/privacy"
+    - "/terms"
+    - "/wp-admin"
+    - "/wp-login"
+  max_pages: 80
+  max_depth: 3
+
+competitors: []
+industry_sources: []

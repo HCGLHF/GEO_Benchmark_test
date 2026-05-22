@@ -197,6 +197,37 @@ def test_generate_query_rows_resumes_after_existing_scenario_slot(tmp_path):
     assert len(attempts) == 1
 
 
+def test_generate_query_rows_does_not_generate_when_seeded_model_has_target_count(tmp_path):
+    def fake_caller(model_config, prompt, temperature):
+        raise AssertionError("seeded run should not regenerate scenarios")
+
+    config = sample_config(tmp_path)
+    config["client_acquisition"] = {
+        "personas": ["p1"],
+        "journey_stages": ["s1", "s2", "s3"],
+        "queries_per_model": 3,
+    }
+    existing_rows = [
+        {
+            "query_id": f"q00{index}",
+            "query": f"Seeded question {index}",
+            "target_brand": "AlphaXXXX",
+            "persona": "p1",
+            "journey_stage": "s1",
+            "scenario_provider": "openrouter",
+            "scenario_model": "openai/gpt-4.1-mini",
+            "api_status": "success",
+            "notes": "seeded",
+        }
+        for index in range(1, 4)
+    ]
+
+    rows, attempts = generate_query_rows(config, caller=fake_caller, existing_rows=existing_rows)
+
+    assert rows == existing_rows
+    assert attempts == []
+
+
 def test_generate_query_rows_creates_200_independent_queries_per_model(tmp_path):
     config = sample_config(tmp_path)
     config["client_acquisition"] = {

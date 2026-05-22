@@ -71,5 +71,168 @@ def test_parallel_with_watch_dry_run_prints_independent_runs_and_monitoring(tmp_
     assert "scripts\\run_full_api_client_acquisition.py" in result.stdout
     assert "--cache-path" in result.stdout
     assert "scripts\\watch_full_api_run.py" in result.stdout
+    assert "Progress HTML:" in result.stdout
     assert "scripts\\merge_full_api_runs.py" in result.stdout
     assert "bytedance-seed/seed-2.0-pro" not in result.stdout
+
+
+def test_parallel_with_watch_quick_mode_uses_about_100_seeded_calls_per_model(tmp_path: Path):
+    script = Path("scripts/run_full_api_parallel_with_watch.ps1")
+    result = subprocess.run(
+        [
+            "powershell",
+            "-ExecutionPolicy",
+            "Bypass",
+            "-File",
+            str(script),
+            "-RunMode",
+            "quick",
+            "-RunRoot",
+            str(tmp_path / "full_api_parallel"),
+            "-DryRun",
+        ],
+        check=False,
+        text=True,
+        capture_output=True,
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert "Run mode: quick" in result.stdout
+    assert "Queries per model: 50" in result.stdout
+    assert "--queries-per-model\" \"50" in result.stdout
+
+
+def test_parallel_with_watch_standard_mode_keeps_400_seeded_calls_per_model(tmp_path: Path):
+    script = Path("scripts/run_full_api_parallel_with_watch.ps1")
+    result = subprocess.run(
+        [
+            "powershell",
+            "-ExecutionPolicy",
+            "Bypass",
+            "-File",
+            str(script),
+            "-RunMode",
+            "standard",
+            "-RunRoot",
+            str(tmp_path / "full_api_parallel"),
+            "-DryRun",
+        ],
+        check=False,
+        text=True,
+        capture_output=True,
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert "Run mode: standard" in result.stdout
+    assert "Queries per model: 200" in result.stdout
+    assert "--queries-per-model\" \"200" in result.stdout
+
+
+def test_parallel_with_watch_manual_query_count_overrides_run_mode(tmp_path: Path):
+    script = Path("scripts/run_full_api_parallel_with_watch.ps1")
+    result = subprocess.run(
+        [
+            "powershell",
+            "-ExecutionPolicy",
+            "Bypass",
+            "-File",
+            str(script),
+            "-RunMode",
+            "quick",
+            "-QueriesPerModel",
+            "9",
+            "-RunRoot",
+            str(tmp_path / "full_api_parallel"),
+            "-DryRun",
+        ],
+        check=False,
+        text=True,
+        capture_output=True,
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert "Run mode: quick" in result.stdout
+    assert "Queries per model: 9" in result.stdout
+    assert "--queries-per-model\" \"9" in result.stdout
+
+
+def test_parallel_with_watch_can_seed_existing_queries_per_model(tmp_path: Path):
+    seed_dir = tmp_path / "seed_run"
+    seed_dir.mkdir()
+    (seed_dir / "api_queries.csv").write_text(
+        "\n".join(
+            [
+                "query_id,provider,scenario_model,persona,stage,query",
+                "q0001,openrouter,openai/gpt-4.1-mini,owner,awareness,Need AI recommendations",
+                "q0002,openrouter,deepseek/deepseek-chat,owner,awareness,Need GEO help",
+                "q0003,openrouter,google/gemini-2.5-flash,owner,awareness,Need AI visibility",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    script = Path("scripts/run_full_api_parallel_with_watch.ps1")
+
+    result = subprocess.run(
+        [
+            "powershell",
+            "-ExecutionPolicy",
+            "Bypass",
+            "-File",
+            str(script),
+            "-QueriesPerModel",
+            "3",
+            "-RunRoot",
+            str(tmp_path / "full_api_parallel"),
+            "-SeedQueriesRunDir",
+            str(seed_dir),
+            "-DryRun",
+        ],
+        check=False,
+        text=True,
+        capture_output=True,
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert "Seed queries run: " in result.stdout
+    assert "Seeded queries: 1" in result.stdout
+    assert "Scenario generation will resume from seeded api_queries.csv" in result.stdout
+
+
+def test_parallel_with_watch_limits_seeded_queries_to_queries_per_model(tmp_path: Path):
+    seed_dir = tmp_path / "seed_run"
+    seed_dir.mkdir()
+    (seed_dir / "api_queries.csv").write_text(
+        "\n".join(
+            [
+                "query_id,provider,scenario_model,persona,stage,query",
+                "q0001,openrouter,openai/gpt-4.1-mini,owner,awareness,Need AI recommendations",
+                "q0002,openrouter,openai/gpt-4.1-mini,owner,awareness,Need GEO help",
+                "q0003,openrouter,openai/gpt-4.1-mini,owner,awareness,Need AI visibility",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    script = Path("scripts/run_full_api_parallel_with_watch.ps1")
+
+    result = subprocess.run(
+        [
+            "powershell",
+            "-ExecutionPolicy",
+            "Bypass",
+            "-File",
+            str(script),
+            "-QueriesPerModel",
+            "2",
+            "-RunRoot",
+            str(tmp_path / "full_api_parallel"),
+            "-SeedQueriesRunDir",
+            str(seed_dir),
+            "-DryRun",
+        ],
+        check=False,
+        text=True,
+        capture_output=True,
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert "Seeded queries: 2" in result.stdout

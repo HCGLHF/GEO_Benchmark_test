@@ -1,11 +1,21 @@
 param(
   [string]$Config = "config\client_acquisition_simulator.yaml",
-  [int]$QueriesPerModel = 200,
+  [ValidateSet("quick", "standard")]
+  [string]$RunMode = "quick",
+  [Nullable[int]]$QueriesPerModel = $null,
   [string]$RunRoot = "runs\full_api_parallel",
   [switch]$IncludeDoubao
 )
 
 $ErrorActionPreference = "Stop"
+
+if ($null -eq $QueriesPerModel) {
+  if ($RunMode -eq "standard") {
+    $QueriesPerModel = 200
+  } else {
+    $QueriesPerModel = 50
+  }
+}
 
 $models = @(
   "openai/gpt-4.1-mini",
@@ -23,6 +33,8 @@ $root = Join-Path $RunRoot $stamp
 New-Item -ItemType Directory -Force -Path $root | Out-Null
 
 Write-Host "Starting full API single-model runs under $root"
+Write-Host "Run mode: $RunMode"
+Write-Host "Queries per model: $QueriesPerModel"
 
 foreach ($model in $models) {
   $safeName = $model.Replace("/", "_").Replace(":", "_")

@@ -114,6 +114,54 @@ def test_summarize_run_counts_attempts_by_model_and_task(tmp_path: Path):
     assert summary["status"] == "active"
 
 
+def test_summarize_run_does_not_expect_scenario_calls_for_seeded_queries(tmp_path: Path):
+    run_dir = tmp_path / "seeded_run"
+    write_json(
+        run_dir / "run_config.resolved.json",
+        {
+            "models": [{"provider": "openrouter", "model": "model-a"}],
+            "client_acquisition": {
+                "queries_per_model": 2,
+                "personas": ["Founder"],
+                "journey_stages": ["vendor_discovery"],
+            },
+        },
+    )
+    write_csv(
+        run_dir / "api_queries.csv",
+        [
+            {"query_id": "q001", "scenario_model": "model-a"},
+            {"query_id": "q002", "scenario_model": "model-a"},
+        ],
+        ["query_id", "scenario_model"],
+    )
+    write_jsonl(
+        run_dir / "api_orchestrator_attempts.jsonl",
+        [
+            {
+                "task_type": "rerank",
+                "provider": "openrouter",
+                "model": "model-a",
+                "status": "api_call",
+                "created_at": "2026-05-18T01:00:00Z",
+            },
+            {
+                "task_type": "answer",
+                "provider": "openrouter",
+                "model": "model-a",
+                "status": "api_call",
+                "created_at": "2026-05-18T01:01:00Z",
+            },
+        ],
+    )
+
+    summary = summarize_run(run_dir, now=datetime(2026, 5, 18, 1, 2, tzinfo=timezone.utc))
+
+    assert summary["expected_by_task"]["scenario_generation"] == 0
+    assert summary["totals"]["expected_api_calls"] == 4
+    assert summary["missing"]["terminal_calls"] == 2
+
+
 def test_summarize_run_handles_missing_files(tmp_path: Path):
     run_dir = tmp_path / "empty_run"
     run_dir.mkdir()
