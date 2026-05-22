@@ -8,6 +8,7 @@ This project uses Git for code and documentation, and AWS for shared data. The d
 - AWS RDS PostgreSQL stores the queryable corpus and benchmark ledger.
 - AWS S3 stores versioned corpus artifacts and future vector-index snapshots.
 - Local machines store `.env`, temporary caches, raw data, run outputs, and rebuilt Qdrant files.
+- Every cloud row and new S3 artifact belongs to an explicit `industry_id`.
 
 This lets a team member in another location clone the repo, configure credentials, and work against the same shared corpus without copying local data directories through Git.
 
@@ -20,6 +21,7 @@ This lets a team member in another location clone the repo, configure credential
 - RDS port: `5432`
 - PostgreSQL database used so far: `postgres`
 - PostgreSQL admin user used so far: `geo_admin`
+- Default industry id: `geo-agency`
 - Current corpus version: `2026-05-22-initial`
 
 These identifiers are not passwords. Do not commit the real `DATABASE_URL` password, AWS access key, or AWS secret access key.
@@ -46,20 +48,41 @@ Corpus version `2026-05-22-initial` has been imported and verified:
 - `url_inventory`: 1,683 rows
 - `documents`: 1,683 rows
 - `chunks`: 6,225 rows
-- `artifact_objects`: 3 rows
+- `artifact_objects`: 8 rows after the industry-prefix migration
 
 Registered S3 artifacts:
+
+- `industries/geo-agency/raw/2026-05-22-initial/url_inventory.csv`
+- `industries/geo-agency/processed/2026-05-22-initial/documents.jsonl`
+- `industries/geo-agency/processed/2026-05-22-initial/chunks.jsonl`
+- `industries/geo-agency/vector-index/2026-05-22-initial/qdrant.zip`
+
+Legacy pre-industry S3 artifacts are still registered for compatibility:
 
 - `raw/2026-05-22-initial/url_inventory.csv`
 - `processed/2026-05-22-initial/documents.jsonl`
 - `processed/2026-05-22-initial/chunks.jsonl`
 - `vector-index/2026-05-22-initial/qdrant.zip`
 
+## Industry Isolation
+
+Industry ids are lowercase slugs such as:
+
+- `geo-agency`
+- `dental`
+- `real-estate`
+- `legal`
+
+Every cloud command must include `--industry`. PostgreSQL queries should filter by `industry_id` before filtering by `corpus_version`, `query_set_version`, or `run_id`.
+
+New industries should be created deliberately before import. Do not reuse `geo-agency` for another industry just because the schema accepts it.
+
 ## PostgreSQL Tables
 
 The schema lives in `sql/001_initial_schema.sql`.
 
 - `corpus_versions`: one row per imported corpus version with inventory, document, and chunk counts.
+- `industries`: one row per isolated industry dataset, such as `geo-agency`, `dental`, or `real-estate`.
 - `artifact_objects`: S3 object registry with bucket, object key, hash, size, and source path.
 - `url_inventory`: versioned source URL inventory and crawl metadata.
 - `documents`: cleaned page-level corpus records.
@@ -74,6 +97,15 @@ The schema lives in `sql/001_initial_schema.sql`.
 ## S3 Responsibilities
 
 S3 is the artifact store, not the query database. Store large files and snapshots there, then register their object keys and hashes in PostgreSQL.
+
+New artifact keys must use the industry prefix:
+
+```text
+industries/{industry_id}/raw/{corpus_version}/url_inventory.csv
+industries/{industry_id}/processed/{corpus_version}/documents.jsonl
+industries/{industry_id}/processed/{corpus_version}/chunks.jsonl
+industries/{industry_id}/vector-index/{corpus_version}/qdrant.zip
+```
 
 Current artifact types:
 
@@ -94,7 +126,7 @@ The source of truth is:
 
 Current Qdrant snapshot:
 
-- S3 key: `vector-index/2026-05-22-initial/qdrant.zip`
+- S3 key: `industries/geo-agency/vector-index/2026-05-22-initial/qdrant.zip`
 - Size: 18,150,632 bytes
 - SHA-256: `e840f1ab05f44e7f11cc3118788237f2a4b991a17bc03ebb00219993ac6b9e87`
 
@@ -107,7 +139,7 @@ Current Qdrant snapshot:
 5. Run the cloud verifier:
 
 ```powershell
-python scripts\cloud\verify_cloud_import.py --corpus-version 2026-05-22-initial
+python scripts\cloud\verify_cloud_import.py --industry geo-agency --corpus-version 2026-05-22-initial
 ```
 
 If using the project-local cloud dependency directory on the original workstation, set:
@@ -133,13 +165,19 @@ Do not overwrite an old corpus version for a new business experiment. Import a n
 Import command:
 
 ```powershell
-python scripts\cloud\import_corpus.py --corpus-version 2026-05-22-initial --allow-quality-issues --execute
+python scripts\cloud\import_corpus.py --industry geo-agency --corpus-version 2026-05-22-initial --allow-quality-issues --execute
 ```
 
 Verification command:
 
 ```powershell
-python scripts\cloud\verify_cloud_import.py --corpus-version 2026-05-22-initial
+python scripts\cloud\verify_cloud_import.py --industry geo-agency --corpus-version 2026-05-22-initial
+```
+
+Qdrant snapshot command:
+
+```powershell
+python scripts\cloud\qdrant_snapshot.py --industry geo-agency --corpus-version 2026-05-22-initial --execute
 ```
 
 ## Security Notes

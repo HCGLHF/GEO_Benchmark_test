@@ -24,7 +24,17 @@ The codebase is kept in Git. The resource-library data is kept outside Git:
 Team members can clone the repository, configure their own `.env`, and verify access to the shared cloud corpus:
 
 ```powershell
-python scripts\cloud\verify_cloud_import.py --corpus-version 2026-05-22-initial
+python scripts\cloud\verify_cloud_import.py --industry geo-agency --corpus-version 2026-05-22-initial
 ```
 
 Start with [docs/documentation-map.md](docs/documentation-map.md), then read [docs/cloud-database.md](docs/cloud-database.md) for the AWS/RDS/S3 setup.
+
+## Local UI Console
+
+Launch the local dashboard and dry-run planner:
+
+```powershell
+python -m scripts.ui_app.server --host 127.0.0.1 --port 8765
+```
+
+Open `http://127.0.0.1:8765`. See [docs/ui-console.md](docs/ui-console.md) for scope and boundaries.

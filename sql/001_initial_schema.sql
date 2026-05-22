@@ -1,3 +1,7 @@
+-- Apply sql/002_industry_isolation.sql after this base schema for cloud databases.
+
+-- Apply sql/002_industry_isolation.sql after this base schema for new cloud databases.
+
 CREATE TABLE IF NOT EXISTS corpus_versions (
   corpus_version TEXT PRIMARY KEY,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),

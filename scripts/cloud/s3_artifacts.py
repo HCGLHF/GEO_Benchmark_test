@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Any
 
 from scripts._common import utc_now_iso
+from scripts.cloud.industry import normalize_industry_id
 
 
 def sha256_file(path: Path) -> str:
@@ -15,22 +16,26 @@ def sha256_file(path: Path) -> str:
     return digest.hexdigest()
 
 
-def artifact_key(prefix: str, corpus_version: str, path: Path) -> str:
+def artifact_key(industry_id: str, prefix: str, corpus_version: str, path: Path) -> str:
+    clean_industry = normalize_industry_id(industry_id)
     clean_prefix = prefix.strip("/")
-    return f"{clean_prefix}/{corpus_version}/{path.name}"
+    return f"industries/{clean_industry}/{clean_prefix}/{corpus_version}/{path.name}"
 
 
 def build_artifact_record(
     *,
+    industry_id: str,
     artifact_type: str,
     corpus_version: str,
     path: Path,
     prefix: str,
 ) -> dict[str, Any]:
+    clean_industry = normalize_industry_id(industry_id)
     return {
+        "industry_id": clean_industry,
         "artifact_type": artifact_type,
         "corpus_version": corpus_version,
-        "object_key": artifact_key(prefix, corpus_version, path),
+        "object_key": artifact_key(clean_industry, prefix, corpus_version, path),
         "sha256": sha256_file(path),
         "size_bytes": path.stat().st_size,
         "source_path": str(path),

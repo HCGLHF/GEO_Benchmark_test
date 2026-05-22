@@ -13,6 +13,7 @@
 - DeepSeek can lag far behind the other models; partial DeepSeek output should not be merged into the main benchmark unless all 200 answers complete.
 - `llms.txt` can inflate AlphaXXXX retrieval if it is the only strong matching page; evaluate both with and without `llms.txt` to separate routing benefit from page-level content strength.
 - Corpus variants can become misleading if they overwrite the main processed artifacts or use different scenario questions.
+- The new local UI is currently a dry-run planner. Treat generated commands as reviewable plans, not proof that a run has executed.
 
 ## Architecture Drift Signals
 
@@ -40,3 +41,6 @@
 - Publishing database documentation is acceptable only while it contains identifiers and placeholders, not passwords, access keys, secret keys, private connection strings, exported database dumps, or local `.env` values.
 - Remote team access depends on both IAM permissions for S3 and network/database permissions for RDS; Git access alone is not enough to run cloud-backed workflows.
 - Qdrant snapshots in S3 are convenience restore artifacts, not authoritative data. A stale snapshot must not override a newer `chunks.jsonl` corpus version.
+- Industry isolation is now enforced in cloud scripts, but any ad hoc SQL queries must still include `industry_id`; omitting it can mix unrelated industry datasets in analysis.
+- The current `geo-agency` corpus has both legacy root-level S3 artifact keys and new `industries/geo-agency/...` keys registered. New tools should prefer the industry-prefixed keys.
+- UI-selected arbitrary model subsets are not fully supported by the current parallel PowerShell runner yet; the existing runner supports built-in models plus optional Doubao, while exact subsets still need a runner update.

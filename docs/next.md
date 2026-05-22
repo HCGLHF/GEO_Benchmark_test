@@ -2,6 +2,12 @@
 
 ## Done
 
+- Added the first local GEO Benchmark Console under `scripts/ui_app/`.
+- Added UI summary modules for corpus counts, project options, latest merged report metrics, and dry-run run planning.
+- Added a standard-library local web server at `python -m scripts.ui_app.server --host 127.0.0.1 --port 8765`.
+- Added `docs/ui-console.md` and updated architecture, risk, and README docs with the UI boundaries.
+- Repaired the cloud industry-isolation test surface by adding `sql/002_industry_isolation.sql` and aligning PostgreSQL artifact/count helpers with `industry_id`.
+- Verified the UI endpoint with a temporary local server and ran the full test suite.
 - Added `docs/cloud-database.md` to document the AWS RDS/S3 data split, current resource identifiers, environment variables, imported corpus counts, table responsibilities, onboarding steps, and security rules.
 - Added `docs/documentation-map.md` to explain how README, CONTEXT, architecture, cloud database, risks, next-step memory, ADRs, plans, runbooks, and SQL schema relate to each other.
 - Updated `.env.example` with cloud corpus placeholders for AWS region, S3 bucket, IAM key fields, and the RDS PostgreSQL connection shape without committing real secrets.
@@ -9,6 +15,9 @@
 - Added `scripts/cloud/qdrant_snapshot.py` to package local Qdrant storage as a rebuildable S3 artifact and register it in PostgreSQL.
 - Uploaded the current Qdrant snapshot for `2026-05-22-initial` to `vector-index/2026-05-22-initial/qdrant.zip`, size 18,150,632 bytes, SHA-256 `e840f1ab05f44e7f11cc3118788237f2a4b991a17bc03ebb00219993ac6b9e87`.
 - Re-ran the live cloud verifier after snapshot upload: RDS counts still matched 1,683 inventory rows, 1,683 documents, 6,225 chunks, and artifact registry now has 4 matching S3 objects.
+- Added industry isolation for the cloud corpus store: `sql/002_industry_isolation.sql`, required `--industry` CLI arguments, industry-prefixed S3 artifact keys, and `industry_id` filters in PostgreSQL read/write helpers.
+- Applied the industry migration to RDS and backfilled the existing corpus into `industry_id = geo-agency`.
+- Re-uploaded the current core artifacts and Qdrant snapshot under `industries/geo-agency/...`; live verifier now sees 1,683 inventory rows, 1,683 documents, 6,225 chunks, and 8 matching S3 artifact rows for `geo-agency/2026-05-22-initial`.
 - Replaced the root AWS access key in the local project environment with an IAM user key, then verified S3 list, put, head, and delete permissions against `geo-resource-library-prod-940329548423-ap-northeast-1-an`.
 - Added `scripts/cloud/verify_cloud_import.py`, a read-only cloud verifier that checks RDS corpus counts and S3 artifact object sizes for a corpus version.
 - Added tests for cloud verification result summaries and PostgreSQL read helpers.
@@ -80,7 +89,12 @@
 
 ## Learned
 
+- The local UI can be useful without adding FastAPI or frontend dependencies; the current standard-library server is enough for dashboard and dry-run planning.
+- The current parallel runner still cannot execute arbitrary UI-selected model subsets exactly; it supports the built-in model set plus optional Doubao.
+- The cloud S3 artifact layer had already moved toward industry-specific object keys, while PostgreSQL helper functions and schema migration needed the same `industry_id` contract.
+- Background server processes started from the Codex tool environment can be terminated with the parent process, so endpoint verification is safest through a temporary server in the same command; users should launch the UI directly in their PowerShell when they want to keep it open.
 - The intended collaboration model is now explicit: remote team members sync scripts through Git, connect to the shared corpus through RDS/S3, and keep local credentials plus generated data out of Git.
+- Future industries should use their own lowercase slug, such as `dental`, `real-estate`, or `legal`, and must not reuse `geo-agency`.
 - Qdrant can now be restored from S3 for the current corpus version, but it remains a convenience artifact because the authoritative retrieval source is still versioned `chunks`.
 - The IAM user key now has working read, write, and delete access to the project S3 bucket, so the deactivated root key is no longer needed by the local cloud import path.
 - The live verifier confirms the current `2026-05-22-initial` cloud corpus is internally consistent across PostgreSQL and S3.
@@ -119,8 +133,13 @@
 
 ## Risks
 
+- The UI currently generates dry-run commands only; adding execution buttons will require explicit approvals, log streaming, and stop/resume handling.
+- The owned-site refresh commands in the UI are a planning surface and should be reconciled with the latest AlphaXXXX refresh pipeline before they become one-click execution.
+- Exact model subset selection needs a follow-up change in `scripts/run_full_api_parallel_with_watch.ps1`; otherwise the UI can imply finer control than the runner actually has.
+- The industry-isolation migration preserves compatibility with the base schema, but a live multi-industry RDS migration still needs a deliberate rollout plan and backup.
 - Database docs now include non-secret AWS identifiers such as bucket name and RDS endpoint. This is useful for team onboarding, but access must still be controlled with IAM, PostgreSQL credentials, and RDS network allowlists.
 - A Qdrant snapshot can become stale if a later corpus version changes `chunks`; always compare snapshot `corpus_version` before restoring it.
+- Industry-prefixed artifacts and legacy root-level artifacts currently coexist for `geo-agency`; future restore/download tools should prefer `industries/{industry_id}/...` keys.
 - The root access key has been deactivated but not deleted yet; keep it disabled and delete it after one more successful project run with the IAM key.
 - Treating the current dry-run status as a successful import would be wrong; the script intentionally returned `blocked_by_quality` until the 4 replacement-character rows are accepted or corrected.
 - The latest quick report should not be treated as a full persona-balanced benchmark because the 50 seeded queries per model were selected by file order.
@@ -140,10 +159,9 @@
 
 ## Next
 
-1. Delete the deactivated root access key after one more successful project run with the IAM key.
-2. Create role-specific PostgreSQL users and IAM policies for admin, writer, and reader team access.
-3. Add a restore/download helper for S3 artifacts so remote team members can fetch `qdrant.zip` or processed JSONL by corpus version.
-4. Review the 4 replacement-character document/chunk IDs from the cloud dry run and decide whether to refresh those source pages in the next corpus version.
-5. Add stratified seed sampling for quick runs so 50 seeded questions per model cover personas and journey stages instead of taking the first 50 rows.
-6. Compare `runs\full_api_parallel_alpha_refresh_quick_final\20260519_160422\merged` against the previous merged baseline to quantify AlphaXXXX movement after the site refresh.
-7. Strengthen AlphaXXXX pages for the weakest models and intents, especially OpenAI, Gemini, Perplexity, problem-aware, and vendor-discovery queries.
+1. Add exact model subset support to `scripts/run_full_api_parallel_with_watch.ps1` so the UI can run only selected models.
+2. Add guarded UI execution for approved commands, starting with read-only progress monitoring and local-only benchmark launches.
+3. Reconcile the AlphaXXXX refresh commands in the UI planner with the latest successful refresh flow before making them executable.
+4. Create role-specific PostgreSQL users and IAM policies for admin, writer, and reader team access, with industry-level access expectations.
+5. Add a restore/download helper for S3 artifacts so remote team members can fetch `qdrant.zip` or processed JSONL by industry and corpus version.
+6. Add a lightweight industry registry command or config file so new industries can be created deliberately before import.

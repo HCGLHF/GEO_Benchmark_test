@@ -85,7 +85,7 @@ def test_fetch_corpus_counts_reads_version_and_table_counts(monkeypatch):
     )
     monkeypatch.setattr("scripts.cloud.postgres._connect", lambda database_url: FakeReadConnection(cursor))
 
-    counts = fetch_corpus_counts("postgresql://example", "2026-05-22-initial")
+    counts = fetch_corpus_counts("postgresql://example", "geo-agency", "2026-05-22-initial")
 
     assert counts == {
         "corpus_inventory_count": 1683,
@@ -96,7 +96,7 @@ def test_fetch_corpus_counts_reads_version_and_table_counts(monkeypatch):
         "chunks": 6225,
         "artifacts": 3,
     }
-    assert all(params == ("2026-05-22-initial",) for _, params in cursor.executed)
+    assert all(params == ("geo-agency", "2026-05-22-initial") for _, params in cursor.executed)
 
 
 def test_fetch_artifact_rows_returns_named_rows(monkeypatch):
@@ -104,8 +104,9 @@ def test_fetch_artifact_rows_returns_named_rows(monkeypatch):
         all_rows=[
             (
                 "processed_documents",
+                "geo-agency",
                 "geo-bucket",
-                "processed/2026-05-22-initial/documents.jsonl",
+                "industries/geo-agency/processed/2026-05-22-initial/documents.jsonl",
                 "abc123",
                 19485927,
                 "data/processed/documents.jsonl",
@@ -115,13 +116,14 @@ def test_fetch_artifact_rows_returns_named_rows(monkeypatch):
     )
     monkeypatch.setattr("scripts.cloud.postgres._connect", lambda database_url: FakeReadConnection(cursor))
 
-    rows = fetch_artifact_rows("postgresql://example", "2026-05-22-initial")
+    rows = fetch_artifact_rows("postgresql://example", "geo-agency", "2026-05-22-initial")
 
     assert rows == [
         {
             "artifact_type": "processed_documents",
+            "industry_id": "geo-agency",
             "bucket": "geo-bucket",
-            "object_key": "processed/2026-05-22-initial/documents.jsonl",
+            "object_key": "industries/geo-agency/processed/2026-05-22-initial/documents.jsonl",
             "sha256": "abc123",
             "size_bytes": 19485927,
             "source_path": "data/processed/documents.jsonl",
@@ -139,10 +141,11 @@ def test_register_artifact_objects_upserts_artifacts(monkeypatch):
         "postgresql://example",
         [
             {
+                "industry_id": "geo-agency",
                 "corpus_version": "2026-05-22-initial",
                 "artifact_type": "qdrant_snapshot",
                 "bucket": "geo-bucket",
-                "object_key": "vector-index/2026-05-22-initial/qdrant.zip",
+                "object_key": "industries/geo-agency/vector-index/2026-05-22-initial/qdrant.zip",
                 "sha256": "abc123",
                 "size_bytes": 42,
                 "source_path": "output/cloud/2026-05-22-initial/qdrant.zip",
@@ -151,15 +154,19 @@ def test_register_artifact_objects_upserts_artifacts(monkeypatch):
         ],
     )
 
-    assert len(cursor.executed_many) == 1
-    sql, rows = cursor.executed_many[0]
+    assert len(cursor.executed_many) == 2
+    industry_sql, industry_rows = cursor.executed_many[0]
+    assert "INSERT INTO industries" in industry_sql
+    assert industry_rows == [("geo-agency",)]
+    sql, rows = cursor.executed_many[1]
     assert "INSERT INTO artifact_objects" in sql
     assert rows == [
         (
+            "geo-agency",
             "2026-05-22-initial",
             "qdrant_snapshot",
             "geo-bucket",
-            "vector-index/2026-05-22-initial/qdrant.zip",
+            "industries/geo-agency/vector-index/2026-05-22-initial/qdrant.zip",
             "abc123",
             42,
             "output/cloud/2026-05-22-initial/qdrant.zip",

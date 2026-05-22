@@ -3,6 +3,7 @@ from scripts.cloud.verify_cloud_import import build_verification_result
 
 def test_build_verification_result_passes_when_counts_and_artifacts_match():
     result = build_verification_result(
+        industry_id="geo-agency",
         corpus_version="2026-05-22-initial",
         expected_counts={
             "inventory_rows": 1683,
@@ -26,11 +27,13 @@ def test_build_verification_result_passes_when_counts_and_artifacts_match():
     )
 
     assert result["ok"] is True
+    assert result["industry_id"] == "geo-agency"
     assert result["failures"] == []
 
 
 def test_build_verification_result_reports_count_and_artifact_mismatches():
     result = build_verification_result(
+        industry_id="geo-agency",
         corpus_version="2026-05-22-initial",
         expected_counts={
             "inventory_rows": 1683,

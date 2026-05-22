@@ -13,12 +13,14 @@ if __package__ is None or __package__ == "":
 from scripts._common import read_jsonl
 from scripts.cloud.config import CloudConfig
 from scripts.cloud.corpus_quality import audit_corpus
+from scripts.cloud.industry import normalize_industry_id
 from scripts.cloud.postgres import execute_schema, upsert_core_corpus
 from scripts.cloud.s3_artifacts import build_artifact_record, upload_artifact
 
 
 ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_SCHEMA = ROOT / "sql" / "001_initial_schema.sql"
+DEFAULT_MIGRATIONS = [ROOT / "sql" / "002_industry_isolation.sql"]
 
 
 def read_csv(path: Path) -> list[dict[str, str]]:
@@ -28,28 +30,33 @@ def read_csv(path: Path) -> list[dict[str, str]]:
 
 def build_import_plan(
     *,
+    industry_id: str,
     corpus_version: str,
     inventory_path: Path,
     documents_path: Path,
     chunks_path: Path,
 ) -> dict[str, Any]:
+    clean_industry = normalize_industry_id(industry_id)
     inventory = read_csv(inventory_path)
     documents = read_jsonl(documents_path)
     chunks = read_jsonl(chunks_path)
     artifacts = [
         build_artifact_record(
+            industry_id=clean_industry,
             artifact_type="url_inventory",
             corpus_version=corpus_version,
             path=inventory_path,
             prefix="raw",
         ),
         build_artifact_record(
+            industry_id=clean_industry,
             artifact_type="processed_documents",
             corpus_version=corpus_version,
             path=documents_path,
             prefix="processed",
         ),
         build_artifact_record(
+            industry_id=clean_industry,
             artifact_type="processed_chunks",
             corpus_version=corpus_version,
             path=chunks_path,
@@ -57,6 +64,7 @@ def build_import_plan(
         ),
     ]
     return {
+        "industry_id": clean_industry,
         "corpus_version": corpus_version,
         "inventory": inventory,
         "documents": documents,
@@ -74,6 +82,7 @@ def build_import_plan(
 
 def run_import(
     *,
+    industry_id: str,
     corpus_version: str,
     inventory_path: Path,
     documents_path: Path,
@@ -84,7 +93,9 @@ def run_import(
     skip_db: bool,
     allow_quality_issues: bool,
 ) -> dict[str, Any]:
+    clean_industry = normalize_industry_id(industry_id)
     plan = build_import_plan(
+        industry_id=clean_industry,
         corpus_version=corpus_version,
         inventory_path=inventory_path,
         documents_path=documents_path,
@@ -104,8 +115,12 @@ def run_import(
         ]
     if not skip_db:
         execute_schema(config.database_url, schema_path)
+        for migration_path in DEFAULT_MIGRATIONS:
+            if migration_path.exists():
+                execute_schema(config.database_url, migration_path)
         upsert_core_corpus(
             database_url=config.database_url,
+            industry_id=clean_industry,
             corpus_version=corpus_version,
             inventory=plan["inventory"],
             documents=plan["documents"],
@@ -117,6 +132,7 @@ def run_import(
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Import the core GEO corpus into PostgreSQL and S3.")
+    parser.add_argument("--industry", required=True, help="Industry id such as geo-agency, dental, or real-estate.")
     parser.add_argument("--corpus-version", required=True)
     parser.add_argument("--inventory", default="data/raw/url_inventory.csv")
     parser.add_argument("--documents", default="data/processed/documents.jsonl")
@@ -129,6 +145,7 @@ def main() -> None:
     args = parser.parse_args()
 
     result = run_import(
+        industry_id=args.industry,
         corpus_version=args.corpus_version,
         inventory_path=Path(args.inventory),
         documents_path=Path(args.documents),
@@ -141,6 +158,7 @@ def main() -> None:
     )
     printable = {
         "status": result["status"],
+        "industry_id": result["industry_id"],
         "corpus_version": result["corpus_version"],
         "row_counts": result["row_counts"],
         "quality_report": result["quality_report"],

@@ -10,11 +10,13 @@ if __package__ is None or __package__ == "":
     sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from scripts.cloud.config import CloudConfig
+from scripts.cloud.industry import normalize_industry_id
 from scripts.cloud.postgres import fetch_artifact_rows, fetch_corpus_counts
 
 
 def build_verification_result(
     *,
+    industry_id: str,
     corpus_version: str,
     expected_counts: dict[str, int],
     db_counts: dict[str, int],
@@ -34,6 +36,7 @@ def build_verification_result(
             )
     return {
         "ok": not failures,
+        "industry_id": industry_id,
         "corpus_version": corpus_version,
         "expected_counts": expected_counts,
         "db_counts": db_counts,
@@ -71,10 +74,11 @@ def head_artifacts(
     return checks
 
 
-def verify_cloud_import(corpus_version: str) -> dict[str, Any]:
+def verify_cloud_import(industry_id: str, corpus_version: str) -> dict[str, Any]:
+    clean_industry = normalize_industry_id(industry_id)
     config = CloudConfig.from_env()
-    db_counts = fetch_corpus_counts(config.database_url, corpus_version)
-    artifact_rows = fetch_artifact_rows(config.database_url, corpus_version)
+    db_counts = fetch_corpus_counts(config.database_url, clean_industry, corpus_version)
+    artifact_rows = fetch_artifact_rows(config.database_url, clean_industry, corpus_version)
     expected_counts = {
         "inventory_rows": db_counts["corpus_inventory_count"],
         "documents": db_counts["corpus_document_count"],
@@ -87,6 +91,7 @@ def verify_cloud_import(corpus_version: str) -> dict[str, Any]:
         artifact_rows=artifact_rows,
     )
     return build_verification_result(
+        industry_id=clean_industry,
         corpus_version=corpus_version,
         expected_counts=expected_counts,
         db_counts=db_counts,
@@ -96,9 +101,10 @@ def verify_cloud_import(corpus_version: str) -> dict[str, Any]:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Verify an imported cloud corpus version.")
+    parser.add_argument("--industry", required=True, help="Industry id such as geo-agency, dental, or real-estate.")
     parser.add_argument("--corpus-version", required=True)
     args = parser.parse_args()
-    result = verify_cloud_import(args.corpus_version)
+    result = verify_cloud_import(args.industry, args.corpus_version)
     print(json.dumps(result, ensure_ascii=False, indent=2))
     raise SystemExit(0 if result["ok"] else 1)
 

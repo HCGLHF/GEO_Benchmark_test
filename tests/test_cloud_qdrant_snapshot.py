@@ -5,7 +5,10 @@ from scripts.cloud.qdrant_snapshot import create_qdrant_zip, qdrant_artifact_key
 
 
 def test_qdrant_artifact_key_uses_vector_index_prefix():
-    assert qdrant_artifact_key("2026-05-22-initial") == "vector-index/2026-05-22-initial/qdrant.zip"
+    assert (
+        qdrant_artifact_key("geo-agency", "2026-05-22-initial")
+        == "industries/geo-agency/vector-index/2026-05-22-initial/qdrant.zip"
+    )
 
 
 def test_create_qdrant_zip_includes_nested_files(tmp_path: Path):

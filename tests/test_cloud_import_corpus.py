@@ -23,8 +23,13 @@ def write_csv(path: Path, rows: list[dict[str, str]]) -> None:
 
 def test_artifact_key_uses_type_version_and_filename():
     assert (
-        artifact_key("processed", "2026-05-22-initial", Path("data/processed/documents.jsonl"))
-        == "processed/2026-05-22-initial/documents.jsonl"
+        artifact_key(
+            "geo-agency",
+            "processed",
+            "2026-05-22-initial",
+            Path("data/processed/documents.jsonl"),
+        )
+        == "industries/geo-agency/processed/2026-05-22-initial/documents.jsonl"
     )
 
 
@@ -33,15 +38,17 @@ def test_build_artifact_record_hashes_local_file(tmp_path: Path):
     path.write_text('{"document_id":"doc_1"}\n', encoding="utf-8")
 
     record = build_artifact_record(
+        industry_id="geo-agency",
         artifact_type="processed_documents",
         corpus_version="2026-05-22-initial",
         path=path,
         prefix="processed",
     )
 
+    assert record["industry_id"] == "geo-agency"
     assert record["artifact_type"] == "processed_documents"
     assert record["corpus_version"] == "2026-05-22-initial"
-    assert record["object_key"] == "processed/2026-05-22-initial/documents.jsonl"
+    assert record["object_key"] == "industries/geo-agency/processed/2026-05-22-initial/documents.jsonl"
     assert record["size_bytes"] == path.stat().st_size
     assert len(record["sha256"]) == 64
 
@@ -85,12 +92,14 @@ def test_build_import_plan_reads_core_files_and_artifacts(tmp_path: Path):
     )
 
     plan = build_import_plan(
+        industry_id="geo-agency",
         corpus_version="2026-05-22-initial",
         inventory_path=inventory_path,
         documents_path=documents_path,
         chunks_path=chunks_path,
     )
 
+    assert plan["industry_id"] == "geo-agency"
     assert plan["quality_report"]["is_import_safe"] is True
     assert plan["row_counts"] == {
         "inventory_rows": 1,

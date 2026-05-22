@@ -25,6 +25,11 @@
 - `scripts/cloud/verify_cloud_import.py`: verifies an imported cloud corpus version by comparing PostgreSQL corpus counts with S3 artifact object sizes.
 - `scripts/cloud/s3_artifacts.py`: computes stable S3 object keys, hashes local artifacts, and uploads snapshots when an import is executed.
 - `scripts/cloud/postgres.py`: applies the PostgreSQL schema and upserts the core corpus into RDS using lazy `psycopg` imports so normal local tests do not require cloud dependencies.
+- `scripts/ui_app/corpus_summary.py`: reads local inventory, documents, and chunks to summarize resource-library size without loading raw page files.
+- `scripts/ui_app/config_summary.py`: reads project source, competitor, target-brand, and model options for the local UI.
+- `scripts/ui_app/report_summary.py`: finds the latest merged run report and summarizes target ranking, top competitors, and model-level slices.
+- `scripts/ui_app/run_plan.py`: builds explicit dry-run command plans for owned-site refresh, corpus rebuild, optional cloud sync, and API benchmark execution.
+- `scripts/ui_app/server.py`: serves the local browser console with standard-library HTTP only; it reads status and returns dry-run plans but does not execute API or AWS calls.
 - `sql/001_initial_schema.sql`: defines the cloud resource-library schema, including corpus versions, artifact objects, documents, chunks, query sets, benchmark runs, and result tables.
 
 ## Data Flow
@@ -42,6 +47,7 @@
 11. Brand and gap reports
 12. Optional corpus-variant comparison for with/without `llms.txt` experiments
 13. Optional cloud import of clean inventory/documents/chunks into PostgreSQL, with source snapshots registered in S3 as artifacts
+14. Optional local UI review of corpus status, configured models, competitors, latest reports, and dry-run command plans
 
 ## Cloud Store
 
@@ -50,8 +56,9 @@
 - Current RDS identifier: `geo-postgres-prod`.
 - Current RDS endpoint: `geo-postgres-prod.cbkgwuwamngl.ap-northeast-1.rds.amazonaws.com`.
 - Current imported corpus version: `2026-05-22-initial`.
+- Current default industry: `geo-agency`.
 
-The cloud store follows the project split documented in `docs/cloud-database.md`: PostgreSQL is the queryable corpus and benchmark ledger, S3 is the artifact store, and Qdrant is rebuildable from versioned chunks.
+The cloud store follows the project split documented in `docs/cloud-database.md`: PostgreSQL is the queryable corpus and benchmark ledger, S3 is the artifact store, and Qdrant is rebuildable from versioned chunks. Cloud rows are isolated by `industry_id` first, then by `corpus_version` or `query_set_version`.
 
 ## Dependency Direction
 
@@ -67,6 +74,8 @@ The cloud store follows the project split documented in `docs/cloud-database.md`
 - Run-mode selection belongs in the PowerShell orchestration layer: `quick` maps to 50 queries per model, while `standard` maps to 200 queries per model unless `-QueriesPerModel` explicitly overrides it.
 - Cloud import depends on existing processed contracts; it must not become a hidden crawler or evaluator path.
 - PostgreSQL is the queryable corpus and benchmark ledger, S3 is the artifact store, and Qdrant remains a rebuildable retrieval index.
+- Industry isolation belongs in the cloud operation layer: cloud imports, verification, S3 artifact keys, and Qdrant snapshots must require an explicit `industry_id`.
+- The local UI depends on existing configs, processed artifacts, reports, and cloud environment presence only; it must call orchestration scripts explicitly rather than reimplementing crawler, evaluator, or cloud import logic.
 
 ## Boundaries
 
@@ -79,3 +88,5 @@ The cloud store follows the project split documented in `docs/cloud-database.md`
 - Do not treat S3 as a query database; store object keys and hashes in PostgreSQL and keep large snapshots in S3.
 - Do not treat Qdrant as the source of truth; it must be rebuildable from versioned chunks.
 - Cloud verification commands must remain read-only unless the user explicitly starts an import or snapshot command.
+- Do not run a cloud command without `--industry`; adding a new industry should create a new `industry_id`, not reuse `geo-agency`.
+- Do not let the UI become a hidden execution layer for paid crawlers, model APIs, or AWS writes; execution buttons need explicit command previews, logs, and guardrails.
