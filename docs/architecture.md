@@ -21,6 +21,7 @@
 - `scripts/cloud/config.py`: loads required cloud environment variables for explicit S3/RDS operations without exposing secrets in committed files.
 - `scripts/cloud/corpus_quality.py`: audits inventory, documents, and chunks before cloud import, blocking unsafe corpus versions with duplicate IDs, orphan chunks, missing fields, or mojibake markers.
 - `scripts/cloud/import_corpus.py`: plans and executes the first cloud import path for URL inventory, processed documents, processed chunks, S3 artifact records, and PostgreSQL core corpus rows.
+- `scripts/cloud/create_industry.py`: creates or updates explicit industry registry rows before a new industry corpus is imported.
 - `scripts/cloud/qdrant_snapshot.py`: packages the local Qdrant directory as a rebuildable S3 artifact and registers it in PostgreSQL.
 - `scripts/cloud/verify_cloud_import.py`: verifies an imported cloud corpus version by comparing PostgreSQL corpus counts with S3 artifact object sizes.
 - `scripts/cloud/s3_artifacts.py`: computes stable S3 object keys, hashes local artifacts, and uploads snapshots when an import is executed.
@@ -74,7 +75,7 @@ The cloud store follows the project split documented in `docs/cloud-database.md`
 - Run-mode selection belongs in the PowerShell orchestration layer: `quick` maps to 50 queries per model, while `standard` maps to 200 queries per model unless `-QueriesPerModel` explicitly overrides it.
 - Cloud import depends on existing processed contracts; it must not become a hidden crawler or evaluator path.
 - PostgreSQL is the queryable corpus and benchmark ledger, S3 is the artifact store, and Qdrant remains a rebuildable retrieval index.
-- Industry isolation belongs in the cloud operation layer: cloud imports, verification, S3 artifact keys, and Qdrant snapshots must require an explicit `industry_id`.
+- Industry isolation belongs in the cloud operation layer: industry registry creation, cloud imports, verification, S3 artifact keys, and Qdrant snapshots must require an explicit `industry_id`.
 - The local UI depends on existing configs, processed artifacts, reports, and cloud environment presence only; it must call orchestration scripts explicitly rather than reimplementing crawler, evaluator, or cloud import logic.
 
 ## Boundaries

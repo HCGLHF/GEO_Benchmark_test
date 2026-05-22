@@ -154,6 +154,31 @@ def register_artifact_objects(database_url: str, artifacts: list[dict[str, Any]]
         connection.commit()
 
 
+def upsert_industry(
+    database_url: str,
+    *,
+    industry_id: str,
+    display_name: str | None = None,
+    region: str | None = None,
+    notes: str | None = None,
+) -> None:
+    clean_industry = normalize_industry_id(industry_id)
+    with _connect(database_url) as connection:
+        with connection.cursor() as cursor:
+            cursor.execute(
+                """
+                INSERT INTO industries (industry_id, display_name, region, notes)
+                VALUES (%s, %s, %s, %s)
+                ON CONFLICT (industry_id) DO UPDATE SET
+                  display_name = COALESCE(EXCLUDED.display_name, industries.display_name),
+                  region = COALESCE(EXCLUDED.region, industries.region),
+                  notes = COALESCE(EXCLUDED.notes, industries.notes)
+                """,
+                (clean_industry, display_name, region, notes),
+            )
+        connection.commit()
+
+
 def upsert_core_corpus(
     *,
     database_url: str,

@@ -3,6 +3,7 @@ from scripts.cloud.postgres import (
     fetch_artifact_rows,
     fetch_corpus_counts,
     register_artifact_objects,
+    upsert_industry,
 )
 
 
@@ -173,4 +174,30 @@ def test_register_artifact_objects_upserts_artifacts(monkeypatch):
             "2026-05-22T00:00:00Z",
         )
     ]
+    assert connection.committed is True
+
+
+def test_upsert_industry_writes_metadata_and_commits(monkeypatch):
+    cursor = FakeCursor()
+    connection = FakeReadConnection(cursor)
+    monkeypatch.setattr("scripts.cloud.postgres._connect", lambda database_url: connection)
+
+    upsert_industry(
+        "postgresql://example",
+        industry_id=" Dental ",
+        display_name="Dental Clinics",
+        region="AU",
+        notes="Dental vertical corpus.",
+    )
+
+    assert len(cursor.executed_one) == 1
+    sql, params = cursor.executed_one[0]
+    assert "INSERT INTO industries" in sql
+    assert "ON CONFLICT (industry_id) DO UPDATE SET" in sql
+    assert params == (
+        "dental",
+        "Dental Clinics",
+        "AU",
+        "Dental vertical corpus.",
+    )
     assert connection.committed is True

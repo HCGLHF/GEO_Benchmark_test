@@ -27,6 +27,12 @@ Team members can clone the repository, configure their own `.env`, and verify ac
 python scripts\cloud\verify_cloud_import.py --industry geo-agency --corpus-version 2026-05-22-initial
 ```
 
+For a new vertical, create the industry registry row before import:
+
+```powershell
+python scripts\cloud\create_industry.py --industry dental --display-name "Dental Clinics" --region AU --execute
+```
+
 Start with [docs/documentation-map.md](docs/documentation-map.md), then read [docs/cloud-database.md](docs/cloud-database.md) for the AWS/RDS/S3 setup.
 
 ## Local UI Console

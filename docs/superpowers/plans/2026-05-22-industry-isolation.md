@@ -61,3 +61,19 @@
 - [x] Re-upload core artifacts and Qdrant snapshot under `industries/geo-agency/...`.
 - [x] Verify RDS/S3 consistency after migration.
 - [x] Update documentation and project memory.
+
+### Task 5: Industry Registry Command
+
+**Files:**
+- Create: `scripts/cloud/create_industry.py`
+- Modify: `scripts/cloud/postgres.py`
+- Test: `tests/test_cloud_create_industry.py`
+- Test: `tests/test_cloud_postgres.py`
+- Modify: `docs/cloud-database.md`
+- Modify: `docs/architecture.md`
+- Modify: `docs/risks.md`
+- Modify: `docs/next.md`
+
+- [x] Add a dry-run-first CLI for creating or updating `industries` metadata rows.
+- [x] Keep the command scoped to registry metadata only; imports and snapshots remain separate commands.
+- [x] Document the new-industry workflow before corpus import.

@@ -77,6 +77,14 @@ Every cloud command must include `--industry`. PostgreSQL queries should filter 
 
 New industries should be created deliberately before import. Do not reuse `geo-agency` for another industry just because the schema accepts it.
 
+Create or update an industry registry row before importing that industry's corpus:
+
+```powershell
+python scripts\cloud\create_industry.py --industry dental --display-name "Dental Clinics" --region AU --notes "Dental services vertical" --execute
+```
+
+Omit `--execute` for a dry run. The command writes only the `industries` metadata row; it does not upload S3 artifacts or import documents/chunks.
+
 ## PostgreSQL Tables
 
 The schema lives in `sql/001_initial_schema.sql`.
@@ -162,22 +170,28 @@ Use a new `corpus_version` when the resource library changes:
 
 Do not overwrite an old corpus version for a new business experiment. Import a new version and compare runs against explicit corpus versions.
 
+For a new industry, create the registry row first:
+
+```powershell
+python scripts\cloud\create_industry.py --industry dental --display-name "Dental Clinics" --region AU --execute
+```
+
 Import command:
 
 ```powershell
-python scripts\cloud\import_corpus.py --industry geo-agency --corpus-version 2026-05-22-initial --allow-quality-issues --execute
+python scripts\cloud\import_corpus.py --industry dental --corpus-version 2026-06-01-initial --allow-quality-issues --execute
 ```
 
 Verification command:
 
 ```powershell
-python scripts\cloud\verify_cloud_import.py --industry geo-agency --corpus-version 2026-05-22-initial
+python scripts\cloud\verify_cloud_import.py --industry dental --corpus-version 2026-06-01-initial
 ```
 
 Qdrant snapshot command:
 
 ```powershell
-python scripts\cloud\qdrant_snapshot.py --industry geo-agency --corpus-version 2026-05-22-initial --execute
+python scripts\cloud\qdrant_snapshot.py --industry dental --corpus-version 2026-06-01-initial --execute
 ```
 
 ## Security Notes

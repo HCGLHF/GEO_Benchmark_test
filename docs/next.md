@@ -2,6 +2,9 @@
 
 ## Done
 
+- Added `scripts/cloud/create_industry.py`, a dry-run-first CLI for creating or updating industry registry metadata before a new corpus import.
+- Added `upsert_industry` to `scripts/cloud/postgres.py` so cloud tooling can update `industries.display_name`, `region`, and `notes` without touching corpus rows.
+- Documented the new-industry workflow in README, the cloud database guide, architecture notes, risks, the documentation map, and the industry-isolation plan/spec.
 - Added the first local GEO Benchmark Console under `scripts/ui_app/`.
 - Added UI summary modules for corpus counts, project options, latest merged report metrics, and dry-run run planning.
 - Added a standard-library local web server at `python -m scripts.ui_app.server --host 127.0.0.1 --port 8765`.
@@ -89,6 +92,8 @@
 
 ## Learned
 
+- Industry registry creation is useful as a deliberate gate before importing a new vertical: it makes the industry slug visible without uploading documents, chunks, or Qdrant snapshots.
+- The `create_industry` command can dry-run without cloud dependencies; only `--execute` loads `.env` and writes to RDS.
 - The local UI can be useful without adding FastAPI or frontend dependencies; the current standard-library server is enough for dashboard and dry-run planning.
 - The current parallel runner still cannot execute arbitrary UI-selected model subsets exactly; it supports the built-in model set plus optional Doubao.
 - The cloud S3 artifact layer had already moved toward industry-specific object keys, while PostgreSQL helper functions and schema migration needed the same `industry_id` contract.
@@ -133,6 +138,7 @@
 
 ## Risks
 
+- Creating an industry registry row does not grant team access by itself; IAM, PostgreSQL users, and RDS allowlists still need separate role-specific setup.
 - The UI currently generates dry-run commands only; adding execution buttons will require explicit approvals, log streaming, and stop/resume handling.
 - The owned-site refresh commands in the UI are a planning surface and should be reconciled with the latest AlphaXXXX refresh pipeline before they become one-click execution.
 - Exact model subset selection needs a follow-up change in `scripts/run_full_api_parallel_with_watch.ps1`; otherwise the UI can imply finer control than the runner actually has.
@@ -164,4 +170,4 @@
 3. Reconcile the AlphaXXXX refresh commands in the UI planner with the latest successful refresh flow before making them executable.
 4. Create role-specific PostgreSQL users and IAM policies for admin, writer, and reader team access, with industry-level access expectations.
 5. Add a restore/download helper for S3 artifacts so remote team members can fetch `qdrant.zip` or processed JSONL by industry and corpus version.
-6. Add a lightweight industry registry command or config file so new industries can be created deliberately before import.
+6. Add an industry listing/inspection helper so teammates can see registered industries and available corpus versions before running imports or benchmarks.

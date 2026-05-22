@@ -31,6 +31,7 @@ The primary user is the AlphaXXXX project owner, who wants realistic GEO benchma
 - Keep `.env` local and never expose real API keys.
 - Keep database contents, raw data, run outputs, and Qdrant storage out of Git; share them through AWS RDS/S3 and versioned corpus artifacts.
 - Require `--industry` for cloud import, verification, and Qdrant snapshot commands.
+- Create new industry registry rows deliberately with `scripts/cloud/create_industry.py` before importing that industry's corpus.
 - Prefer local crawler paths before paid Firecrawl fallback.
 - Preserve model independence: scenario generation, rerank, and answer evaluation must be tracked per model.
 - Use `powershell -ExecutionPolicy Bypass -File .\scripts\run_full_api_parallel_with_watch.ps1 -RunMode quick` for a ten-minute-class multi-model check, roughly 50 queries and 100 seeded API calls per model.

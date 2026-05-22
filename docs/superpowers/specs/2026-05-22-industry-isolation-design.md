@@ -49,6 +49,7 @@ Legacy root-level keys for `geo-agency/2026-05-22-initial` remain registered for
 ## Commands
 
 ```powershell
+python scripts\cloud\create_industry.py --industry geo-agency --display-name "GEO / AI Visibility Agencies" --region Global --execute
 python scripts\cloud\import_corpus.py --industry geo-agency --corpus-version 2026-05-22-initial --allow-quality-issues --execute
 python scripts\cloud\verify_cloud_import.py --industry geo-agency --corpus-version 2026-05-22-initial
 python scripts\cloud\qdrant_snapshot.py --industry geo-agency --corpus-version 2026-05-22-initial --execute

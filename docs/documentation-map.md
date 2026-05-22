@@ -17,7 +17,7 @@ Use this file as the entry point for understanding how the project documents rel
 
 `CONTEXT.md` defines the project language. When a new durable concept appears, add it there before scattering the term across scripts and docs.
 
-`docs/cloud-database.md` is the cloud operations source of truth. It explains what lives in Git, what lives in RDS, what lives in S3, and how remote team members connect.
+`docs/cloud-database.md` is the cloud operations source of truth. It explains what lives in Git, what lives in RDS, what lives in S3, how industry registry rows are created, and how remote team members connect.
 
 `docs/architecture.md` explains how code modules fit together. It should name scripts, data flow, and boundaries, but should not become a runbook.
 
