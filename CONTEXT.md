@@ -11,6 +11,7 @@ The primary user is the AlphaXXXX project owner, who wants realistic GEO benchma
 ## Core Concepts
 
 - **Resource library**: crawled, cleaned, chunked, indexed website content used as the evaluation corpus.
+- **Cloud corpus store**: AWS-backed shared storage where PostgreSQL holds queryable corpus and benchmark rows, while S3 holds large versioned artifacts that do not belong in Git.
 - **GEO evaluation**: measuring whether AlphaXXXX is retrieved, mentioned, cited, and recommended by AI-search-like workflows.
 - **Client acquisition simulator**: API-driven or local-safe simulation of potential customers asking for GEO / AI visibility help.
 - **Crawling pipeline**: URL discovery, tiered fetch, content quality scoring, fallback handling, merge, clean, chunk, and indexing.
@@ -27,6 +28,7 @@ The primary user is the AlphaXXXX project owner, who wants realistic GEO benchma
 ## Constraints
 
 - Keep `.env` local and never expose real API keys.
+- Keep database contents, raw data, run outputs, and Qdrant storage out of Git; share them through AWS RDS/S3 and versioned corpus artifacts.
 - Prefer local crawler paths before paid Firecrawl fallback.
 - Preserve model independence: scenario generation, rerank, and answer evaluation must be tracked per model.
 - Use `powershell -ExecutionPolicy Bypass -File .\scripts\run_full_api_parallel_with_watch.ps1 -RunMode quick` for a ten-minute-class multi-model check, roughly 50 queries and 100 seeded API calls per model.

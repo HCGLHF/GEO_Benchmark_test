@@ -2,6 +2,26 @@
 
 ## Done
 
+- Added `docs/cloud-database.md` to document the AWS RDS/S3 data split, current resource identifiers, environment variables, imported corpus counts, table responsibilities, onboarding steps, and security rules.
+- Added `docs/documentation-map.md` to explain how README, CONTEXT, architecture, cloud database, risks, next-step memory, ADRs, plans, runbooks, and SQL schema relate to each other.
+- Updated `.env.example` with cloud corpus placeholders for AWS region, S3 bucket, IAM key fields, and the RDS PostgreSQL connection shape without committing real secrets.
+- Updated README and CONTEXT so remote team members can understand that Git carries code while AWS carries the shared resource library data.
+- Replaced the root AWS access key in the local project environment with an IAM user key, then verified S3 list, put, head, and delete permissions against `geo-resource-library-prod-940329548423-ap-northeast-1-an`.
+- Added `scripts/cloud/verify_cloud_import.py`, a read-only cloud verifier that checks RDS corpus counts and S3 artifact object sizes for a corpus version.
+- Added tests for cloud verification result summaries and PostgreSQL read helpers.
+- Ran the live cloud verifier for `2026-05-22-initial`: RDS counts matched 1,683 inventory rows, 1,683 documents, 6,225 chunks, and 3 artifact rows; all three S3 artifact sizes matched.
+- Added a first cloud migration slice for the AWS Global setup: PostgreSQL schema, S3 artifact helpers, corpus quality audit, and dry-run import planning.
+- Added tests for cloud corpus quality checks and import artifact planning.
+- Declared cloud execution dependencies `boto3` and `psycopg[binary]` in `pyproject.toml`.
+- Ran the cloud import dry-run for `2026-05-22-initial` against the current local corpus.
+- Refined mojibake detection so valid French accents such as `î` no longer block imports as false positives.
+- Optimized PostgreSQL cloud import to batch rows with `executemany`; the initial row-by-row import timed out before committing over the Tokyo RDS connection.
+- Executed the first RDS-only import for `2026-05-22-initial` with `--allow-quality-issues --execute --skip-s3`.
+- Verified RDS counts after import: one corpus version, 1,683 URL inventory rows, 1,683 documents, 6,225 chunks, and 3 artifact registry rows.
+- Executed the full cloud import for `2026-05-22-initial` after AWS credentials were configured.
+- Verified the first three S3 artifacts exist with expected sizes: `raw/2026-05-22-initial/url_inventory.csv`, `processed/2026-05-22-initial/documents.jsonl`, and `processed/2026-05-22-initial/chunks.jsonl`.
+- Verified PostgreSQL artifact registry rows now include bucket `geo-resource-library-prod-940329548423-ap-northeast-1-an`.
+- Verified the full local test suite after the cloud migration slice: 135 tests passed.
 - Refreshed AlphaXXXX from the live site with the local crawler: discovered 37 URLs and crawled 37/37 successfully without Firecrawl.
 - Replaced 32 old AlphaXXXX raw pages in the main resource library with 37 freshly crawled AlphaXXXX pages while preserving competitor pages.
 - Rebuilt processed artifacts after the AlphaXXXX refresh: 1,683 documents, 6,225 chunks, 1,683 page signals, 1,683 evidence cards, and a refreshed BM25 index.
@@ -57,6 +77,15 @@
 
 ## Learned
 
+- The intended collaboration model is now explicit: remote team members sync scripts through Git, connect to the shared corpus through RDS/S3, and keep local credentials plus generated data out of Git.
+- The IAM user key now has working read, write, and delete access to the project S3 bucket, so the deactivated root key is no longer needed by the local cloud import path.
+- The live verifier confirms the current `2026-05-22-initial` cloud corpus is internally consistent across PostgreSQL and S3.
+- The AWS Global resources now target Tokyo: S3 bucket `geo-resource-library-prod-940329548423-ap-northeast-1-an` and RDS PostgreSQL endpoint in `ap-northeast-1`.
+- The first cloud-import dry run sees 1,683 inventory rows, 1,683 documents, 6,225 chunks, and three planned S3 artifacts.
+- The current corpus has no duplicate inventory URLs, duplicate document IDs, duplicate chunk IDs, orphan chunks, missing document fields, or missing chunk fields.
+- The first dry run flagged 7 mojibake rows, but 3 were false positives from valid French accents. The refined audit now blocks on 4 replacement-character rows from 2 pages: HornTech Chinese blog and SEOIndia homepage.
+- The default sandbox Python did not see the elevated user-site installation of `boto3` and `psycopg`, so project-local cloud dependencies were installed under `.deps/cloud`.
+- After AWS credentials were added locally, S3 upload succeeded and the RDS artifact registry points at the uploaded objects.
 - The refreshed AlphaXXXX corpus now has 37 URLs and 53 chunks, up from the previous 32 URLs and 42 chunks.
 - The quick refreshed-corpus report shows AlphaXXXX at 10.0% Retrieval Top5 share, 10.5% Retrieval Top10 share, best rank 1, and 5.5% model mention rate across 200 answers.
 - The initial quick implementation still copied all 200 seeded questions per model; this was stopped mid-run and fixed.
@@ -86,6 +115,9 @@
 
 ## Risks
 
+- Database docs now include non-secret AWS identifiers such as bucket name and RDS endpoint. This is useful for team onboarding, but access must still be controlled with IAM, PostgreSQL credentials, and RDS network allowlists.
+- The root access key has been deactivated but not deleted yet; keep it disabled and delete it after one more successful project run with the IAM key.
+- Treating the current dry-run status as a successful import would be wrong; the script intentionally returned `blocked_by_quality` until the 4 replacement-character rows are accepted or corrected.
 - The latest quick report should not be treated as a full persona-balanced benchmark because the 50 seeded queries per model were selected by file order.
 - `quick` mode has higher variance than `standard`, so weak movement should not be overinterpreted from one quick run.
 - If `llms.txt` receives most AlphaXXXX Top5 hits, the report may show routing success without proving the destination pages are strong enough.
@@ -103,6 +135,10 @@
 
 ## Next
 
-1. Add stratified seed sampling for quick runs so 50 seeded questions per model cover personas and journey stages instead of taking the first 50 rows.
-2. Compare `runs\full_api_parallel_alpha_refresh_quick_final\20260519_160422\merged` against the previous merged baseline to quantify AlphaXXXX movement after the site refresh.
-3. Strengthen AlphaXXXX pages for the weakest models and intents, especially OpenAI, Gemini, Perplexity, problem-aware, and vendor-discovery queries.
+1. Delete the deactivated root access key after one more successful project run with the IAM key.
+2. Add Qdrant snapshot upload to S3 as a rebuildable vector-index artifact.
+3. Create role-specific PostgreSQL users and IAM policies for admin, writer, and reader team access.
+4. Review the 4 replacement-character document/chunk IDs from the cloud dry run and decide whether to refresh those source pages in the next corpus version.
+5. Add stratified seed sampling for quick runs so 50 seeded questions per model cover personas and journey stages instead of taking the first 50 rows.
+6. Compare `runs\full_api_parallel_alpha_refresh_quick_final\20260519_160422\merged` against the previous merged baseline to quantify AlphaXXXX movement after the site refresh.
+7. Strengthen AlphaXXXX pages for the weakest models and intents, especially OpenAI, Gemini, Perplexity, problem-aware, and vendor-discovery queries.

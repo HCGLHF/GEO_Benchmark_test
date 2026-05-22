@@ -33,3 +33,9 @@
 - With/without `llms.txt` A/B runs should use the same seed query run, the same model set, and the same query count; otherwise the measured lift mixes retrieval-routing effects with scenario variance.
 - `quick` API runs trade statistical stability for speed. Use them to catch directional movement and broken changes, then confirm important decisions with `standard` runs.
 - Quick seeded runs currently cap the existing query file by row order. If the original seed file is grouped by persona or journey stage, a quick run can overrepresent one scenario slice; use the result directionally until stratified seed sampling is added.
+- The initial cloud-import dry run now blocks on 4 replacement-character rows after removing false positives from valid French accents. Importing with `--allow-quality-issues` is possible, but those rows should be reviewed or refreshed before treating the cloud corpus as clean.
+- RDS is currently reachable from the user's local machine for setup. Keep the security group restricted to the user's current `/32` IP or move future imports behind EC2/SSM/VPN.
+- Cloud import scripts require `boto3` and `psycopg[binary]` only when executing S3/RDS writes; these are installed project-locally under `.deps/cloud`, while local tests intentionally avoid live AWS dependencies.
+- The first RDS import and S3 artifact upload succeeded, and the locally configured AWS credentials now use an IAM user key. The old root access key has been deactivated and should be deleted after one more successful IAM-key project run.
+- Publishing database documentation is acceptable only while it contains identifiers and placeholders, not passwords, access keys, secret keys, private connection strings, exported database dumps, or local `.env` values.
+- Remote team access depends on both IAM permissions for S3 and network/database permissions for RDS; Git access alone is not enough to run cloud-backed workflows.

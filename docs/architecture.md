@@ -18,6 +18,13 @@
 - `scripts/alphaxxxx_llms_router.py`: generates the AlphaXXXX `llms.txt` intent router used to direct AI crawlers and retrieval toward the strongest canonical pages.
 - `scripts/build_corpus_variant.py`: builds evaluation corpus variants, currently `without_llms`, from processed artifacts without mutating the main corpus.
 - `scripts/compare_llms_ab_reports.py`: compares with-`llms.txt` and without-`llms.txt` merged benchmark reports for target-brand lift.
+- `scripts/cloud/config.py`: loads required cloud environment variables for explicit S3/RDS operations without exposing secrets in committed files.
+- `scripts/cloud/corpus_quality.py`: audits inventory, documents, and chunks before cloud import, blocking unsafe corpus versions with duplicate IDs, orphan chunks, missing fields, or mojibake markers.
+- `scripts/cloud/import_corpus.py`: plans and executes the first cloud import path for URL inventory, processed documents, processed chunks, S3 artifact records, and PostgreSQL core corpus rows.
+- `scripts/cloud/verify_cloud_import.py`: verifies an imported cloud corpus version by comparing PostgreSQL corpus counts with S3 artifact object sizes.
+- `scripts/cloud/s3_artifacts.py`: computes stable S3 object keys, hashes local artifacts, and uploads snapshots when an import is executed.
+- `scripts/cloud/postgres.py`: applies the PostgreSQL schema and upserts the core corpus into RDS using lazy `psycopg` imports so normal local tests do not require cloud dependencies.
+- `sql/001_initial_schema.sql`: defines the cloud resource-library schema, including corpus versions, artifact objects, documents, chunks, query sets, benchmark runs, and result tables.
 
 ## Data Flow
 
@@ -33,6 +40,17 @@
 10. Retrieval / rerank / answer evaluation
 11. Brand and gap reports
 12. Optional corpus-variant comparison for with/without `llms.txt` experiments
+13. Optional cloud import of clean inventory/documents/chunks into PostgreSQL, with source snapshots registered in S3 as artifacts
+
+## Cloud Store
+
+- Current AWS region: `ap-northeast-1`.
+- Current S3 bucket: `geo-resource-library-prod-940329548423-ap-northeast-1-an`.
+- Current RDS identifier: `geo-postgres-prod`.
+- Current RDS endpoint: `geo-postgres-prod.cbkgwuwamngl.ap-northeast-1.rds.amazonaws.com`.
+- Current imported corpus version: `2026-05-22-initial`.
+
+The cloud store follows the project split documented in `docs/cloud-database.md`: PostgreSQL is the queryable corpus and benchmark ledger, S3 is the artifact store, and Qdrant is rebuildable from versioned chunks.
 
 ## Dependency Direction
 
@@ -46,6 +64,8 @@
 - Seeded parallel runs reuse `api_queries.csv` per model so scenario generation remains fixed while retrieval, rerank, and answer evaluation use the refreshed corpus; the seeded row count must be capped to the effective `queries_per_model`.
 - Corpus variants must write to separate directories such as `data/experiments/without_llms/processed` and separate config files so control experiments cannot overwrite the main resource library.
 - Run-mode selection belongs in the PowerShell orchestration layer: `quick` maps to 50 queries per model, while `standard` maps to 200 queries per model unless `-QueriesPerModel` explicitly overrides it.
+- Cloud import depends on existing processed contracts; it must not become a hidden crawler or evaluator path.
+- PostgreSQL is the queryable corpus and benchmark ledger, S3 is the artifact store, and Qdrant remains a rebuildable retrieval index.
 
 ## Boundaries
 
@@ -55,3 +75,6 @@
 - Do not bypass existing cache/run-state abstractions without documenting why.
 - Do not let one-off scripts become the main path without either tests or a documented migration note.
 - Do not compare `llms.txt` effects by changing scenario questions at the same time; A/B runs must use the same seeded query set and differ only in corpus inputs.
+- Do not treat S3 as a query database; store object keys and hashes in PostgreSQL and keep large snapshots in S3.
+- Do not treat Qdrant as the source of truth; it must be rebuildable from versioned chunks.
+- Cloud verification commands must remain read-only unless the user explicitly starts an import or snapshot command.
