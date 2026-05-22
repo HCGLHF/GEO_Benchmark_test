@@ -283,7 +283,7 @@ Expected: JSON with `"ok": true`.
 - Create: `tests/test_cloud_qdrant_snapshot.py`
 - Modify: `scripts/cloud/postgres.py`
 
-- [ ] **Step 1: Write failing tests for snapshot planning**
+- [x] **Step 1: Write failing tests for snapshot planning**
 
 Add `tests/test_cloud_qdrant_snapshot.py`:
 
@@ -312,7 +312,7 @@ def test_create_qdrant_zip_includes_nested_files(tmp_path: Path):
         assert archive.read("collections/geo/data.bin") == b"abc"
 ```
 
-- [ ] **Step 2: Run the focused failing test**
+- [x] **Step 2: Run the focused failing test**
 
 Run:
 
@@ -322,7 +322,7 @@ pytest tests\test_cloud_qdrant_snapshot.py -q
 
 Expected: FAIL because `scripts.cloud.qdrant_snapshot` does not exist.
 
-- [ ] **Step 3: Implement snapshot creation**
+- [x] **Step 3: Implement snapshot creation**
 
 Create `scripts/cloud/qdrant_snapshot.py`:
 
@@ -406,7 +406,7 @@ if __name__ == "__main__":
     main()
 ```
 
-- [ ] **Step 4: Extract artifact registration**
+- [x] **Step 4: Extract artifact registration**
 
 Modify `scripts/cloud/postgres.py` by adding:
 
@@ -482,7 +482,7 @@ Then replace the duplicated artifact insert block inside `upsert_core_corpus` wi
 
 If extracting the duplicate block introduces too much churn, keep the existing block and use `register_artifact_objects` only for the new snapshot command.
 
-- [ ] **Step 5: Run snapshot tests**
+- [x] **Step 5: Run snapshot tests**
 
 Run:
 
@@ -492,7 +492,7 @@ pytest tests\test_cloud_qdrant_snapshot.py tests\test_cloud_import_corpus.py tes
 
 Expected: PASS.
 
-- [ ] **Step 6: Upload the live Qdrant snapshot**
+- [x] **Step 6: Upload the live Qdrant snapshot**
 
 Run:
 

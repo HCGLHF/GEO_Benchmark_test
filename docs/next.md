@@ -6,6 +6,9 @@
 - Added `docs/documentation-map.md` to explain how README, CONTEXT, architecture, cloud database, risks, next-step memory, ADRs, plans, runbooks, and SQL schema relate to each other.
 - Updated `.env.example` with cloud corpus placeholders for AWS region, S3 bucket, IAM key fields, and the RDS PostgreSQL connection shape without committing real secrets.
 - Updated README and CONTEXT so remote team members can understand that Git carries code while AWS carries the shared resource library data.
+- Added `scripts/cloud/qdrant_snapshot.py` to package local Qdrant storage as a rebuildable S3 artifact and register it in PostgreSQL.
+- Uploaded the current Qdrant snapshot for `2026-05-22-initial` to `vector-index/2026-05-22-initial/qdrant.zip`, size 18,150,632 bytes, SHA-256 `e840f1ab05f44e7f11cc3118788237f2a4b991a17bc03ebb00219993ac6b9e87`.
+- Re-ran the live cloud verifier after snapshot upload: RDS counts still matched 1,683 inventory rows, 1,683 documents, 6,225 chunks, and artifact registry now has 4 matching S3 objects.
 - Replaced the root AWS access key in the local project environment with an IAM user key, then verified S3 list, put, head, and delete permissions against `geo-resource-library-prod-940329548423-ap-northeast-1-an`.
 - Added `scripts/cloud/verify_cloud_import.py`, a read-only cloud verifier that checks RDS corpus counts and S3 artifact object sizes for a corpus version.
 - Added tests for cloud verification result summaries and PostgreSQL read helpers.
@@ -78,6 +81,7 @@
 ## Learned
 
 - The intended collaboration model is now explicit: remote team members sync scripts through Git, connect to the shared corpus through RDS/S3, and keep local credentials plus generated data out of Git.
+- Qdrant can now be restored from S3 for the current corpus version, but it remains a convenience artifact because the authoritative retrieval source is still versioned `chunks`.
 - The IAM user key now has working read, write, and delete access to the project S3 bucket, so the deactivated root key is no longer needed by the local cloud import path.
 - The live verifier confirms the current `2026-05-22-initial` cloud corpus is internally consistent across PostgreSQL and S3.
 - The AWS Global resources now target Tokyo: S3 bucket `geo-resource-library-prod-940329548423-ap-northeast-1-an` and RDS PostgreSQL endpoint in `ap-northeast-1`.
@@ -116,6 +120,7 @@
 ## Risks
 
 - Database docs now include non-secret AWS identifiers such as bucket name and RDS endpoint. This is useful for team onboarding, but access must still be controlled with IAM, PostgreSQL credentials, and RDS network allowlists.
+- A Qdrant snapshot can become stale if a later corpus version changes `chunks`; always compare snapshot `corpus_version` before restoring it.
 - The root access key has been deactivated but not deleted yet; keep it disabled and delete it after one more successful project run with the IAM key.
 - Treating the current dry-run status as a successful import would be wrong; the script intentionally returned `blocked_by_quality` until the 4 replacement-character rows are accepted or corrected.
 - The latest quick report should not be treated as a full persona-balanced benchmark because the 50 seeded queries per model were selected by file order.
@@ -136,8 +141,8 @@
 ## Next
 
 1. Delete the deactivated root access key after one more successful project run with the IAM key.
-2. Add Qdrant snapshot upload to S3 as a rebuildable vector-index artifact.
-3. Create role-specific PostgreSQL users and IAM policies for admin, writer, and reader team access.
+2. Create role-specific PostgreSQL users and IAM policies for admin, writer, and reader team access.
+3. Add a restore/download helper for S3 artifacts so remote team members can fetch `qdrant.zip` or processed JSONL by corpus version.
 4. Review the 4 replacement-character document/chunk IDs from the cloud dry run and decide whether to refresh those source pages in the next corpus version.
 5. Add stratified seed sampling for quick runs so 50 seeded questions per model cover personas and journey stages instead of taking the first 50 rows.
 6. Compare `runs\full_api_parallel_alpha_refresh_quick_final\20260519_160422\merged` against the previous merged baseline to quantify AlphaXXXX movement after the site refresh.

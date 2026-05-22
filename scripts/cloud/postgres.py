@@ -96,6 +96,44 @@ def _execute_many(cursor: Any, sql: str, rows: Iterable[tuple[Any, ...]]) -> Non
     cursor.executemany(sql, list(rows))
 
 
+def _artifact_rows(artifacts: Iterable[dict[str, Any]]) -> list[tuple[Any, ...]]:
+    return [
+        (
+            artifact.get("corpus_version"),
+            artifact.get("artifact_type"),
+            artifact.get("bucket"),
+            artifact.get("object_key"),
+            artifact.get("sha256"),
+            artifact.get("size_bytes"),
+            artifact.get("source_path"),
+            artifact.get("created_at"),
+        )
+        for artifact in artifacts
+    ]
+
+
+ARTIFACT_OBJECTS_UPSERT_SQL = """
+INSERT INTO artifact_objects (
+  corpus_version, artifact_type, bucket, object_key,
+  sha256, size_bytes, source_path, created_at
+)
+VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+ON CONFLICT (corpus_version, artifact_type, object_key) DO UPDATE SET
+  bucket = EXCLUDED.bucket,
+  sha256 = EXCLUDED.sha256,
+  size_bytes = EXCLUDED.size_bytes,
+  source_path = EXCLUDED.source_path,
+  created_at = EXCLUDED.created_at
+"""
+
+
+def register_artifact_objects(database_url: str, artifacts: list[dict[str, Any]]) -> None:
+    with _connect(database_url) as connection:
+        with connection.cursor() as cursor:
+            _execute_many(cursor, ARTIFACT_OBJECTS_UPSERT_SQL, _artifact_rows(artifacts))
+        connection.commit()
+
+
 def upsert_core_corpus(
     *,
     database_url: str,
@@ -228,33 +266,5 @@ def upsert_core_corpus(
                     for row in chunks
                 ),
             )
-            _execute_many(
-                cursor,
-                """
-                INSERT INTO artifact_objects (
-                  corpus_version, artifact_type, bucket, object_key,
-                  sha256, size_bytes, source_path, created_at
-                )
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-                ON CONFLICT (corpus_version, artifact_type, object_key) DO UPDATE SET
-                  bucket = EXCLUDED.bucket,
-                  sha256 = EXCLUDED.sha256,
-                  size_bytes = EXCLUDED.size_bytes,
-                  source_path = EXCLUDED.source_path,
-                  created_at = EXCLUDED.created_at
-                """,
-                (
-                    (
-                        artifact.get("corpus_version"),
-                        artifact.get("artifact_type"),
-                        artifact.get("bucket"),
-                        artifact.get("object_key"),
-                        artifact.get("sha256"),
-                        artifact.get("size_bytes"),
-                        artifact.get("source_path"),
-                        artifact.get("created_at"),
-                    )
-                    for artifact in artifacts
-                ),
-            )
+            _execute_many(cursor, ARTIFACT_OBJECTS_UPSERT_SQL, _artifact_rows(artifacts))
         connection.commit()

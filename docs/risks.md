@@ -39,3 +39,4 @@
 - The first RDS import and S3 artifact upload succeeded, and the locally configured AWS credentials now use an IAM user key. The old root access key has been deactivated and should be deleted after one more successful IAM-key project run.
 - Publishing database documentation is acceptable only while it contains identifiers and placeholders, not passwords, access keys, secret keys, private connection strings, exported database dumps, or local `.env` values.
 - Remote team access depends on both IAM permissions for S3 and network/database permissions for RDS; Git access alone is not enough to run cloud-backed workflows.
+- Qdrant snapshots in S3 are convenience restore artifacts, not authoritative data. A stale snapshot must not override a newer `chunks.jsonl` corpus version.

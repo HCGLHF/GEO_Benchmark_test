@@ -21,6 +21,7 @@
 - `scripts/cloud/config.py`: loads required cloud environment variables for explicit S3/RDS operations without exposing secrets in committed files.
 - `scripts/cloud/corpus_quality.py`: audits inventory, documents, and chunks before cloud import, blocking unsafe corpus versions with duplicate IDs, orphan chunks, missing fields, or mojibake markers.
 - `scripts/cloud/import_corpus.py`: plans and executes the first cloud import path for URL inventory, processed documents, processed chunks, S3 artifact records, and PostgreSQL core corpus rows.
+- `scripts/cloud/qdrant_snapshot.py`: packages the local Qdrant directory as a rebuildable S3 artifact and registers it in PostgreSQL.
 - `scripts/cloud/verify_cloud_import.py`: verifies an imported cloud corpus version by comparing PostgreSQL corpus counts with S3 artifact object sizes.
 - `scripts/cloud/s3_artifacts.py`: computes stable S3 object keys, hashes local artifacts, and uploads snapshots when an import is executed.
 - `scripts/cloud/postgres.py`: applies the PostgreSQL schema and upserts the core corpus into RDS using lazy `psycopg` imports so normal local tests do not require cloud dependencies.

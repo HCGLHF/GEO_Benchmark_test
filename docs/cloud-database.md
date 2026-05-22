@@ -53,6 +53,7 @@ Registered S3 artifacts:
 - `raw/2026-05-22-initial/url_inventory.csv`
 - `processed/2026-05-22-initial/documents.jsonl`
 - `processed/2026-05-22-initial/chunks.jsonl`
+- `vector-index/2026-05-22-initial/qdrant.zip`
 
 ## PostgreSQL Tables
 
@@ -79,9 +80,6 @@ Current artifact types:
 - `url_inventory`
 - `processed_documents`
 - `processed_chunks`
-
-Planned artifact type:
-
 - `qdrant_snapshot`
 
 ## Qdrant Responsibilities
@@ -93,6 +91,12 @@ The source of truth is:
 1. `documents` and `chunks` in PostgreSQL for queryable rows.
 2. Versioned JSONL artifacts in S3 for reproducible snapshots.
 3. Local or S3 snapshot copies of Qdrant only for faster restore.
+
+Current Qdrant snapshot:
+
+- S3 key: `vector-index/2026-05-22-initial/qdrant.zip`
+- Size: 18,150,632 bytes
+- SHA-256: `e840f1ab05f44e7f11cc3118788237f2a4b991a17bc03ebb00219993ac6b9e87`
 
 ## Team Onboarding
 

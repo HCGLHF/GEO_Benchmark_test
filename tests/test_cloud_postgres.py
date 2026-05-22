@@ -1,10 +1,21 @@
-from scripts.cloud.postgres import _execute_many, fetch_artifact_rows, fetch_corpus_counts
+from scripts.cloud.postgres import (
+    _execute_many,
+    fetch_artifact_rows,
+    fetch_corpus_counts,
+    register_artifact_objects,
+)
 
 
 class FakeCursor:
     def __init__(self):
         self.executed_many = []
         self.executed_one = []
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc, traceback):
+        return False
 
     def executemany(self, sql, rows):
         self.executed_many.append((sql, rows))
@@ -47,6 +58,7 @@ class FakeReadCursor:
 class FakeReadConnection:
     def __init__(self, cursor):
         self._cursor = cursor
+        self.committed = False
 
     def __enter__(self):
         return self
@@ -56,6 +68,9 @@ class FakeReadConnection:
 
     def cursor(self):
         return self._cursor
+
+    def commit(self):
+        self.committed = True
 
 
 def test_fetch_corpus_counts_reads_version_and_table_counts(monkeypatch):
@@ -113,3 +128,42 @@ def test_fetch_artifact_rows_returns_named_rows(monkeypatch):
             "created_at": "2026-05-22T00:00:00Z",
         }
     ]
+
+
+def test_register_artifact_objects_upserts_artifacts(monkeypatch):
+    cursor = FakeCursor()
+    connection = FakeReadConnection(cursor)
+    monkeypatch.setattr("scripts.cloud.postgres._connect", lambda database_url: connection)
+
+    register_artifact_objects(
+        "postgresql://example",
+        [
+            {
+                "corpus_version": "2026-05-22-initial",
+                "artifact_type": "qdrant_snapshot",
+                "bucket": "geo-bucket",
+                "object_key": "vector-index/2026-05-22-initial/qdrant.zip",
+                "sha256": "abc123",
+                "size_bytes": 42,
+                "source_path": "output/cloud/2026-05-22-initial/qdrant.zip",
+                "created_at": "2026-05-22T00:00:00Z",
+            }
+        ],
+    )
+
+    assert len(cursor.executed_many) == 1
+    sql, rows = cursor.executed_many[0]
+    assert "INSERT INTO artifact_objects" in sql
+    assert rows == [
+        (
+            "2026-05-22-initial",
+            "qdrant_snapshot",
+            "geo-bucket",
+            "vector-index/2026-05-22-initial/qdrant.zip",
+            "abc123",
+            42,
+            "output/cloud/2026-05-22-initial/qdrant.zip",
+            "2026-05-22T00:00:00Z",
+        )
+    ]
+    assert connection.committed is True
