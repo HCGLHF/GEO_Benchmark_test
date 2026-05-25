@@ -131,6 +131,9 @@ def test_run_pipeline_step_redacts_sensitive_command_values_from_run_logs(tmp_pa
             "--api-key",
             secret,
             f"--prompt={prompt_fragment}",
+            "--prompt-text",
+            prompt_fragment,
+            f"--messages-json={prompt_fragment}",
         ],
         text=True,
         capture_output=True,
@@ -147,3 +150,5 @@ def test_run_pipeline_step_redacts_sensitive_command_values_from_run_logs(tmp_pa
     started_event = json.loads(ops_text.splitlines()[0])
     assert started_event["details"]["command"][started_event["details"]["command"].index("--api-key") + 1] == "[redacted]"
     assert "--prompt=[redacted]" in started_event["details"]["command"]
+    assert started_event["details"]["command"][started_event["details"]["command"].index("--prompt-text") + 1] == "[redacted]"
+    assert "--messages-json=[redacted]" in started_event["details"]["command"]

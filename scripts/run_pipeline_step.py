@@ -33,7 +33,20 @@ def safe_log_name(stage: str) -> str:
 
 def _sensitive_name(value: str) -> bool:
     normalized = value.strip().lstrip("-").lower()
-    return normalized in SENSITIVE_COMMAND_KEYS or any(key in normalized for key in {"api-key", "api_key", "secret", "token"})
+    sensitive_fragments = {
+        "api-key",
+        "api_key",
+        "apikey",
+        "authorization",
+        "corpus",
+        "input",
+        "messages",
+        "password",
+        "prompt",
+        "secret",
+        "token",
+    }
+    return normalized in SENSITIVE_COMMAND_KEYS or any(key in normalized for key in sensitive_fragments)
 
 
 def redact_command(command: list[str], max_args: int = 24, max_arg_length: int = 120) -> list[str]:
