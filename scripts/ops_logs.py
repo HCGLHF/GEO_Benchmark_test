@@ -57,6 +57,7 @@ def _has_rate_limit_signal(summary: dict[str, object]) -> bool:
 
 def command_doctor(args: argparse.Namespace) -> int:
     summary = write_summary(args.run_root)
+    rate_limit_detected = _has_rate_limit_signal(summary)
     print(f"status: {summary['status']}")
     print(f"current_stage: {summary['current_stage'] or '-'}")
     print("")
@@ -66,13 +67,13 @@ def command_doctor(args: argparse.Namespace) -> int:
             print(f"- {issue}")
     else:
         print("- none")
-    if _has_rate_limit_signal(summary):
-        print("- Rate limit detected")
     print("")
     print("recommended_actions:")
-    if summary["recommended_actions"]:
+    if summary["recommended_actions"] or rate_limit_detected:
         for action in summary["recommended_actions"]:
             print(f"- {action}")
+        if rate_limit_detected:
+            print("- Rate limit detected")
     else:
         print("- none")
     print("")

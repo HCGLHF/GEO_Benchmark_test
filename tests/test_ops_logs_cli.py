@@ -86,4 +86,10 @@ def test_ops_logs_doctor_prints_human_summary(tmp_path: Path) -> None:
     assert result.returncode == 0, result.stderr
     assert "status: warning" in result.stdout
     assert "429 Too Many Requests" in result.stdout
-    assert "Rate limit detected" in result.stdout
+    issues_start = result.stdout.index("issues:")
+    actions_start = result.stdout.index("recommended_actions:")
+    key_files_start = result.stdout.index("key_files:")
+    issues_section = result.stdout[issues_start:actions_start]
+    actions_section = result.stdout[actions_start:key_files_start]
+    assert "Rate limit detected" not in issues_section
+    assert "Rate limit detected" in actions_section
