@@ -124,6 +124,20 @@ def _read_exit_code(model_dir: Path) -> str:
         return ""
 
 
+def _api_summary_files(run_root: Path) -> list[str]:
+    merged_summary = run_root / "merged" / "api_call_summary.csv"
+    if merged_summary.exists():
+        return [_relative_to_run(run_root, merged_summary)]
+    root_summary = run_root / "api_call_summary.csv"
+    if root_summary.exists():
+        return [_relative_to_run(run_root, root_summary)]
+    for model_dir in _model_dirs(run_root):
+        model_summary = model_dir / "api_call_summary.csv"
+        if model_summary.exists():
+            return [_relative_to_run(run_root, model_summary)]
+    return []
+
+
 def _append_once(rows: list[str], text: str) -> None:
     value = str(text or "").strip()
     if value and value not in rows:
@@ -159,7 +173,7 @@ def generate_summary(run_root: Path | str) -> dict[str, Any]:
     issues: list[str] = []
     recommended_actions: list[str] = []
     worker_logs: list[str] = []
-    api_summary: list[str] = []
+    api_summary = _api_summary_files(root)
 
     pipeline = read_pipeline_status(root)
     current_stage = str(pipeline.get("current_stage") or "")
@@ -188,8 +202,6 @@ def generate_summary(run_root: Path | str) -> dict[str, Any]:
     for model_dir in _model_dirs(root):
         safe_name = model_dir.name
         worker_logs.append(_relative_to_run(root, model_dir / "worker.log"))
-        if (model_dir / "api_call_summary.csv").exists():
-            api_summary.append(_relative_to_run(root, model_dir / "api_call_summary.csv"))
         exit_code = _read_exit_code(model_dir)
         try:
             model_summary = summarize_run_dir(model_dir, exit_code or None)
@@ -207,8 +219,6 @@ def generate_summary(run_root: Path | str) -> dict[str, Any]:
         if exit_code and exit_code != "0" and not complete_outputs:
             status = _max_status(status, "error")
             _append_once(issues, f"{safe_name} exited with code {exit_code}.")
-        elif bool(model_summary.get("fatal")) and summary_status != "likely_stalled":
-            status = _max_status(status, "error")
         elif bool(model_summary.get("warning")) or summary_status == "complete_with_failures":
             status = _max_status(status, "warning")
 

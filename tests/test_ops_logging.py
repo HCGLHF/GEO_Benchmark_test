@@ -221,6 +221,56 @@ def test_generate_summary_uses_api_call_summary_for_api_summary_key_file(tmp_pat
     assert "qwen_qwen3.7-max/api_orchestrator_attempts.jsonl" not in summary["key_files"]["api_summary"]
 
 
+def test_generate_summary_prefers_merged_api_call_summary_key_file(tmp_path: Path) -> None:
+    run_root = tmp_path / "run"
+    model_dir = run_root / "qwen_qwen3.7-max"
+    model_dir.mkdir(parents=True)
+    (run_root / "api_call_summary.csv").write_text("model,total_calls\nroot,1\n", encoding="utf-8")
+    (run_root / "merged").mkdir()
+    (run_root / "merged" / "api_call_summary.csv").write_text("model,total_calls\nmerged,2\n", encoding="utf-8")
+    (model_dir / "api_call_summary.csv").write_text("model,total_calls\nmodel,1\n", encoding="utf-8")
+
+    summary = generate_summary(run_root)
+
+    assert summary["key_files"]["api_summary"] == ["merged/api_call_summary.csv"]
+
+
+def test_generate_summary_uses_root_api_call_summary_when_merged_absent(tmp_path: Path) -> None:
+    run_root = tmp_path / "run"
+    model_dir = run_root / "qwen_qwen3.7-max"
+    model_dir.mkdir(parents=True)
+    (run_root / "api_call_summary.csv").write_text("model,total_calls\nroot,1\n", encoding="utf-8")
+    (model_dir / "api_call_summary.csv").write_text("model,total_calls\nmodel,1\n", encoding="utf-8")
+
+    summary = generate_summary(run_root)
+
+    assert summary["key_files"]["api_summary"] == ["api_call_summary.csv"]
+
+
+def test_generate_summary_keeps_active_incomplete_worker_without_failure_signal_ok(tmp_path: Path) -> None:
+    run_root = tmp_path / "run"
+    model_dir = run_root / "qwen_qwen3.7-max"
+    model_dir.mkdir(parents=True)
+    (model_dir / "run_config.resolved.json").write_text(
+        json.dumps(
+            {
+                "models": [{"provider": "openrouter", "model": "qwen/qwen3.7-max"}],
+                "client_acquisition": {"queries_per_model": 1},
+            }
+        ),
+        encoding="utf-8",
+    )
+    (model_dir / "api_queries.csv").write_text("query_id,query\nq001,Need GEO\n", encoding="utf-8")
+    write_jsonl(
+        model_dir / "api_orchestrator_attempts.jsonl",
+        [{"task_type": "rerank", "model": "qwen/qwen3.7-max", "status": "api_call", "query_id": "q001"}],
+    )
+
+    summary = generate_summary(run_root)
+
+    assert summary["status"] == "ok"
+
+
 def test_write_summary_persists_summary_and_records_summary_event(tmp_path: Path) -> None:
     run_root = tmp_path / "run"
 
