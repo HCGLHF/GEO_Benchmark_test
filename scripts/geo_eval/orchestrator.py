@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 from typing import Any, Callable
 
@@ -20,6 +21,19 @@ def canonical_hash(value: Any) -> str:
 
 def _ops_error_message(error: str, max_length: int = 500) -> str:
     text = str(error)
+    redactions = [
+        (r"(Authorization\s*:\s*Bearer\s+)[^\s,;]+", r"\1[redacted]"),
+        (r"(\bapi[_-]?key\s*=\s*)[^\s&;,]+", r"\1[redacted]"),
+        (r"(\bapi[_-]?key\s*:\s*)[^\s,;]+", r"\1[redacted]"),
+        (r"(\bmessages\s*:\s*)\[[^\]]*\]", r"\1[redacted]"),
+        (r'(\b(?:prompt|input|corpus)\s*:\s*)"[^"]*"', r"\1[redacted]"),
+        (
+            r"(\b(?:prompt|input|corpus)\s*:\s*).*?(?=\s+\b(?:messages|prompt|input|corpus)\s*:|\s+\d{3}\b|\s+OpenRouter\b|$)",
+            r"\1[redacted]",
+        ),
+    ]
+    for pattern, replacement in redactions:
+        text = re.sub(pattern, replacement, text, flags=re.IGNORECASE)
     if len(text) <= max_length:
         return text
     marker = "..."
