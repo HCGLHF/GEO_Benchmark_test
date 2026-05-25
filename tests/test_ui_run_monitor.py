@@ -32,11 +32,61 @@ def test_summarize_parallel_run_prefers_ops_summary_health(tmp_path: Path) -> No
     assert summary["health"]["recommended_actions"] == ["Ops summary action"]
 
 
+def test_summarize_parallel_run_keeps_live_error_when_ops_summary_is_stale(tmp_path: Path) -> None:
+    run_root = tmp_path / "runs" / "parallel" / "20260522_120000"
+    run_root.mkdir(parents=True)
+    (run_root / "ops_summary.json").write_text(
+        json.dumps(
+            {
+                "status": "ok",
+                "issues": [],
+                "recommended_actions": ["Review ops log"],
+                "key_files": {"ops_events": "ops_events.jsonl"},
+            }
+        ),
+        encoding="utf-8",
+    )
+    (run_root / "run_manifest.json").write_text(
+        json.dumps({"run_type": "full_api_parallel", "stages": ["crawl"], "models": []}),
+        encoding="utf-8",
+    )
+    write_jsonl(
+        run_root / "pipeline_state.jsonl",
+        [{"stage": "crawl", "status": "failed", "message": "Crawler exploded"}],
+    )
+
+    summary = summarize_parallel_run(run_root, target_brand="AlphaXXXX")
+
+    assert summary["health"]["status"] == "error"
+    assert summary["health"]["source"] == "ops_summary_with_live_health"
+    assert any("Pipeline stage crawl failed: Crawler exploded" == issue for issue in summary["health"]["issues"])
+    assert summary["health"]["recommended_actions"] == ["Review ops log"]
+
+
+def test_summarize_parallel_run_ignores_logs_directory_as_model_worker(tmp_path: Path) -> None:
+    run_root = tmp_path / "runs" / "parallel" / "20260522_120000"
+    logs_dir = run_root / "logs"
+    logs_dir.mkdir(parents=True)
+    (logs_dir / "worker.log").write_text("not a model worker\n", encoding="utf-8")
+
+    summary = summarize_parallel_run(run_root, target_brand="AlphaXXXX")
+
+    assert summary["models"] == []
+
+
 def test_ui_server_renders_recommended_actions_from_monitor_health() -> None:
     server_source = Path("scripts/ui_app/server.py").read_text(encoding="utf-8")
 
     assert "recommended_actions" in server_source
     assert "recommended actions" in server_source.lower()
+
+
+def test_ui_server_escapes_monitor_table_run_data() -> None:
+    server_source = Path("scripts/ui_app/server.py").read_text(encoding="utf-8")
+
+    assert "<td>${escapeHtml(item.safe_name)}</td>" in server_source
+    assert "<td>${escapeHtml(stage)}</td>" in server_source
+    assert "<td>${escapeHtml(item.message || \"\")}</td>" in server_source
 
 
 def test_summarize_parallel_run_reads_model_progress_logs_and_report(tmp_path: Path) -> None:

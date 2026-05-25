@@ -704,13 +704,13 @@ HTML = r"""<!doctype html>
           <thead><tr><th>Model</th><th>Status</th><th>Progress</th><th>API</th><th>Cache</th><th>Failures</th><th>Answers</th></tr></thead>
           <tbody>${monitor.models.map((item) => `
             <tr>
-              <td>${item.safe_name}</td>
-              <td>${item.summary.status}</td>
+              <td>${escapeHtml(item.safe_name)}</td>
+              <td>${escapeHtml(item.summary.status)}</td>
               <td>${renderApiProgress(item.summary)}</td>
-              <td>${item.summary.totals.api_calls}</td>
-              <td>${item.summary.totals.cache_hits}</td>
-              <td>${item.summary.totals.failures}</td>
-              <td>${item.summary.outputs.answer_rows}</td>
+              <td>${escapeHtml(item.summary.totals.api_calls)}</td>
+              <td>${escapeHtml(item.summary.totals.cache_hits)}</td>
+              <td>${escapeHtml(item.summary.totals.failures)}</td>
+              <td>${escapeHtml(item.summary.outputs.answer_rows)}</td>
             </tr>`).join("")}</tbody>
         </table>`;
       const stageRows = Object.entries(monitor.pipeline.stages || {});
@@ -719,11 +719,11 @@ HTML = r"""<!doctype html>
           <thead><tr><th>Stage</th><th>Status</th><th>Progress</th><th>Updated</th><th>Message</th></tr></thead>
           <tbody>${stageRows.map(([stage, item]) => `
             <tr>
-              <td>${stage}</td>
-              <td>${item.status}</td>
+              <td>${escapeHtml(stage)}</td>
+              <td>${escapeHtml(item.status)}</td>
               <td>${renderPipelineProgress((monitor.pipeline_progress || {})[stage])}</td>
-              <td>${item.updated_at || ""}</td>
-              <td>${item.message || ""}</td>
+              <td>${escapeHtml(item.updated_at || "")}</td>
+              <td>${escapeHtml(item.message || "")}</td>
             </tr>`).join("")}</tbody>
         </table>`;
       const pipelineLogs = (monitor.pipeline_log_tails || []).map((item) => {

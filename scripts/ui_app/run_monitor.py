@@ -28,7 +28,7 @@ def _tail_lines(path: Path, max_lines: int = 40) -> list[str]:
 def _model_dirs(run_root: Path) -> list[Path]:
     if not run_root.exists():
         return []
-    ignored = {"cache", "merged"}
+    ignored = {"cache", "logs", "merged"}
     return sorted(path for path in run_root.iterdir() if path.is_dir() and path.name not in ignored)
 
 
@@ -212,6 +212,32 @@ def _strings(value: Any) -> list[str]:
     return [str(item) for item in value if isinstance(item, str)]
 
 
+def _health_severity(status: Any) -> int:
+    return {
+        "ok": 0,
+        "warning": 1,
+        "complete_with_model_warnings": 1,
+        "stalled": 2,
+        "error": 3,
+    }.get(str(status or "unknown"), 0)
+
+
+def _ops_summary_health(ops_summary: dict[str, Any], live_health: dict[str, Any]) -> dict[str, Any]:
+    key_files = ops_summary.get("key_files")
+    health = {
+        "status": str(ops_summary.get("status") or live_health.get("status") or "unknown"),
+        "issues": _strings(ops_summary.get("issues") or []),
+        "recommended_actions": _strings(ops_summary.get("recommended_actions") or []),
+        "source": "ops_summary",
+        "key_files": key_files if isinstance(key_files, dict) else {},
+    }
+    if _health_severity(live_health.get("status")) > _health_severity(health.get("status")):
+        health["status"] = str(live_health.get("status") or "unknown")
+        health["issues"] = _strings(live_health.get("issues") or [])
+        health["source"] = "ops_summary_with_live_health"
+    return health
+
+
 def summarize_parallel_run(run_root: Path | str, target_brand: str = "AlphaXXXX") -> dict[str, Any]:
     root = Path(run_root)
     pipeline = read_pipeline_status(root)
@@ -256,14 +282,7 @@ def summarize_parallel_run(run_root: Path | str, target_brand: str = "AlphaXXXX"
         current_stage = model_stage
     ops_summary = read_summary(root)
     if ops_summary:
-        key_files = ops_summary.get("key_files")
-        health = {
-            "status": str(ops_summary.get("status") or health.get("status") or "unknown"),
-            "issues": _strings(ops_summary.get("issues") or []),
-            "recommended_actions": _strings(ops_summary.get("recommended_actions") or []),
-            "source": "ops_summary",
-            "key_files": key_files if isinstance(key_files, dict) else {},
-        }
+        health = _ops_summary_health(ops_summary, health)
 
     return {
         "run_root": str(root),
