@@ -18,6 +18,14 @@ def canonical_hash(value: Any) -> str:
     return stable_hash(json.dumps(value, ensure_ascii=True, sort_keys=True, default=str))
 
 
+def _ops_error_message(error: str, max_length: int = 500) -> str:
+    text = str(error)
+    if len(text) <= max_length:
+        return text
+    marker = "..."
+    return text[: max_length - len(marker)] + marker
+
+
 def build_task_fingerprint(
     provider: str,
     model: str,
@@ -114,22 +122,26 @@ class ModelCallOrchestrator:
             self.run_state.mark_failed(task_type, query_id, model, str(exc), task_fingerprint)
             self._log_event(task_type, query_id, provider, model, task_fingerprint, "error", str(exc))
             self._log_attempt(task_type, query_id, provider, model, task_fingerprint, "error", str(exc), False)
-            safe_write_event(
-                self.attempts_path.parent,
-                level="warning",
-                event_type="api_failure",
-                stage=task_type,
-                model=model,
-                message=str(exc),
-                details={
-                    "provider": provider,
-                    "model": model,
-                    "query_id": query_id,
-                    "task_fingerprint": task_fingerprint,
-                    "error": str(exc),
-                },
-                source="scripts/geo_eval/orchestrator.py",
-            )
+            ops_error = _ops_error_message(str(exc))
+            try:
+                safe_write_event(
+                    self.attempts_path.parent,
+                    level="warning",
+                    event_type="api_failure",
+                    stage=task_type,
+                    model=model,
+                    message=ops_error,
+                    details={
+                        "provider": provider,
+                        "model": model,
+                        "query_id": query_id,
+                        "task_fingerprint": task_fingerprint,
+                        "error": ops_error,
+                    },
+                    source="scripts/geo_eval/orchestrator.py",
+                )
+            except Exception:
+                pass
             raise
 
         self.cache.put(

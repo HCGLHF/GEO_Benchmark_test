@@ -3,6 +3,7 @@ from pathlib import Path
 
 import pytest
 
+import scripts.geo_eval.orchestrator as orchestrator_module
 from scripts.geo_eval.orchestrator import ModelCallOrchestrator, build_task_fingerprint
 from scripts.geo_eval.run_state import RunState
 
@@ -105,6 +106,13 @@ def test_orchestrated_model_call_does_not_cache_failures(tmp_path: Path):
     events = (tmp_path / "api_call_events.jsonl").read_text(encoding="utf-8").splitlines()
     assert sum(1 for line in events if '"status": "started"' in line) == 2
     assert sum(1 for line in events if '"status": "error"' in line) == 2
+    attempts = [
+        json.loads(line)
+        for line in (tmp_path / "attempts.jsonl").read_text(encoding="utf-8").splitlines()
+    ]
+    assert len(attempts) == 2
+    assert attempts[0]["status"] == "error"
+    assert attempts[0]["cache_hit"] is False
 
 
 def test_orchestrated_model_call_logs_ops_event_on_api_failure(tmp_path: Path):
@@ -142,3 +150,81 @@ def test_orchestrated_model_call_logs_ops_event_on_api_failure(tmp_path: Path):
     assert events[0]["model"] == "model-a"
     assert events[0]["details"]["query_id"] == "q001"
     assert "429" in events[0]["details"]["error"]
+
+
+def test_orchestrated_model_call_bounds_ops_error_but_preserves_attempt_error(tmp_path: Path):
+    prompt_fragment = "PROMPT_FRAGMENT_DO_NOT_COPY"
+    full_error = "OpenRouter 429 Too Many Requests " + ("x" * 520) + prompt_fragment
+
+    def failing_call(model_config, prompt, temperature):
+        raise RuntimeError(full_error)
+
+    orchestrator = ModelCallOrchestrator(
+        cache_path=tmp_path / "cache.sqlite",
+        run_state_path=tmp_path / "state.sqlite",
+        attempts_path=tmp_path / "attempts.jsonl",
+        config_hash="config-a",
+        matrix_hash="matrix-a",
+        corpus_hash="corpus-a",
+        uncached_call=failing_call,
+    )
+
+    with pytest.raises(RuntimeError):
+        orchestrator.call(
+            model_config={"provider": "openrouter", "model": "model-a"},
+            prompt="prompt",
+            temperature=0.2,
+            task_type="answer",
+            query_id="q001",
+            input_hash="input-a",
+            prompt_version="answer-v1",
+        )
+
+    events = [
+        json.loads(line)
+        for line in (tmp_path / "ops_events.jsonl").read_text(encoding="utf-8").splitlines()
+    ]
+    attempts = [
+        json.loads(line)
+        for line in (tmp_path / "attempts.jsonl").read_text(encoding="utf-8").splitlines()
+    ]
+
+    assert len(events[0]["message"]) <= 500
+    assert len(events[0]["details"]["error"]) <= 500
+    assert events[0]["message"].endswith("...")
+    assert events[0]["details"]["error"].endswith("...")
+    assert prompt_fragment not in events[0]["message"]
+    assert prompt_fragment not in events[0]["details"]["error"]
+    assert attempts[0]["error"] == full_error
+
+
+def test_orchestrated_model_call_preserves_model_exception_when_ops_logging_fails(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    def failing_call(model_config, prompt, temperature):
+        raise RuntimeError("original provider failure")
+
+    def failing_ops_logger(*args, **kwargs):
+        raise RuntimeError("ops logging failed")
+
+    monkeypatch.setattr(orchestrator_module, "safe_write_event", failing_ops_logger)
+    orchestrator = ModelCallOrchestrator(
+        cache_path=tmp_path / "cache.sqlite",
+        run_state_path=tmp_path / "state.sqlite",
+        attempts_path=tmp_path / "attempts.jsonl",
+        config_hash="config-a",
+        matrix_hash="matrix-a",
+        corpus_hash="corpus-a",
+        uncached_call=failing_call,
+    )
+
+    with pytest.raises(RuntimeError, match="original provider failure"):
+        orchestrator.call(
+            model_config={"provider": "openrouter", "model": "model-a"},
+            prompt="prompt",
+            temperature=0.2,
+            task_type="answer",
+            query_id="q001",
+            input_hash="input-a",
+            prompt_version="answer-v1",
+        )
