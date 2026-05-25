@@ -38,12 +38,14 @@ def test_prepare_config_allows_cache_path_override(tmp_path: Path):
         include_model=["openai/gpt-4.1-mini"],
         exclude_model=[],
         cache_path=str(tmp_path / "cache" / "openai.sqlite"),
+        ops_run_root=str(tmp_path / "runs" / "parallel"),
     )
 
     config = prepare_config(args)
 
     assert config["performance"]["llm_cache"]["sqlite"] == str(tmp_path / "cache" / "openai.sqlite")
     assert config["performance"]["run_state"]["sqlite"] == str(tmp_path / "runs" / "model-a" / "run_state.sqlite")
+    assert config["run"]["ops_run_root"] == str(tmp_path / "runs" / "parallel")
     assert config["client_acquisition"]["queries_per_model"] == 7
     assert [model["model"] for model in config["models"]] == ["openai/gpt-4.1-mini"]
 
@@ -101,7 +103,7 @@ def test_parallel_with_watch_quick_mode_uses_about_100_seeded_calls_per_model(tm
     assert result.returncode == 0, result.stderr
     assert "Run mode: quick" in result.stdout
     assert "Queries per model: 50" in result.stdout
-    assert "--queries-per-model\" \"50" in result.stdout
+    assert "'--queries-per-model' '50'" in result.stdout
 
 
 def test_parallel_with_watch_test_mode_uses_low_call_chain_check(tmp_path: Path):
@@ -127,7 +129,7 @@ def test_parallel_with_watch_test_mode_uses_low_call_chain_check(tmp_path: Path)
     assert result.returncode == 0, result.stderr
     assert "Run mode: test" in result.stdout
     assert "Queries per model: 2" in result.stdout
-    assert "--queries-per-model\" \"2" in result.stdout
+    assert "'--queries-per-model' '2'" in result.stdout
 
 
 def test_parallel_with_watch_standard_mode_keeps_400_seeded_calls_per_model(tmp_path: Path):
@@ -153,7 +155,7 @@ def test_parallel_with_watch_standard_mode_keeps_400_seeded_calls_per_model(tmp_
     assert result.returncode == 0, result.stderr
     assert "Run mode: standard" in result.stdout
     assert "Queries per model: 200" in result.stdout
-    assert "--queries-per-model\" \"200" in result.stdout
+    assert "'--queries-per-model' '200'" in result.stdout
 
 
 def test_parallel_with_watch_manual_query_count_overrides_run_mode(tmp_path: Path):
@@ -181,7 +183,7 @@ def test_parallel_with_watch_manual_query_count_overrides_run_mode(tmp_path: Pat
     assert result.returncode == 0, result.stderr
     assert "Run mode: quick" in result.stdout
     assert "Queries per model: 9" in result.stdout
-    assert "--queries-per-model\" \"9" in result.stdout
+    assert "'--queries-per-model' '9'" in result.stdout
 
 
 def test_parallel_with_watch_can_seed_existing_queries_per_model(tmp_path: Path):
@@ -417,13 +419,29 @@ def test_parallel_with_watch_writes_ops_events_and_summary() -> None:
     assert '"doctor"' in script_text
 
 
+def test_parallel_with_watch_passes_parent_ops_run_root_to_model_workers() -> None:
+    script_text = Path("scripts/run_full_api_parallel_with_watch.ps1").read_text(encoding="utf-8")
+
+    assert '"--ops-run-root", $root' in script_text
+
+
 def test_parallel_with_watch_worker_failed_ops_event_warns_on_cli_failure() -> None:
     script_text = Path("scripts/run_full_api_parallel_with_watch.ps1").read_text(encoding="utf-8")
     worker_failed_index = script_text.index('"worker_failed"')
-    worker_failed_branch = script_text[worker_failed_index : worker_failed_index + 500]
+    worker_failed_branch = script_text[worker_failed_index : worker_failed_index + 800]
 
-    assert "`$LASTEXITCODE -ne 0" in worker_failed_branch
+    assert "$LASTEXITCODE -ne 0" in worker_failed_branch
     assert 'Write-Warning "Could not write ops event worker_failed for ' in worker_failed_branch
+
+
+def test_parallel_with_watch_avoids_string_evaluated_worker_and_merge_commands() -> None:
+    script_text = Path("scripts/run_full_api_parallel_with_watch.ps1").read_text(encoding="utf-8")
+
+    assert "Invoke-Expression" not in script_text
+    assert "$($worker.Command) *>&1" not in script_text
+    assert "worker_python_args.json" in script_text
+    assert "& python @pythonArgs" in script_text
+    assert "& python @mergeArgs" in script_text
 
 
 def test_parallel_with_watch_escapes_ops_details_json_for_native_python_calls() -> None:
@@ -432,9 +450,9 @@ def test_parallel_with_watch_escapes_ops_details_json_for_native_python_calls() 
     assert "function ConvertTo-NativeJsonArg" in script_text
     assert "$nativeDetailsJson = ConvertTo-NativeJsonArg -Json $DetailsJson" in script_text
     assert '"--details-json", $nativeDetailsJson' in script_text
-    assert "$opsDetailsJson = \"{``\"exit_code``\":`$exitCode}\"" in script_text
-    assert "`$nativeOpsDetailsJson = `$opsDetailsJson.Replace('\"', '\\\"')" in script_text
-    assert '"--details-json" `$nativeOpsDetailsJson' in script_text
+    assert '$opsDetailsJson = "{`"exit_code`":$exitCode}"' in script_text
+    assert "$nativeOpsDetailsJson = ConvertTo-NativeJsonArg -Json $opsDetailsJson" in script_text
+    assert '"--details-json" $nativeOpsDetailsJson' in script_text
 
 
 def test_parallel_with_watch_escapes_pipeline_details_json_for_native_python_calls() -> None:
@@ -442,9 +460,9 @@ def test_parallel_with_watch_escapes_pipeline_details_json_for_native_python_cal
 
     assert "$nativeDetailsJson = ConvertTo-NativeJsonArg -Json $DetailsJson" in script_text
     assert '"--details-json", $nativeDetailsJson' in script_text
-    assert "$pipelineDetailsJson = \"{``\"exit_code``\":`$exitCode}\"" in script_text
-    assert "`$nativePipelineDetailsJson = `$pipelineDetailsJson.Replace('\"', '\\\"')" in script_text
-    assert '"--details-json" `$nativePipelineDetailsJson' in script_text
+    assert '$pipelineDetailsJson = "{`"exit_code`":$exitCode}"' in script_text
+    assert "$nativePipelineDetailsJson = ConvertTo-NativeJsonArg -Json $pipelineDetailsJson" in script_text
+    assert '"--details-json" $nativePipelineDetailsJson' in script_text
     assert '"--details-json" "{`"exit_code`":`$exitCode}"' not in script_text
 
 
@@ -520,7 +538,7 @@ if ($LASTEXITCODE -ne 0) {{ exit $LASTEXITCODE }}
 
 def test_parallel_with_watch_handles_merge_command_failure_before_success_events() -> None:
     script_text = Path("scripts/run_full_api_parallel_with_watch.ps1").read_text(encoding="utf-8")
-    merge_index = script_text.index("Invoke-Expression $mergeCommand")
+    merge_index = script_text.index("& python @mergeArgs")
     report_completed_index = script_text.index(
         'Write-PipelineEvent -RunRootPath $root -Stage "report" -Status "completed"',
         merge_index,

@@ -80,6 +80,7 @@ class ModelCallOrchestrator:
         corpus_hash: str,
         uncached_call: ChatCaller = call_chat_model,
         events_path: Path | None = None,
+        ops_run_root: Path | None = None,
     ):
         self.cache = LLMCache(Path(cache_path))
         self.run_state = RunState(Path(run_state_path))
@@ -87,6 +88,7 @@ class ModelCallOrchestrator:
         self.attempts_path.parent.mkdir(parents=True, exist_ok=True)
         self.events_path = Path(events_path) if events_path else self.attempts_path.parent / "api_call_events.jsonl"
         self.events_path.parent.mkdir(parents=True, exist_ok=True)
+        self.ops_run_root = Path(ops_run_root) if ops_run_root else self.attempts_path.parent
         self.config_hash = config_hash
         self.matrix_hash = matrix_hash
         self.corpus_hash = corpus_hash
@@ -139,7 +141,7 @@ class ModelCallOrchestrator:
             ops_error = _ops_error_message(str(exc))
             try:
                 safe_write_event(
-                    self.attempts_path.parent,
+                    self.ops_run_root,
                     level="warning",
                     event_type="api_failure",
                     stage=task_type,

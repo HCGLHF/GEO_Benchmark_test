@@ -152,6 +152,44 @@ def test_orchestrated_model_call_logs_ops_event_on_api_failure(tmp_path: Path):
     assert "429" in events[0]["details"]["error"]
 
 
+def test_orchestrated_model_call_logs_ops_event_to_parent_run_root(tmp_path: Path):
+    parent_run_root = tmp_path / "parallel"
+    model_run_root = parent_run_root / "model-a"
+
+    def failing_call(model_config, prompt, temperature):
+        raise RuntimeError("OpenRouter 429 Too Many Requests")
+
+    orchestrator = ModelCallOrchestrator(
+        cache_path=model_run_root / "cache.sqlite",
+        run_state_path=model_run_root / "state.sqlite",
+        attempts_path=model_run_root / "api_orchestrator_attempts.jsonl",
+        ops_run_root=parent_run_root,
+        config_hash="config-a",
+        matrix_hash="matrix-a",
+        corpus_hash="corpus-a",
+        uncached_call=failing_call,
+    )
+
+    with pytest.raises(RuntimeError):
+        orchestrator.call(
+            model_config={"provider": "openrouter", "model": "model-a"},
+            prompt="prompt",
+            temperature=0.2,
+            task_type="answer",
+            query_id="q001",
+            input_hash="input-a",
+            prompt_version="answer-v1",
+        )
+
+    parent_events = [
+        json.loads(line)
+        for line in (parent_run_root / "ops_events.jsonl").read_text(encoding="utf-8").splitlines()
+    ]
+    assert parent_events[0]["event_type"] == "api_failure"
+    assert parent_events[0]["model"] == "model-a"
+    assert not (model_run_root / "ops_events.jsonl").exists()
+
+
 def test_orchestrated_model_call_bounds_ops_error_but_preserves_attempt_error(tmp_path: Path):
     prompt_fragment = "PROMPT_FRAGMENT_DO_NOT_COPY"
     full_error = "OpenRouter 429 Too Many Requests " + ("x" * 520) + prompt_fragment

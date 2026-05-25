@@ -57,9 +57,9 @@ function ConvertTo-SafeName {
   return $Value.Replace("/", "_").Replace(":", "_")
 }
 
-function Quote-Arg {
+function Format-PreviewArg {
   param([string]$Value)
-  return '"' + $Value.Replace('"', '\"') + '"'
+  return "'" + $Value.Replace("'", "''") + "'"
 }
 
 function ConvertTo-NativeJsonArg {
@@ -308,15 +308,17 @@ foreach ($model in $modelList) {
     "--include-model", $model,
     "--queries-per-model", "$QueriesPerModel",
     "--output-dir", $outDir,
-    "--cache-path", $cachePath
+    "--cache-path", $cachePath,
+    "--ops-run-root", $root
   )
-  $command = "python " + (($pythonArgs | ForEach-Object { Quote-Arg $_ }) -join " ")
+  $command = "python " + (($pythonArgs | ForEach-Object { Format-PreviewArg $_ }) -join " ")
   $workers += [pscustomobject]@{
     Model = $model
     SafeName = $safeName
     RunDir = $outDir
     CachePath = $cachePath
     SeededQueryCount = if ($SeedQueriesRunDir) { @(Get-SeedQueries -SeedRunDir $SeedQueriesRunDir -Model $model -Limit $QueriesPerModel).Count } else { 0 }
+    PythonArgs = $pythonArgs
     Command = $command
     Process = $null
   }
@@ -327,7 +329,7 @@ $mergeArgs = @(
   "--config", $Config,
   "--runs"
 ) + $runDirs + @("--output-dir", $mergedDir)
-$mergeCommand = "python " + (($mergeArgs | ForEach-Object { Quote-Arg $_ }) -join " ")
+$mergeCommand = "python " + (($mergeArgs | ForEach-Object { Format-PreviewArg $_ }) -join " ")
 
 if ($DryRun) {
   Write-Host "DRY RUN: full API parallel run with monitoring"
@@ -383,31 +385,69 @@ foreach ($worker in $workers) {
   }
   $exitCodePath = Join-Path $worker.RunDir "worker_exit_code.txt"
   $logPath = Join-Path $worker.RunDir "worker.log"
-  $workerCommand = @"
-`$ErrorActionPreference = 'Continue'
-Set-Location "$(Get-Location)"
-Write-Host "Running $($worker.Model)"
-python "scripts\pipeline_state.py" "append" "--run-root" "$root" "--stage" "rerank" "--status" "running" "--model" "$($worker.Model)" "--message" "Worker started."
-$($worker.Command) *>&1 | Tee-Object -FilePath "$logPath"
-`$exitCode = `$LASTEXITCODE
-if (`$exitCode -eq 0) {
-  python "scripts\pipeline_state.py" "append" "--run-root" "$root" "--stage" "answer" "--status" "completed" "--model" "$($worker.Model)" "--message" "Worker completed."
+  $pythonArgsPath = Join-Path $worker.RunDir "worker_python_args.json"
+  $worker.PythonArgs | ConvertTo-Json -Compress | Set-Content -Path $pythonArgsPath -Encoding UTF8
+  $workerScriptPath = Join-Path $worker.RunDir "worker_launcher.ps1"
+  $workerScript = @'
+param(
+  [Parameter(Mandatory=$true)][string]$ProjectRoot,
+  [Parameter(Mandatory=$true)][string]$RunRootPath,
+  [Parameter(Mandatory=$true)][string]$WorkerModel,
+  [Parameter(Mandatory=$true)][string]$LogPath,
+  [Parameter(Mandatory=$true)][string]$ExitCodePath,
+  [Parameter(Mandatory=$true)][string]$PythonArgsFile
+)
+
+$ErrorActionPreference = 'Continue'
+
+function ConvertTo-NativeJsonArg {
+  param([string]$Json)
+  return $Json.Replace('"', '\"')
+}
+
+Set-Location $ProjectRoot
+Write-Host "Running $WorkerModel"
+python "scripts\pipeline_state.py" "append" "--run-root" $RunRootPath "--stage" "rerank" "--status" "running" "--model" $WorkerModel "--message" "Worker started."
+$pythonArgs = @(Get-Content -Path $PythonArgsFile -Raw | ConvertFrom-Json)
+& python @pythonArgs *>&1 | Tee-Object -FilePath $LogPath
+$exitCode = $LASTEXITCODE
+if ($exitCode -eq 0) {
+  python "scripts\pipeline_state.py" "append" "--run-root" $RunRootPath "--stage" "answer" "--status" "completed" "--model" $WorkerModel "--message" "Worker completed."
 } else {
-  `$pipelineDetailsJson = "{``"exit_code``":`$exitCode}"
-  `$nativePipelineDetailsJson = `$pipelineDetailsJson.Replace('"', '\"')
-  python "scripts\pipeline_state.py" "append" "--run-root" "$root" "--stage" "answer" "--status" "failed" "--model" "$($worker.Model)" "--message" "Worker failed." "--details-json" `$nativePipelineDetailsJson
-  `$opsDetailsJson = "{``"exit_code``":`$exitCode}"
-  `$nativeOpsDetailsJson = `$opsDetailsJson.Replace('"', '\"')
-  python "scripts\ops_logs.py" "record" "--run-root" "$root" "--level" "error" "--event-type" "worker_failed" "--stage" "answer" "--model" "$($worker.Model)" "--message" "Worker failed." "--details-json" `$nativeOpsDetailsJson "--source" "scripts/run_full_api_parallel_with_watch.ps1" | Out-Null
-  if (`$LASTEXITCODE -ne 0) {
-    Write-Warning "Could not write ops event worker_failed for $root"
+  $pipelineDetailsJson = "{`"exit_code`":$exitCode}"
+  $nativePipelineDetailsJson = ConvertTo-NativeJsonArg -Json $pipelineDetailsJson
+  python "scripts\pipeline_state.py" "append" "--run-root" $RunRootPath "--stage" "answer" "--status" "failed" "--model" $WorkerModel "--message" "Worker failed." "--details-json" $nativePipelineDetailsJson
+  $opsDetailsJson = "{`"exit_code`":$exitCode}"
+  $nativeOpsDetailsJson = ConvertTo-NativeJsonArg -Json $opsDetailsJson
+  python "scripts\ops_logs.py" "record" "--run-root" $RunRootPath "--level" "error" "--event-type" "worker_failed" "--stage" "answer" "--model" $WorkerModel "--message" "Worker failed." "--details-json" $nativeOpsDetailsJson "--source" "scripts/run_full_api_parallel_with_watch.ps1" | Out-Null
+  if ($LASTEXITCODE -ne 0) {
+    Write-Warning "Could not write ops event worker_failed for $RunRootPath"
   }
 }
-  Set-Content -Path "$exitCodePath" -Value `$exitCode
-exit `$exitCode
-"@
+Set-Content -Path $ExitCodePath -Value $exitCode
+exit $exitCode
+'@
+  Set-Content -Path $workerScriptPath -Value $workerScript -Encoding UTF8
   Write-Host "Launching $($worker.Model) -> $($worker.RunDir)"
-  $process = Start-Process -FilePath "powershell" -ArgumentList @("-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", $workerCommand) -WorkingDirectory (Get-Location) -WindowStyle Hidden -PassThru
+  $process = Start-Process -FilePath "powershell" -ArgumentList @(
+    "-NoProfile",
+    "-ExecutionPolicy",
+    "Bypass",
+    "-File",
+    $workerScriptPath,
+    "-ProjectRoot",
+    (Get-Location).Path,
+    "-RunRootPath",
+    $root,
+    "-WorkerModel",
+    $worker.Model,
+    "-LogPath",
+    $logPath,
+    "-ExitCodePath",
+    $exitCodePath,
+    "-PythonArgsFile",
+    $pythonArgsPath
+  ) -WorkingDirectory (Get-Location) -WindowStyle Hidden -PassThru
   $worker.Process = $process
 }
 
@@ -499,7 +539,7 @@ if ([int]$runStatus.warning_count -gt 0) {
 } else {
   Write-PipelineEvent -RunRootPath $root -Stage "merge" -Status "running" -Message "Merging successful model workers."
 }
-Invoke-Expression $mergeCommand
+& python @mergeArgs
 $mergeExitCode = $LASTEXITCODE
 if ($mergeExitCode -ne 0) {
   Write-PipelineEvent -RunRootPath $root -Stage "merge" -Status "failed" -Message "Merge command failed." -DetailsJson "{`"exit_code`":$mergeExitCode}"
