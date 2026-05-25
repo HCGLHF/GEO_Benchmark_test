@@ -69,6 +69,10 @@ def test_orchestrated_model_call_uses_cache_and_marks_complete(tmp_path: Path):
     assert second["cache_hit"] is True
     assert calls["count"] == 1
     assert RunState(tmp_path / "state.sqlite").status("answer", "q001", "model-a", second["task_fingerprint"]) == "complete"
+    events = (tmp_path / "api_call_events.jsonl").read_text(encoding="utf-8").splitlines()
+    assert [line for line in events if '"status": "started"' in line]
+    assert [line for line in events if '"status": "completed"' in line]
+    assert [line for line in events if '"status": "cache_hit"' in line]
 
 
 def test_orchestrated_model_call_does_not_cache_failures(tmp_path: Path):
@@ -97,3 +101,6 @@ def test_orchestrated_model_call_does_not_cache_failures(tmp_path: Path):
     assert calls["count"] == 2
     state = RunState(tmp_path / "state.sqlite")
     assert state.status("answer", "q001", "model-a", orchestrator.last_task_fingerprint) == "failed"
+    events = (tmp_path / "api_call_events.jsonl").read_text(encoding="utf-8").splitlines()
+    assert sum(1 for line in events if '"status": "started"' in line) == 2
+    assert sum(1 for line in events if '"status": "error"' in line) == 2

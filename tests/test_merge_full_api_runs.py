@@ -20,7 +20,7 @@ def write_jsonl(path: Path, rows: list[dict]) -> None:
             handle.write(json.dumps(row) + "\n")
 
 
-def make_model_run(run_dir: Path, model: str, winning_brand: str) -> None:
+def make_model_run(run_dir: Path, model: str, winning_brand: str, include_owned: bool = False) -> None:
     write_csv(
         run_dir / "api_queries.csv",
         [
@@ -107,7 +107,20 @@ def make_model_run(run_dir: Path, model: str, winning_brand: str) -> None:
                         "source_type": "competitor_site",
                         "text_preview": "GEO service Australia pricing ChatGPT",
                     }
-                ],
+                ]
+                + (
+                    [
+                        {
+                            "brand": "AlphaXXXX",
+                            "url": "https://alphaxxxx.com/service",
+                            "title": "Alpha Service",
+                            "source_type": "owned_site",
+                            "text_preview": "Alpha GEO service",
+                        }
+                    ]
+                    if include_owned
+                    else []
+                ),
             }
         ],
     )
@@ -166,3 +179,56 @@ def test_merge_full_api_runs_rebuilds_outputs(tmp_path: Path):
         rows = list(csv.DictReader(handle))
     assert {row["model"] for row in rows} == {"model-a", "model-b"}
     assert "HornTech" in (output / "competitive_gap_report.md").read_text(encoding="utf-8")
+
+
+def test_merge_full_api_runs_writes_owned_page_drilldown(tmp_path: Path):
+    run_a = tmp_path / "run_a"
+    output = tmp_path / "merged"
+    make_model_run(run_a, "model-a", "HornTech", include_owned=True)
+
+    merge_full_api_runs(
+        run_dirs=[run_a],
+        output_dir=output,
+        target_brand="AlphaXXXX",
+        configured_brands=["HornTech"],
+        corpus_stats={},
+        owned_pages=[
+            {"url": "https://alphaxxxx.com/service", "title": "Alpha Service", "content_length": 500},
+            {"url": "https://alphaxxxx.com/weak", "title": "Weak Page", "content_length": 100},
+        ],
+    )
+
+    assert (output / "owned_top5_pages.csv").exists()
+    assert (output / "owned_weak_pages.csv").exists()
+    report = (output / "competitive_gap_report.md").read_text(encoding="utf-8")
+    assert "AlphaXXXX Top5 Retrieved Pages" in report
+    assert "https://alphaxxxx.com/service" in report
+    assert "AlphaXXXX Weak Pages To Optimize" in report
+    assert "https://alphaxxxx.com/weak" in report
+
+
+def test_merge_full_api_runs_writes_diagnostic_report_sections(tmp_path: Path):
+    run_a = tmp_path / "run_a"
+    output = tmp_path / "merged"
+    make_model_run(run_a, "model-a", "HornTech", include_owned=True)
+
+    merge_full_api_runs(
+        run_dirs=[run_a],
+        output_dir=output,
+        target_brand="AlphaXXXX",
+        configured_brands=["HornTech"],
+        corpus_stats={},
+        owned_pages=[
+            {"url": "https://alphaxxxx.com/service", "title": "Alpha Service", "content_length": 500},
+            {"url": "https://alphaxxxx.com/weak", "title": "Weak Page", "content_length": 100},
+        ],
+    )
+
+    assert (output / "query_loss_analysis.csv").exists()
+    assert (output / "competitor_displacements.csv").exists()
+    assert (output / "page_optimization_plan.csv").exists()
+    report = (output / "competitive_gap_report.md").read_text(encoding="utf-8")
+    assert "Executive Diagnosis" in report
+    assert "Query-Level Loss Analysis" in report
+    assert "Competitor Pages Displacing AlphaXXXX" in report
+    assert "Priority Optimization Plan" in report

@@ -4,7 +4,7 @@
 
 - AlphaXXXX has a very small corpus footprint compared with leading competitors, which suppresses recall before answer generation can help.
 - Full external API evaluation can export retrieved corpus excerpts; Codex tool execution is restricted, so the user must run that path locally.
-- Current full API flow now streams scenario, rerank, and answer rows incrementally, but a single in-flight API call is still invisible until the call returns or fails.
+- Current full API flow now streams scenario, rerank, and answer rows incrementally, and writes API call events when calls start, finish, hit cache, or fail. Terminal progress should still be based on completed attempts so in-flight calls are not double-counted.
 - Resume support skips already-streamed scenario slots, rerank rows, and answer rows, but stale output files in a reused run directory can intentionally suppress reruns.
 - Parallel model runs need careful merging to avoid miscounting brand metrics or duplicating rows.
 - Doubao Pro on OpenRouter may fail because the requested model id has previously returned errors.
@@ -34,6 +34,7 @@
 - With/without `llms.txt` A/B runs should use the same seed query run, the same model set, and the same query count; otherwise the measured lift mixes retrieval-routing effects with scenario variance.
 - `quick` API runs trade statistical stability for speed. Use them to catch directional movement and broken changes, then confirm important decisions with `standard` runs.
 - Quick seeded runs currently cap the existing query file by row order. If the original seed file is grouped by persona or journey stage, a quick run can overrepresent one scenario slice; use the result directionally until stratified seed sampling is added.
+- `test` mode is only a chain diagnostic. Its two seeded queries per model are intentionally too small for ranking, recall, mention-rate, or content-strategy conclusions.
 - The initial cloud-import dry run now blocks on 4 replacement-character rows after removing false positives from valid French accents. Importing with `--allow-quality-issues` is possible, but those rows should be reviewed or refreshed before treating the cloud corpus as clean.
 - RDS is currently reachable from the user's local machine for setup. Keep the security group restricted to the user's current `/32` IP or move future imports behind EC2/SSM/VPN.
 - Cloud import scripts require `boto3` and `psycopg[binary]` only when executing S3/RDS writes; these are installed project-locally under `.deps/cloud`, while local tests intentionally avoid live AWS dependencies.
@@ -44,4 +45,15 @@
 - Industry isolation is now enforced in cloud scripts, but any ad hoc SQL queries must still include `industry_id`; omitting it can mix unrelated industry datasets in analysis.
 - The industry registry command creates metadata, not access control. IAM permissions, PostgreSQL roles, and RDS network allowlists still need to be managed separately for each teammate or role.
 - The current `geo-agency` corpus has both legacy root-level S3 artifact keys and new `industries/geo-agency/...` keys registered. New tools should prefer the industry-prefixed keys.
-- UI-selected arbitrary model subsets are not fully supported by the current parallel PowerShell runner yet; the existing runner supports built-in models plus optional Doubao, while exact subsets still need a runner update.
+- UI-selected arbitrary model subsets are now supported by the monitored parallel runner through `-Models`, but the selected model ids still must exist in the simulator config.
+- Run Monitor currently reads local files only. Stop/resume controls must handle wrapper PowerShell and child Python processes together before they are exposed.
+- Pipeline stage visibility now depends on scripts using `pipeline_state.py` directly or being launched through `run_pipeline_step.py`; legacy/manual commands will remain invisible to stage-level monitor views.
+- The UI can now launch the generated API benchmark command after confirmation. This is intentional and user-triggered, but it can consume OpenRouter/API credits.
+- The UI can now launch generated `run_pipeline_step.py` commands after confirmation. These can mutate local raw/processed data or write to AWS if the selected stage does so.
+- Launch manifests record the parent PowerShell process id. They do not yet track child Python process ids, so stop/resume remains intentionally unavailable.
+- Worker exit-code files can briefly exist empty at process shutdown on Windows. The parallel runner now waits for non-empty exit-code content before deciding whether a worker failed.
+- Report history is file-mtime based and local-only. If old run artifacts are copied or edited manually, their order can change without implying a new benchmark was actually executed.
+- Report preview is intentionally restricted to known completed report directories under `runs/`; adding broader file browsing would risk exposing local secrets or raw corpus files in the browser.
+- Owned-page weak lists are retrieval-outcome signals, not absolute SEO/page-quality scores. A page can be marked weak because the sampled questions did not match its intent, especially in `test` mode.
+- Report diagnostics now group query losses, competitor displacement URLs, and owned-page prescriptions, but their "why it won" signals are keyword-derived from retrieved titles/previews. Treat them as strong debugging clues, not causal proof.
+- Page optimization priorities are based on retrieval outcomes and URL intent heuristics. A `P0` page still needs human editorial judgment before site changes are made.

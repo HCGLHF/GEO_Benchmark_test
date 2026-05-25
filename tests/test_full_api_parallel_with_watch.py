@@ -102,6 +102,32 @@ def test_parallel_with_watch_quick_mode_uses_about_100_seeded_calls_per_model(tm
     assert "--queries-per-model\" \"50" in result.stdout
 
 
+def test_parallel_with_watch_test_mode_uses_low_call_chain_check(tmp_path: Path):
+    script = Path("scripts/run_full_api_parallel_with_watch.ps1")
+    result = subprocess.run(
+        [
+            "powershell",
+            "-ExecutionPolicy",
+            "Bypass",
+            "-File",
+            str(script),
+            "-RunMode",
+            "test",
+            "-RunRoot",
+            str(tmp_path / "full_api_parallel"),
+            "-DryRun",
+        ],
+        check=False,
+        text=True,
+        capture_output=True,
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert "Run mode: test" in result.stdout
+    assert "Queries per model: 2" in result.stdout
+    assert "--queries-per-model\" \"2" in result.stdout
+
+
 def test_parallel_with_watch_standard_mode_keeps_400_seeded_calls_per_model(tmp_path: Path):
     script = Path("scripts/run_full_api_parallel_with_watch.ps1")
     result = subprocess.run(
@@ -236,3 +262,79 @@ def test_parallel_with_watch_limits_seeded_queries_to_queries_per_model(tmp_path
 
     assert result.returncode == 0, result.stderr
     assert "Seeded queries: 2" in result.stdout
+
+
+def test_parallel_with_watch_runs_only_selected_model_subset(tmp_path: Path):
+    script = Path("scripts/run_full_api_parallel_with_watch.ps1")
+
+    result = subprocess.run(
+        [
+            "powershell",
+            "-ExecutionPolicy",
+            "Bypass",
+            "-File",
+            str(script),
+            "-QueriesPerModel",
+            "2",
+            "-RunRoot",
+            str(tmp_path / "full_api_parallel"),
+            "-Models",
+            "openai/gpt-4.1-mini,deepseek/deepseek-chat",
+            "-DryRun",
+        ],
+        check=False,
+        text=True,
+        capture_output=True,
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert "Selected models: openai/gpt-4.1-mini, deepseek/deepseek-chat" in result.stdout
+    assert "Pipeline manifest:" in result.stdout
+    assert "Pipeline state:" in result.stdout
+    assert "Model: openai/gpt-4.1-mini" in result.stdout
+    assert "Model: deepseek/deepseek-chat" in result.stdout
+    assert "Model: google/gemini-2.5-flash" not in result.stdout
+    assert "Model: perplexity/sonar-pro" not in result.stdout
+
+
+def test_parallel_with_watch_accepts_fixed_run_stamp(tmp_path: Path):
+    script = Path("scripts/run_full_api_parallel_with_watch.ps1")
+    result = subprocess.run(
+        [
+            "powershell",
+            "-ExecutionPolicy",
+            "Bypass",
+            "-File",
+            str(script),
+            "-QueriesPerModel",
+            "2",
+            "-RunRoot",
+            str(tmp_path / "full_api_parallel"),
+            "-RunStamp",
+            "fixed_stamp",
+            "-Models",
+            "openai/gpt-4.1-mini",
+            "-DryRun",
+        ],
+        check=False,
+        text=True,
+        capture_output=True,
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert f"Run root: {tmp_path / 'full_api_parallel' / 'fixed_stamp'}" in result.stdout
+
+
+def test_parallel_with_watch_waits_for_non_empty_worker_exit_code() -> None:
+    script_text = Path("scripts/run_full_api_parallel_with_watch.ps1").read_text(encoding="utf-8")
+
+    assert "function Read-WorkerExitCode" in script_text
+    assert "Get-Content $ExitCodePath -TotalCount 1" in script_text
+    assert "[string]::IsNullOrWhiteSpace($rawExitCode)" in script_text
+    assert "Read-WorkerExitCode -ExitCodePath $exitCodePath -Process $worker.Process" in script_text
+
+
+def test_parallel_with_watch_completes_seeded_scenario_stage_before_monitoring() -> None:
+    script_text = Path("scripts/run_full_api_parallel_with_watch.ps1").read_text(encoding="utf-8")
+
+    assert '-Stage "scenario_generation" -Status "completed"' in script_text

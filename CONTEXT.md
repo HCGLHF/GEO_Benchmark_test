@@ -36,6 +36,7 @@ The primary user is the AlphaXXXX project owner, who wants realistic GEO benchma
 - Preserve model independence: scenario generation, rerank, and answer evaluation must be tracked per model.
 - Use `powershell -ExecutionPolicy Bypass -File .\scripts\run_full_api_parallel_with_watch.ps1 -RunMode quick` for a ten-minute-class multi-model check, roughly 50 queries and 100 seeded API calls per model.
 - Use `powershell -ExecutionPolicy Bypass -File .\scripts\run_full_api_parallel_with_watch.ps1 -RunMode standard` for the higher-confidence baseline, roughly 200 queries and 400 seeded API calls per model.
+- Use `powershell -ExecutionPolicy Bypass -File .\scripts\run_full_api_parallel_with_watch.ps1 -RunMode test` for a minimal API-chain check, roughly 2 seeded queries and 4 seeded API calls per model.
 - Use `-SeedQueriesRunDir runs\client_acquisition_simulator_full_api_20260517_200716` with either mode when the corpus changed but the scenario questions should stay fixed.
 - Update `docs/next.md` after every development task.
 - Before code changes, read `CONTEXT.md`, `docs/architecture.md`, `docs/risks.md`, `docs/next.md`, and ADRs in `docs/adr/`.

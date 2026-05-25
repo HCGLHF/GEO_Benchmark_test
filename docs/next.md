@@ -2,6 +2,73 @@
 
 ## Done
 
+- Added `docs/latest-update-report-diagnostics.md` to explain the new diagnostic report outputs, pricing-page brief, rerun workflow, and current `/audit` / `/about` corpus status before publishing to Git.
+- Added `content/alphaxxxx/geo-pricing-page.md` as a site handoff brief for the new `/geo-pricing` service pricing page, including English page copy, packages, FAQ, internal links, `llms.txt` update text, and next-run success criteria.
+- Upgraded merged benchmark reports from metric-only summaries to actionable GEO diagnostic reports.
+- Added `scripts/report_diagnostics.py` to produce query-level loss rows, competitor displacement rows, and page-level optimization plans from existing run artifacts.
+- Updated `scripts/merge_full_api_runs.py` so every merged report now writes `query_loss_analysis.csv`, `competitor_displacements.csv`, and `page_optimization_plan.csv`, then appends Executive Diagnosis, Query-Level Loss Analysis, Competitor Pages Displacing AlphaXXXX, Priority Optimization Plan, and Validation Plan sections.
+- Re-generated the interrupted standard report at `runs/full_api_parallel_ui/20260523_040450/merged/competitive_gap_report.md` with the new diagnostic sections.
+- Truncated long owned-page titles in Markdown report tables so `llms.txt` no longer makes the Top5 page section unreadable.
+- Stopped the slow standard UI API run `runs/full_api_parallel_ui/20260523_040450` on user request after confirming no PowerShell or Python worker processes remained.
+- Merged the interrupted run using only fully completed model workers, `openai/gpt-4.1-mini` and `google/gemini-2.5-flash`, into `runs/full_api_parallel_ui/20260523_040450/merged`.
+- Produced an interrupted-run report with 400 completed answers, 6.5% AlphaXXXX Retrieval Top5 share, 6.8% Retrieval Top10 share, 4.0% model mention rate, and page drilldown CSVs.
+- Hot-fixed Run Monitor refresh recovery: `/api/state` now returns the latest UI launch `monitor_run_root`, and the browser restores that root after page refresh instead of falling back to the old hardcoded sample run.
+- Added localStorage persistence for manually selected or launched monitor roots, while prioritizing the latest UI launch so active API progress remains visible after refresh.
+- Verified the hotfix against the active standard run `runs/full_api_parallel_ui/20260523_040450`; the page refresh now restores `answer` stage progress automatically.
+- Fixed the local UI owned-page drilldown layout so long URL and suggestion columns no longer squeeze into vertical text or push adjacent panels out of alignment.
+- Added table layout constraints for owned-page drilldown tables: internal horizontal scrolling, fixed table layout, stable metric columns, and wrapped URL/hint cells.
+- Verified the UI layout fix with dashboard tests, the full suite, and an in-app browser layout check.
+- Added owned-page report drilldown: merged reports now write `owned_top5_pages.csv`, `owned_weak_pages.csv`, and append AlphaXXXX Top5/weak-page Markdown sections to `competitive_gap_report.md`.
+- Added `/api/page-drilldown` and an `Owned Page Drilldown` UI panel that shows AlphaXXXX URLs entering Top5 retrieval and weak owned pages for the selected report.
+- Generated a non-API report copy for the latest UI test run at `runs/full_api_parallel_ui/20260523_033953/merged_with_page_drilldown`; this run had 0 AlphaXXXX Top5 pages, so the weak-page list is the useful output for that tiny sample.
+- Verified the page drilldown implementation with 199 passing tests and an in-app browser check.
+- Added UI report history support: completed `runs/**/merged*/competitive_gap_report.md` artifacts are now discovered, summarized, listed in the console, and previewable inside the UI.
+- Added `scripts/ui_app/report_history.py` and `/api/report-history` plus `/api/report-preview`, with preview restricted to known completed report directories under `runs/`.
+- Updated the Run Monitor refresh path so a newly completed merged report updates the Latest Report metrics and refreshes the history list without restarting the UI.
+- Added report-history tests and verified the full suite with 192 passing tests.
+- Fixed a Windows race in `scripts/run_full_api_parallel_with_watch.ps1` where the parent process could read an empty `worker_exit_code.txt`, misclassify a successful model worker as failed, skip merge, and leave Run Monitor chain health as failed.
+- Updated pipeline state reading so a stale historical failed event no longer overrides a later completed event for the same stage.
+- Repaired `runs/full_api_parallel_ui/20260523_031919` by merging the four completed test-mode model workers and appending completed pipeline events; the run now reports `health=ok`, `stage=complete`, and 8 merged answers.
+- Added `test` run mode to the monitored full API runner: it defaults to 2 seeded queries per model, keeping a normal rerank-plus-answer chain check to about 4 external API calls per model.
+- Added API call event logging in `scripts/geo_eval/orchestrator.py` so each uncached model call writes started/completed/error events and cache hits write cache-hit events to `api_call_events.jsonl`.
+- Added Run Monitor chain-health diagnostics for failed pipeline stages, failed model workers, API failures, likely stalls, and missing retrieval/answer outputs.
+- Added per-model API progress bars and a chain-health metric to the local UI Run Monitor.
+- Added `docs/api-run-observability-engineering-plan.md` documenting the diagnostic logging, progress UI, and low-cost test mode design.
+- Applied the owned-site processed refresh locally after the latest AlphaXXXX crawl: active processed corpus now has 45 AlphaXXXX documents, 8 AlphaXXXX blog documents, 68 AlphaXXXX chunks, and 15 blog chunks in BM25.
+- Added `scripts/refresh_owned_site_processed.py` so newly crawled AlphaXXXX pages replace the old owned-site processed slice and rebuild chunks, page signals, evidence cards, and BM25.
+- Updated the UI run plan so `Refresh AlphaXXXX processed corpus and index` now points at the real owned-site refresh path instead of a stale placeholder variant command.
+- Confirmed the current AlphaXXXX blog pages were discovered and fetched successfully but had not yet entered `data/processed/documents.jsonl` or `chunks.jsonl`, which is why they had no retrieval effect.
+- Added Run Monitor progress parsing for owned-site recrawl/fetch logs, including `Progress: x/y crawled` and final crawl completion lines.
+- Added a pipeline-stage progress bar in the UI and enabled monitor auto-refresh so recrawl progress updates without repeated manual refreshes.
+- Updated the stage launch flow to refresh the monitor immediately after a guarded pipeline step starts.
+- Combined the UI owned-site refresh path into one guarded `Recrawl and fetch AlphaXXXX pages` pipeline step.
+- Added `scripts/refresh_owned_site_crawl.py`, which discovers current owned-site URLs and immediately fetches them with the current `crawl_pages_parallel.py` CLI contract.
+- Updated Run Monitor to show pipeline-step log tails, so recrawl/fetch progress appears even when no model workers exist.
+- Fixed the UI run planner bug where the generated discover/fetch commands used stale CLI flags.
+- Fixed the local UI Cloud Store panel so it loads non-secret cloud status from project `.env`, supports the current `S3_BUCKET` and `DATABASE_URL` variable names, and displays only bucket, host, region, and configured/missing flags.
+- Fixed Run Monitor worker-log decoding for UTF-16 PowerShell logs, removing the spaced-letter mojibake shown for model worker output.
+- Tightened UI grid and `<pre>` layout constraints so long dry-run commands and logs stay inside their panels instead of pushing into neighboring sections.
+- Replaced stray `路` UI separators with ASCII separators in the served HTML.
+- Added guarded UI execution for generated pipeline stages that are wrapped by `scripts/run_pipeline_step.py`.
+- Added `launch_guarded_stage` to `scripts/ui_app/execution.py`; it rejects API commands, placeholders, unknown labels, and any plan item not using the guarded pipeline wrapper.
+- Added `/api/launch-stage` and a pipeline-step selector plus `Launch Step` button in the local UI.
+- Verified unconfirmed stage launches return a preview without creating launch files or starting a process.
+- Added guarded UI execution for the generated parallel API benchmark command.
+- Added `scripts/ui_app/execution.py`, which regenerates the API command server-side, requires confirmation, launches PowerShell, and writes `runs/ui_launches/<timestamp>/launch_manifest.json`.
+- Added `-RunStamp` to `scripts/run_full_api_parallel_with_watch.ps1` so UI launches can predict and return the exact `monitor_run_root`.
+- Added `/api/launch-run` and a `Launch API Run` UI button with browser confirmation and automatic monitor-root handoff.
+- Verified that unconfirmed launches return a preview without creating launch files or starting a process.
+- Added `scripts/pipeline_state.py` as the shared `run_manifest.json` and `pipeline_state.jsonl` contract.
+- Added `scripts/run_pipeline_step.py`, a wrapper that records running/completed/failed status for local pipeline commands.
+- Updated `scripts/run_full_api_parallel_with_watch.ps1` to initialize run manifests and append pipeline events for worker launch, worker completion/failure, merge, and report stages.
+- Updated the UI run planner so crawl, clean, chunk, index, and AWS sync commands are wrapped by `run_pipeline_step.py`.
+- Updated Run Monitor to read and show pipeline state alongside per-model API progress and merged report metrics.
+- Documented the pipeline state contract in the Run Monitor engineering plan, UI console guide, architecture notes, and risks.
+- Added exact model subset support to `scripts/run_full_api_parallel_with_watch.ps1` via `-Models`.
+- Updated the UI run planner so selected model checkboxes map to the runner's `-Models` argument.
+- Added `scripts/ui_app/run_monitor.py`, a read-only parallel-run monitor that aggregates per-model progress, API calls, failures, log tails, and merged report metrics.
+- Added the `/api/run-monitor` endpoint and a Run Monitor panel in the local UI.
+- Added `docs/run-monitor-engineering-plan.md` to document the staged monitor, guarded execution, stop/resume, and report drilldown plan.
 - Added `scripts/cloud/create_industry.py`, a dry-run-first CLI for creating or updating industry registry metadata before a new corpus import.
 - Added `upsert_industry` to `scripts/cloud/postgres.py` so cloud tooling can update `industries.display_name`, `region`, and `notes` without touching corpus rows.
 - Documented the new-industry workflow in README, the cloud database guide, architecture notes, risks, the documentation map, and the industry-isolation plan/spec.
@@ -92,6 +159,49 @@
 
 ## Learned
 
+- A dedicated `/geo-pricing` page directly targets repeated competitor displacement signals from the latest report: `pricing`, `cost`, `free audit`, `Australia`, and package-level commercial intent.
+- The report already had enough raw artifacts to explain losses without another API run: `retrieval_by_model.csv` identifies losing queries, while `retrieval_evidence_by_model.jsonl` identifies the competitor URLs and repeated signals that displaced AlphaXXXX.
+- The latest interrupted report's most repeated displacement pages are HornTech Sydney/cost/free-audit pages, OtterlyAI AI Overview/ChatGPT/Perplexity pages, and Semrush AI visibility checker/toolkit pages.
+- `llms.txt` can dominate the owned Top5 page table with a very long extracted title, so report rendering needs table-specific truncation even when the raw CSV keeps full values.
+- The interrupted standard run had two complete model workers and two partial workers: Perplexity reached 63/200 answers, while DeepSeek reached 172/200 retrieval rows and no answers.
+- Partial model workers should be excluded from benchmark metrics unless the report is explicitly designed and labeled as a partial-model analysis.
+- Writing merged output under a nonstandard `merged_*` directory can confuse the current Run Monitor model-directory scan, so interrupted reports should use the standard `merged` directory until monitor filtering is hardened.
+- Refresh lost the active API progress because the initial HTML still had an old hardcoded monitor root, and `loadState()` did not replace it with the latest launched run.
+- The latest launch manifest is a safe read-only source for restoring UI monitor context because UI launches already write `monitor_run_root`.
+- The weak-page UI failure came from default auto table layout inside a constrained grid column; the long suggestion column forced metric columns to collapse instead of wrapping inside a stable table.
+- For dense report drilldowns, the UI needs per-table overflow containment rather than relying only on section-level `overflow: hidden`.
+- The latest UI test run `runs/full_api_parallel_ui/20260523_033953` was already complete, not half-running: 4 models, 8 total queries, 16 terminal API calls, zero failures, and a merged report.
+- In a small `test` run, AlphaXXXX can have zero Top5 retrieved pages even when all plumbing works; weak-page output is meaningful for chain diagnostics, but strategic conclusions need `quick` or `standard`.
+- Page drilldown can be backward-compatible: new reports read CSVs, while old reports can compute from `retrieval_evidence_by_model.jsonl` and the processed owned-site corpus.
+- The existing merged report artifacts are sufficient as the first report ledger; a database is unnecessary until users need cross-machine or multi-user report history.
+- The safest report preview contract is allowlisting completed merged report directories discovered under `runs/`, not accepting arbitrary file paths from the browser.
+- The `chain health failed` shown for `runs/full_api_parallel_ui/20260523_031919` was not caused by OpenRouter or model failure. All four workers exited with code 0; the parent script saw DeepSeek's exit-code file while it was still empty and treated that blank value as failure.
+- Pipeline state must be interpreted by the latest status per stage, not by the last historical non-completed event, because a stage can recover after a failed or stale event.
+- A seeded API benchmark query normally costs two external model calls: one rerank call and one answer call, so a five-call-class chain test should use 2 seeded queries per model rather than 5 queries.
+- In-flight API observability should use a separate event log from terminal attempt counts; otherwise progress bars would double-count calls that have started but not finished.
+- Chain health is most useful as a monitor-only interpretation layer. The authoritative facts remain the pipeline state, worker exit files, API attempts, API events, and logs.
+- The user's latest API rerun still used the old processed/index state because only `owned_site_crawl` appeared in the latest `runs/ui_pipeline/20260523_021707`; no processed refresh stage ran before the API worker started.
+- A successful owned-site crawl is not enough to affect GEO evaluation; pages must pass through clean, merge/replace, chunk, signal tagging, evidence-card generation, and index rebuild before retrieval sees them.
+- The latest AlphaXXXX crawl found 45 owned-site URLs including 8 `/blog` URLs, but the active processed corpus still had 37 AlphaXXXX documents and 0 blog documents before this fix.
+- `run_pipeline_step.py` already captures stdout into `logs/{stage}.log`, so recrawl progress can be surfaced by parsing that log rather than adding crawler/UI coupling.
+- The local crawler's stable progress contract is currently textual: `Progress: completed/total crawled` and `Crawled successful pages from URLs`.
+- The old UI plan split discovery and fetch into two commands but assigned both to `crawl`, which made stage status ambiguous and hid useful progress from the monitor.
+- The old UI plan also used stale CLI flags for both discovery and fetch; tests now cover the generated command shape.
+- Pipeline-only runs need log tails from `run_pipeline_step.py` logs because model-worker logs do not exist for crawl, clean, chunk, index, or AWS sync stages.
+- The UI server must load `.env` explicitly because it is often started as a fresh process, while cloud scripts already load `.env` through their own entrypoints.
+- The current PowerShell worker logs can be UTF-16 with a BOM, so monitor code needs encoding detection instead of assuming UTF-8.
+- CSS grid children need `min-width: 0` and bounded `<pre>` blocks; otherwise long command lines can force the right column over adjacent panels.
+- Stage launch can safely reuse the run planner as the source of truth: the browser sends a label, while the server chooses the actual command from the generated plan.
+- Keeping API launch and stage launch separate makes cost-bearing model runs visibly distinct from local pipeline commands.
+- Guarded execution should regenerate commands from structured form fields on the server; accepting raw command strings from the browser would break the UI boundary.
+- Fixed run stamps make UI launch and Run Monitor line up cleanly because the monitor root is known before the background runner starts.
+- Launch manifests currently track the parent PowerShell process and launch log, which is enough for visibility but not enough for safe stop/resume.
+- `pipeline_state.jsonl` should be treated as an append-only fact log; the latest event per stage is enough for the UI, while the full event list preserves execution history.
+- Pre-API stages need a wrapper because many existing crawl/clean/chunk/index scripts should stay focused on their own work instead of learning UI monitoring concerns.
+- The monitored parallel runner can write top-level lifecycle events, but detailed scenario/rerank/answer progress still comes from the existing per-model simulator output files.
+- Exact model selection belongs in the PowerShell orchestration layer, not only in the UI, because worker creation, cache paths, seeding, monitoring, and merge inputs all depend on the chosen model list.
+- The safest Run Monitor first slice is file-based and read-only: per-model summaries come from existing run outputs and `worker.log`, while report metrics come from `merged/`.
+- Stop/resume should be implemented as a separate guarded execution feature because stopping only the wrapper PowerShell process can leave child Python API calls running.
 - Industry registry creation is useful as a deliberate gate before importing a new vertical: it makes the industry slug visible without uploading documents, chunks, or Qdrant snapshots.
 - The `create_industry` command can dry-run without cloud dependencies; only `--execute` loads `.env` and writes to RDS.
 - The local UI can be useful without adding FastAPI or frontend dependencies; the current standard-library server is enough for dashboard and dry-run planning.
@@ -138,6 +248,34 @@
 
 ## Risks
 
+- The new diagnostic reasons are extracted from titles and text previews, not from a separate LLM critique step. They are fast and traceable, but can miss deeper reasons such as authority, page freshness, schema, or answer style.
+- Query loss tables currently show a bounded sample of losses. For strategy work, use the CSV files alongside the Markdown report rather than relying only on the first visible rows.
+- Manually stopped workers can still look `active` in Run Monitor until stop/resume owns process lifecycle and writes an explicit terminal state for each interrupted model.
+- Interrupted standard reports are useful directionally but should be labeled in interpretation because excluded models change the model mix and can move aggregate metrics.
+- If a user wants to inspect an older historical run, the latest launched run may become the default after a hard refresh; manually selecting a history item still updates the monitor root.
+- New drilldown tables can still become visually dense on very narrow viewports; keep future page-level dimensions behind table-specific scroll containers.
+- Weak-page rankings are sensitive to query sample size and scenario mix; do not overinterpret `test` mode weak-page ordering as a final content roadmap.
+- The current optimization hints are intentionally generic; a stronger next step should explain each weak page by missing persona/stage intent and competitor pages that displaced it.
+- Report history currently sorts by local report file modification time, so copying old runs into `runs/` can reorder history without representing a fresh benchmark.
+- The in-UI report preview shows the Markdown report text, but deeper weak-page and URL-level recommendations still need dedicated drilldown aggregation.
+- Historical runs can contain stale failed pipeline events even when worker outputs are complete; Run Monitor now avoids this for recovered stages, but old runs may still need manual merge repair if the parent skipped merge.
+- `test` mode proves wiring only. Its sample size is too small for comparing AlphaXXXX against competitors or judging content changes.
+- If users regenerate scenarios in `test` mode, the run can exceed the intended five-call-class budget because scenario generation adds extra API calls.
+- API event logs are diagnostic events, not terminal metrics; reports and progress percentages should continue to rely on terminal attempts and output rows.
+- Running only `Recrawl and fetch AlphaXXXX pages` updates raw crawl files but does not change evaluation results; users must also run `Refresh AlphaXXXX processed corpus and index` before API benchmarks.
+- Recrawl progress bars depend on crawler log message formats. If `crawl_pages_parallel.py` changes its progress text, the parser should be updated with a regression test.
+- Owned-site recrawl is now easier to launch from the UI; keep paid fallback disabled by default in this path unless the user explicitly chooses a paid fallback workflow.
+- Recrawl progress depends on `run_pipeline_step.py` wrapping the command. Manually running `refresh_owned_site_crawl.py` outside the wrapper will still create raw outputs, but it will not update the UI pipeline state.
+- UI Cloud Store values intentionally show configuration presence and non-secret identifiers only; full credentials must remain local and must not be rendered into the browser or committed.
+- Existing historical worker logs may use different encodings depending on how PowerShell launched them; the monitor now handles UTF-8 and UTF-16, but truly corrupted logs will still need manual inspection.
+- Guarded stage launches can still mutate files or cloud state depending on the selected stage, so AWS sync and corpus rebuild actions need clear UI labeling before heavy use.
+- The UI launch button can consume external model API credits after confirmation; it should stay visually separate from dry-run planning.
+- The launch layer does not yet capture child Python process ids, so stopping only by manifest pid would be unsafe.
+- Manual commands that bypass `run_pipeline_step.py` will not appear in Run Monitor stage tables unless the script writes pipeline events itself.
+- The current pipeline state protocol records process exit status, not semantic data quality; crawler quality gates and cloud verification still need their own reports.
+- Selected model ids are passed through to the single-model runner; if a selected id is not present in `config/client_acquisition_simulator.yaml`, that worker will fail fast.
+- The current Run Monitor does not yet own process lifecycle; it can show stale or stalled states but cannot safely stop child API calls.
+- Report drilldown is still basic; weak-page and content recommendation views need dedicated aggregation instead of overloading the monitor.
 - Creating an industry registry row does not grant team access by itself; IAM, PostgreSQL users, and RDS allowlists still need separate role-specific setup.
 - The UI currently generates dry-run commands only; adding execution buttons will require explicit approvals, log streaming, and stop/resume handling.
 - The owned-site refresh commands in the UI are a planning surface and should be reconciled with the latest AlphaXXXX refresh pipeline before they become one-click execution.
@@ -165,9 +303,9 @@
 
 ## Next
 
-1. Add exact model subset support to `scripts/run_full_api_parallel_with_watch.ps1` so the UI can run only selected models.
-2. Add guarded UI execution for approved commands, starting with read-only progress monitoring and local-only benchmark launches.
-3. Reconcile the AlphaXXXX refresh commands in the UI planner with the latest successful refresh flow before making them executable.
+1. After the site team publishes `/geo-pricing`, recrawl AlphaXXXX, refresh the processed owned-site corpus, and rerun the same seeded benchmark to measure pricing/cost lift.
+2. Surface the new diagnostic CSVs in the UI report panel so query losses, displacement URLs, and page optimization priorities are visible without opening Markdown manually.
+3. Add safe stop/resume controls that track both PowerShell worker wrappers and child Python processes, then write explicit interrupted/completed lifecycle events per model.
 4. Create role-specific PostgreSQL users and IAM policies for admin, writer, and reader team access, with industry-level access expectations.
 5. Add a restore/download helper for S3 artifacts so remote team members can fetch `qdrant.zip` or processed JSONL by industry and corpus version.
 6. Add an industry listing/inspection helper so teammates can see registered industries and available corpus versions before running imports or benchmarks.

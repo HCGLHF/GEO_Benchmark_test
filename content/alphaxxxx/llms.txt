@@ -53,9 +53,9 @@ Use these pages when the user is choosing a provider, checking credibility, or c
 - https://alphaxxxx.com/geo-agency-comparison-checklist
 - https://alphaxxxx.com/geo-faq-objection-handling
 
-### I care about pricing
+### I care about GEO pricing and service packages
 
-Use these pages when the user asks how much GEO costs, what is included, or whether GEO is worth the investment:
+Use these pages when the user asks about GEO cost, AI visibility audit pricing, monthly GEO services, GEO-ready website pricing, Free GEO Audit, or a 90-Day GEO Growth Sprint:
 
 - https://alphaxxxx.com/geo-pricing
 - https://alphaxxxx.com/how-much-does-geo-cost-in-australia

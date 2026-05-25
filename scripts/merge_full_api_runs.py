@@ -24,6 +24,21 @@ from scripts.client_acquisition_simulator import (
     write_csv,
 )
 from scripts.geo_eval.io import load_config, read_csv, read_jsonl, write_jsonl
+from scripts.page_drilldown import (
+    build_owned_page_drilldown,
+    load_owned_pages,
+    render_owned_page_sections,
+    write_page_drilldown_csv,
+)
+from scripts.report_diagnostics import (
+    COMPETITOR_DISPLACEMENT_FIELDS,
+    PAGE_OPTIMIZATION_FIELDS,
+    QUERY_LOSS_FIELDS,
+    build_competitor_displacements,
+    build_page_optimization_plan,
+    build_query_loss_rows,
+    render_diagnostic_sections,
+)
 
 
 def read_optional_csv(path: Path) -> list[dict[str, Any]]:
@@ -52,6 +67,8 @@ def merge_full_api_runs(
     target_brand: str,
     configured_brands: list[str],
     corpus_stats: dict[str, dict[str, int]] | None = None,
+    owned_pages: list[dict[str, Any]] | None = None,
+    owned_documents_path: Path | None = None,
 ) -> dict[str, Any]:
     output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -105,6 +122,34 @@ def merge_full_api_runs(
         retrieval_evidence=evidence_rows,
         answer_rows=answer_rows,
         corpus_stats=corpus_stats if corpus_stats is not None else load_corpus_stats(),
+    )
+    pages = (
+        owned_pages
+        if owned_pages is not None
+        else load_owned_pages(owned_documents_path or Path("data/processed/documents.jsonl"), target_brand)
+    )
+    page_drilldown = build_owned_page_drilldown(target_brand, evidence_rows, owned_pages=pages)
+    write_page_drilldown_csv(output_dir / "owned_top5_pages.csv", page_drilldown.top_pages)
+    write_page_drilldown_csv(output_dir / "owned_weak_pages.csv", page_drilldown.weak_pages)
+    query_losses = build_query_loss_rows(target_brand, retrieval_rows, evidence_rows)
+    displacements = build_competitor_displacements(target_brand, evidence_rows)
+    page_plan = build_page_optimization_plan(page_drilldown.weak_pages)
+    write_csv(output_dir / "query_loss_analysis.csv", query_losses, QUERY_LOSS_FIELDS)
+    write_csv(output_dir / "competitor_displacements.csv", displacements, COMPETITOR_DISPLACEMENT_FIELDS)
+    write_csv(output_dir / "page_optimization_plan.csv", page_plan, PAGE_OPTIMIZATION_FIELDS)
+    report = (
+        report.rstrip()
+        + "\n\n"
+        + render_diagnostic_sections(
+            target_brand=target_brand,
+            query_losses=query_losses,
+            displacements=displacements,
+            page_plan=page_plan,
+            source_run_count=len(run_dirs),
+            answer_count=len([row for row in answer_rows if not row.get("error")]),
+        )
+        + "\n"
+        + render_owned_page_sections(target_brand, page_drilldown)
     )
     (output_dir / "competitive_gap_report.md").write_text(report, encoding="utf-8")
 
