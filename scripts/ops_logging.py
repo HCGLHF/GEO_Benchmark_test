@@ -135,7 +135,7 @@ def _actions_for_text(text: str) -> list[str]:
     actions: list[str] = []
     if "429" in value or "rate limit" in value or "rate-limit" in value or "too many requests" in value:
         actions.append("Retry with backoff, lower concurrency, or wait for provider rate limits to reset.")
-    if "402" in value or "payment required" in value:
+    if "402" in value or "payment required" in value or "payment-required" in value:
         actions.append("Payment required: check provider credits, billing status, and API key access.")
     return actions
 
@@ -188,7 +188,8 @@ def generate_summary(run_root: Path | str) -> dict[str, Any]:
     for model_dir in _model_dirs(root):
         safe_name = model_dir.name
         worker_logs.append(_relative_to_run(root, model_dir / "worker.log"))
-        api_summary.append(_relative_to_run(root, model_dir / "api_orchestrator_attempts.jsonl"))
+        if (model_dir / "api_call_summary.csv").exists():
+            api_summary.append(_relative_to_run(root, model_dir / "api_call_summary.csv"))
         exit_code = _read_exit_code(model_dir)
         try:
             model_summary = summarize_run_dir(model_dir, exit_code or None)
@@ -206,7 +207,7 @@ def generate_summary(run_root: Path | str) -> dict[str, Any]:
         if exit_code and exit_code != "0" and not complete_outputs:
             status = _max_status(status, "error")
             _append_once(issues, f"{safe_name} exited with code {exit_code}.")
-        elif bool(model_summary.get("fatal")):
+        elif bool(model_summary.get("fatal")) and summary_status != "likely_stalled":
             status = _max_status(status, "error")
         elif bool(model_summary.get("warning")) or summary_status == "complete_with_failures":
             status = _max_status(status, "warning")

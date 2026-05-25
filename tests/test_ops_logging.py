@@ -158,6 +158,69 @@ def test_generate_summary_reports_warning_for_rate_limit_with_complete_outputs(t
     assert any("backoff" in action.lower() for action in summary["recommended_actions"])
 
 
+def test_generate_summary_reports_stalled_for_likely_stalled_incomplete_in_progress_run(tmp_path: Path) -> None:
+    run_root = tmp_path / "run"
+    model_dir = run_root / "qwen_qwen3.7-max"
+    model_dir.mkdir(parents=True)
+    (model_dir / "run_config.resolved.json").write_text(
+        json.dumps(
+            {
+                "models": [{"provider": "openrouter", "model": "qwen/qwen3.7-max"}],
+                "client_acquisition": {"queries_per_model": 1},
+            }
+        ),
+        encoding="utf-8",
+    )
+    (model_dir / "api_queries.csv").write_text("query_id,query\nq001,Need GEO\n", encoding="utf-8")
+    write_jsonl(
+        model_dir / "api_orchestrator_attempts.jsonl",
+        [
+            {
+                "task_type": "rerank",
+                "model": "qwen/qwen3.7-max",
+                "status": "api_call",
+                "query_id": "q001",
+                "created_at": "2000-01-01T00:00:00Z",
+            }
+        ],
+    )
+
+    summary = generate_summary(run_root)
+
+    assert summary["status"] == "stalled"
+    assert any("likely_stalled" in issue for issue in summary["issues"])
+
+
+def test_generate_summary_recommends_payment_action_for_hyphenated_payment_required_text(tmp_path: Path) -> None:
+    run_root = tmp_path / "run"
+    write_event(
+        run_root,
+        level="warning",
+        event_type="api_failure",
+        message="Provider returned payment-required.",
+    )
+
+    summary = generate_summary(run_root)
+
+    assert any("Payment required" in action for action in summary["recommended_actions"])
+
+
+def test_generate_summary_uses_api_call_summary_for_api_summary_key_file(tmp_path: Path) -> None:
+    run_root = tmp_path / "run"
+    model_dir = run_root / "qwen_qwen3.7-max"
+    model_dir.mkdir(parents=True)
+    (model_dir / "api_call_summary.csv").write_text("model,total_calls\nqwen/qwen3.7-max,1\n", encoding="utf-8")
+    write_jsonl(
+        model_dir / "api_orchestrator_attempts.jsonl",
+        [{"task_type": "answer", "model": "qwen/qwen3.7-max", "status": "api_call"}],
+    )
+
+    summary = generate_summary(run_root)
+
+    assert summary["key_files"]["api_summary"] == ["qwen_qwen3.7-max/api_call_summary.csv"]
+    assert "qwen_qwen3.7-max/api_orchestrator_attempts.jsonl" not in summary["key_files"]["api_summary"]
+
+
 def test_write_summary_persists_summary_and_records_summary_event(tmp_path: Path) -> None:
     run_root = tmp_path / "run"
 
