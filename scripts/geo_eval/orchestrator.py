@@ -22,7 +22,7 @@ def canonical_hash(value: Any) -> str:
 def _ops_error_message(error: str, max_length: int = 500) -> str:
     text = str(error)
     redactions = [
-        (r"(Authorization\s*:\s*Bearer\s+)[^\s,;]+", r"\1[redacted]"),
+        (r'("?Authorization"?\s*:\s*"?Bearer\s+)[^"\s,;}]+("?)', r"\1[redacted]\2"),
         (r'("?api[_-]?key"?\s*=\s*)[^\s&;,]+', r"\1[redacted]"),
         (r'("?api[_-]?key"?\s*:\s*)("[^"]*"|[^\s,;}]+)', r"\1[redacted]"),
         (r'("?messages"?\s*:\s*)\[.*?\](?=\s*[,}]|\s+\d{3}\b|\s+OpenRouter\b|$)', r"\1[redacted]"),

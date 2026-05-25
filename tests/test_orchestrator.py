@@ -294,6 +294,48 @@ def test_orchestrated_model_call_redacts_json_shaped_ops_error_but_preserves_att
     assert attempts[0]["error"] == raw_error
 
 
+def test_orchestrated_model_call_redacts_json_authorization_ops_error_but_preserves_attempt_error(tmp_path: Path):
+    raw_error = '{"Authorization":"Bearer sk-secret-value"} OpenRouter 429'
+
+    def failing_call(model_config, prompt, temperature):
+        raise RuntimeError(raw_error)
+
+    orchestrator = ModelCallOrchestrator(
+        cache_path=tmp_path / "cache.sqlite",
+        run_state_path=tmp_path / "state.sqlite",
+        attempts_path=tmp_path / "attempts.jsonl",
+        config_hash="config-a",
+        matrix_hash="matrix-a",
+        corpus_hash="corpus-a",
+        uncached_call=failing_call,
+    )
+
+    with pytest.raises(RuntimeError):
+        orchestrator.call(
+            model_config={"provider": "openrouter", "model": "model-a"},
+            prompt="prompt",
+            temperature=0.2,
+            task_type="answer",
+            query_id="q001",
+            input_hash="input-a",
+            prompt_version="answer-v1",
+        )
+
+    events = [
+        json.loads(line)
+        for line in (tmp_path / "ops_events.jsonl").read_text(encoding="utf-8").splitlines()
+    ]
+    attempts = [
+        json.loads(line)
+        for line in (tmp_path / "attempts.jsonl").read_text(encoding="utf-8").splitlines()
+    ]
+
+    for ops_text in [events[0]["message"], events[0]["details"]["error"]]:
+        assert "sk-secret-value" not in ops_text
+        assert "429" in ops_text
+    assert attempts[0]["error"] == raw_error
+
+
 def test_orchestrated_model_call_preserves_model_exception_when_ops_logging_fails(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ):
