@@ -407,9 +407,18 @@ def test_parallel_with_watch_writes_ops_events_and_summary() -> None:
     script_text = Path("scripts/run_full_api_parallel_with_watch.ps1").read_text(encoding="utf-8")
 
     assert "function Write-OpsEvent" in script_text
-    assert "scripts\ops_logs.py" in script_text
+    assert r"scripts\ops_logs.py" in script_text
     assert '"record"' in script_text
     assert '"run_started"' in script_text
     assert '"worker_failed"' in script_text
     assert '"run_completed"' in script_text
     assert '"doctor"' in script_text
+
+
+def test_parallel_with_watch_worker_failed_ops_event_warns_on_cli_failure() -> None:
+    script_text = Path("scripts/run_full_api_parallel_with_watch.ps1").read_text(encoding="utf-8")
+    worker_failed_index = script_text.index('"worker_failed"')
+    worker_failed_branch = script_text[worker_failed_index : worker_failed_index + 500]
+
+    assert "`$LASTEXITCODE -ne 0" in worker_failed_branch
+    assert 'Write-Warning "Could not write ops event worker_failed for ' in worker_failed_branch

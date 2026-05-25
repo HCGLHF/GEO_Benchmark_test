@@ -382,6 +382,9 @@ if (`$exitCode -eq 0) {
 } else {
   python "scripts\pipeline_state.py" "append" "--run-root" "$root" "--stage" "answer" "--status" "failed" "--model" "$($worker.Model)" "--message" "Worker failed." "--details-json" "{`"exit_code`":`$exitCode}"
   python "scripts\ops_logs.py" "record" "--run-root" "$root" "--level" "error" "--event-type" "worker_failed" "--stage" "answer" "--model" "$($worker.Model)" "--message" "Worker failed." "--details-json" "{`"exit_code`":`$exitCode}" "--source" "scripts/run_full_api_parallel_with_watch.ps1" | Out-Null
+  if (`$LASTEXITCODE -ne 0) {
+    Write-Warning "Could not write ops event worker_failed for $root"
+  }
 }
   Set-Content -Path "$exitCodePath" -Value `$exitCode
 exit `$exitCode
