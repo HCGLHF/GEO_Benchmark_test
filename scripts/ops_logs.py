@@ -15,8 +15,17 @@ def print_json(value: object) -> None:
     print(json.dumps(value, ensure_ascii=False, indent=2))
 
 
+def parse_details_json(value: str) -> dict[str, object]:
+    try:
+        details = json.loads(value)
+    except json.JSONDecodeError as exc:
+        raise argparse.ArgumentTypeError(f"--details-json must be valid JSON: {exc.msg}") from None
+    if not isinstance(details, dict):
+        raise argparse.ArgumentTypeError("--details-json must be a JSON object")
+    return details
+
+
 def command_record(args: argparse.Namespace) -> int:
-    details = json.loads(args.details_json)
     event = write_event(
         args.run_root,
         level=args.level,
@@ -24,7 +33,7 @@ def command_record(args: argparse.Namespace) -> int:
         stage=args.stage,
         model=args.model,
         message=args.message,
-        details=details,
+        details=args.details_json,
         source=args.source,
     )
     print_json(event)
@@ -94,7 +103,7 @@ def build_parser() -> argparse.ArgumentParser:
     record.add_argument("--stage", default="")
     record.add_argument("--model", default="")
     record.add_argument("--message", default="")
-    record.add_argument("--details-json", default="{}")
+    record.add_argument("--details-json", default={}, type=parse_details_json)
     record.add_argument("--source", default="scripts/ops_logs.py")
     record.set_defaults(func=command_record)
 
