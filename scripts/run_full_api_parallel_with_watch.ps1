@@ -187,6 +187,7 @@ function Write-PipelineEvent {
     [string]$Model = "",
     [string]$DetailsJson = "{}"
   )
+  $nativeDetailsJson = ConvertTo-NativeJsonArg -Json $DetailsJson
   $eventArgs = @(
     "scripts\pipeline_state.py",
     "append",
@@ -194,7 +195,7 @@ function Write-PipelineEvent {
     "--stage", $Stage,
     "--status", $Status,
     "--message", $Message,
-    "--details-json", $DetailsJson
+    "--details-json", $nativeDetailsJson
   )
   if ($Model) {
     $eventArgs += @("--model", $Model)
@@ -392,7 +393,9 @@ $($worker.Command) *>&1 | Tee-Object -FilePath "$logPath"
 if (`$exitCode -eq 0) {
   python "scripts\pipeline_state.py" "append" "--run-root" "$root" "--stage" "answer" "--status" "completed" "--model" "$($worker.Model)" "--message" "Worker completed."
 } else {
-  python "scripts\pipeline_state.py" "append" "--run-root" "$root" "--stage" "answer" "--status" "failed" "--model" "$($worker.Model)" "--message" "Worker failed." "--details-json" "{`"exit_code`":`$exitCode}"
+  `$pipelineDetailsJson = "{``"exit_code``":`$exitCode}"
+  `$nativePipelineDetailsJson = `$pipelineDetailsJson.Replace('"', '\"')
+  python "scripts\pipeline_state.py" "append" "--run-root" "$root" "--stage" "answer" "--status" "failed" "--model" "$($worker.Model)" "--message" "Worker failed." "--details-json" `$nativePipelineDetailsJson
   `$opsDetailsJson = "{``"exit_code``":`$exitCode}"
   `$nativeOpsDetailsJson = `$opsDetailsJson.Replace('"', '\"')
   python "scripts\ops_logs.py" "record" "--run-root" "$root" "--level" "error" "--event-type" "worker_failed" "--stage" "answer" "--model" "$($worker.Model)" "--message" "Worker failed." "--details-json" `$nativeOpsDetailsJson "--source" "scripts/run_full_api_parallel_with_watch.ps1" | Out-Null

@@ -4,6 +4,7 @@ import subprocess
 from pathlib import Path
 
 from scripts.run_full_api_client_acquisition import prepare_config
+from scripts.pipeline_state import read_pipeline_status
 
 
 def write_minimal_config(path: Path) -> None:
@@ -434,6 +435,50 @@ def test_parallel_with_watch_escapes_ops_details_json_for_native_python_calls() 
     assert "$opsDetailsJson = \"{``\"exit_code``\":`$exitCode}\"" in script_text
     assert "`$nativeOpsDetailsJson = `$opsDetailsJson.Replace('\"', '\\\"')" in script_text
     assert '"--details-json" `$nativeOpsDetailsJson' in script_text
+
+
+def test_parallel_with_watch_escapes_pipeline_details_json_for_native_python_calls() -> None:
+    script_text = Path("scripts/run_full_api_parallel_with_watch.ps1").read_text(encoding="utf-8")
+
+    assert "$nativeDetailsJson = ConvertTo-NativeJsonArg -Json $DetailsJson" in script_text
+    assert '"--details-json", $nativeDetailsJson' in script_text
+    assert "$pipelineDetailsJson = \"{``\"exit_code``\":`$exitCode}\"" in script_text
+    assert "`$nativePipelineDetailsJson = `$pipelineDetailsJson.Replace('\"', '\\\"')" in script_text
+    assert '"--details-json" `$nativePipelineDetailsJson' in script_text
+    assert '"--details-json" "{`"exit_code`":`$exitCode}"' not in script_text
+
+
+def test_powershell_native_json_escaping_writes_valid_pipeline_details(tmp_path: Path) -> None:
+    run_root = tmp_path / "pipeline-run"
+    escaped_run_root = str(run_root).replace("'", "''")
+    command = f"""
+$runRoot = '{escaped_run_root}'
+function ConvertTo-NativeJsonArg {{
+  param([string]$Json)
+  return $Json.Replace('"', '\\"')
+}}
+$mergeExitCode = 7
+$mergeDetailsJson = '{{"exit_code":7}}'
+$nativeMergeDetailsJson = ConvertTo-NativeJsonArg -Json $mergeDetailsJson
+python "scripts\\pipeline_state.py" "append" "--run-root" $runRoot "--stage" "merge" "--status" "failed" "--message" "Merge failed." "--details-json" $nativeMergeDetailsJson | Out-Null
+if ($LASTEXITCODE -ne 0) {{ exit $LASTEXITCODE }}
+$exitCode = 9
+$pipelineDetailsJson = "{{`"exit_code`":$exitCode}}"
+$nativePipelineDetailsJson = $pipelineDetailsJson.Replace('"', '\\"')
+python "scripts\\pipeline_state.py" "append" "--run-root" $runRoot "--stage" "answer" "--status" "failed" "--model" "model-a" "--message" "Worker failed." "--details-json" $nativePipelineDetailsJson | Out-Null
+if ($LASTEXITCODE -ne 0) {{ exit $LASTEXITCODE }}
+"""
+    result = subprocess.run(
+        ["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", command],
+        check=False,
+        text=True,
+        capture_output=True,
+    )
+
+    assert result.returncode == 0, result.stderr
+    status = read_pipeline_status(run_root)
+    assert status["stages"]["merge"]["details"]["exit_code"] == 7
+    assert status["stages"]["answer"]["details"]["exit_code"] == 9
 
 
 def test_powershell_native_json_escaping_writes_valid_ops_details(tmp_path: Path) -> None:
