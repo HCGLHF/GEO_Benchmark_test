@@ -1,7 +1,13 @@
 import json
 from pathlib import Path
 
-from scripts.ops_logging import filter_events, read_events, write_event
+from scripts.pipeline_state import append_event, initialize_manifest
+from scripts.ops_logging import filter_events, generate_summary, read_events, write_event, write_summary
+
+
+def write_jsonl(path: Path, rows: list[dict]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text("\n".join(json.dumps(row) for row in rows) + "\n", encoding="utf-8")
 
 
 def test_write_event_appends_stable_jsonl_record(tmp_path: Path) -> None:
@@ -56,3 +62,107 @@ def test_read_events_skips_malformed_rows(tmp_path: Path) -> None:
     )
 
     assert [event["event_type"] for event in read_events(run_root)] == ["run_started", "worker_failed"]
+
+
+def test_generate_summary_reports_ok_for_completed_pipeline_run(tmp_path: Path) -> None:
+    run_root = tmp_path / "run"
+    initialize_manifest(run_root=run_root, run_type="ui_pipeline", stages=["clean", "report"])
+    append_event(run_root, stage="clean", status="completed", message="Cleaned")
+    append_event(run_root, stage="report", status="completed", message="Report ready")
+
+    summary = generate_summary(run_root)
+
+    assert summary["status"] == "ok"
+    assert summary["current_stage"] == ""
+    assert summary["issues"] == []
+    assert summary["recommended_actions"] == []
+    assert summary["key_files"]["pipeline_state"] == "pipeline_state.jsonl"
+    assert summary["key_files"]["ops_events"] == "ops_events.jsonl"
+
+
+def test_generate_summary_reports_error_for_failed_worker_with_incomplete_outputs(tmp_path: Path) -> None:
+    run_root = tmp_path / "run"
+    model_dir = run_root / "openai_gpt-4.1-mini"
+    model_dir.mkdir(parents=True)
+    (model_dir / "run_config.resolved.json").write_text(
+        json.dumps(
+            {
+                "models": [{"provider": "openrouter", "model": "openai/gpt-4.1-mini"}],
+                "client_acquisition": {"queries_per_model": 1},
+            }
+        ),
+        encoding="utf-8",
+    )
+    (model_dir / "api_queries.csv").write_text("query_id,query\nq001,Need GEO\n", encoding="utf-8")
+    (model_dir / "worker_exit_code.txt").write_text("1", encoding="utf-8")
+    write_jsonl(
+        model_dir / "api_orchestrator_attempts.jsonl",
+        [
+            {
+                "task_type": "answer",
+                "model": "openai/gpt-4.1-mini",
+                "status": "error",
+                "query_id": "q001",
+                "error": "402 Payment Required",
+            }
+        ],
+    )
+
+    summary = generate_summary(run_root)
+
+    assert summary["status"] == "error"
+    assert any("openai_gpt-4.1-mini exited with code 1" in issue for issue in summary["issues"])
+    assert any("Payment required" in action for action in summary["recommended_actions"])
+    assert "openai_gpt-4.1-mini/worker.log" in summary["key_files"]["worker_logs"]
+
+
+def test_generate_summary_reports_warning_for_rate_limit_with_complete_outputs(tmp_path: Path) -> None:
+    run_root = tmp_path / "run"
+    model_dir = run_root / "qwen_qwen3.7-max"
+    model_dir.mkdir(parents=True)
+    (model_dir / "run_config.resolved.json").write_text(
+        json.dumps(
+            {
+                "models": [{"provider": "openrouter", "model": "qwen/qwen3.7-max"}],
+                "client_acquisition": {"queries_per_model": 1},
+            }
+        ),
+        encoding="utf-8",
+    )
+    (model_dir / "api_queries.csv").write_text("query_id,query\nq001,Need GEO\n", encoding="utf-8")
+    (model_dir / "retrieval_by_model.csv").write_text("query_id,model\nq001,qwen/qwen3.7-max\n", encoding="utf-8")
+    (model_dir / "model_answer_evaluations.csv").write_text(
+        "query_id,model,error\nq001,qwen/qwen3.7-max,\n",
+        encoding="utf-8",
+    )
+    (model_dir / "worker_exit_code.txt").write_text("0", encoding="utf-8")
+    write_jsonl(
+        model_dir / "api_orchestrator_attempts.jsonl",
+        [
+            {"task_type": "rerank", "model": "qwen/qwen3.7-max", "status": "api_call"},
+            {"task_type": "answer", "model": "qwen/qwen3.7-max", "status": "api_call"},
+            {
+                "task_type": "answer",
+                "model": "qwen/qwen3.7-max",
+                "status": "error",
+                "query_id": "q001",
+                "error": "429 Too Many Requests",
+            },
+        ],
+    )
+
+    summary = generate_summary(run_root)
+
+    assert summary["status"] == "warning"
+    assert any("rate-limit" in issue for issue in summary["issues"])
+    assert any("backoff" in action.lower() for action in summary["recommended_actions"])
+
+
+def test_write_summary_persists_summary_and_records_summary_event(tmp_path: Path) -> None:
+    run_root = tmp_path / "run"
+
+    summary = write_summary(run_root)
+
+    assert (run_root / "ops_summary.json").exists()
+    assert json.loads((run_root / "ops_summary.json").read_text(encoding="utf-8")) == summary
+    assert any(event["event_type"] == "summary_generated" for event in read_events(run_root))
