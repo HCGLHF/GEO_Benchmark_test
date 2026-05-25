@@ -1,4 +1,5 @@
 import argparse
+import json
 import subprocess
 from pathlib import Path
 
@@ -422,3 +423,67 @@ def test_parallel_with_watch_worker_failed_ops_event_warns_on_cli_failure() -> N
 
     assert "`$LASTEXITCODE -ne 0" in worker_failed_branch
     assert 'Write-Warning "Could not write ops event worker_failed for ' in worker_failed_branch
+
+
+def test_parallel_with_watch_escapes_ops_details_json_for_native_python_calls() -> None:
+    script_text = Path("scripts/run_full_api_parallel_with_watch.ps1").read_text(encoding="utf-8")
+
+    assert "function ConvertTo-NativeJsonArg" in script_text
+    assert "$nativeDetailsJson = ConvertTo-NativeJsonArg -Json $DetailsJson" in script_text
+    assert '"--details-json", $nativeDetailsJson' in script_text
+    assert "$opsDetailsJson = \"{``\"exit_code``\":`$exitCode}\"" in script_text
+    assert "`$nativeOpsDetailsJson = `$opsDetailsJson.Replace('\"', '\\\"')" in script_text
+    assert '"--details-json" `$nativeOpsDetailsJson' in script_text
+
+
+def test_powershell_native_json_escaping_writes_valid_ops_details(tmp_path: Path) -> None:
+    run_root = tmp_path / "run"
+    escaped_run_root = str(run_root).replace("'", "''")
+    command = f"""
+$runRoot = '{escaped_run_root}'
+function ConvertTo-NativeJsonArg {{
+  param([string]$Json)
+  return $Json.Replace('"', '\\"')
+}}
+$runDetailsJson = '{{"run_mode":"quick","queries_per_model":50}}'
+$nativeRunDetailsJson = ConvertTo-NativeJsonArg -Json $runDetailsJson
+python "scripts\\ops_logs.py" "record" "--run-root" $runRoot "--level" "info" "--event-type" "run_started" "--message" "Started." "--details-json" $nativeRunDetailsJson "--source" "test" | Out-Null
+if ($LASTEXITCODE -ne 0) {{ exit $LASTEXITCODE }}
+$exitCode = 7
+$opsDetailsJson = "{{`"exit_code`":$exitCode}}"
+$nativeOpsDetailsJson = $opsDetailsJson.Replace('"', '\\"')
+python "scripts\\ops_logs.py" "record" "--run-root" $runRoot "--level" "error" "--event-type" "worker_failed" "--stage" "answer" "--model" "model-a" "--message" "Worker failed." "--details-json" $nativeOpsDetailsJson "--source" "test" | Out-Null
+if ($LASTEXITCODE -ne 0) {{ exit $LASTEXITCODE }}
+"""
+    result = subprocess.run(
+        ["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", command],
+        check=False,
+        text=True,
+        capture_output=True,
+    )
+
+    assert result.returncode == 0, result.stderr
+    events = [
+        json.loads(line)
+        for line in (run_root / "ops_events.jsonl").read_text(encoding="utf-8").splitlines()
+    ]
+    assert events[0]["event_type"] == "run_started"
+    assert events[0]["details"] == {"run_mode": "quick", "queries_per_model": 50}
+    assert events[1]["event_type"] == "worker_failed"
+    assert events[1]["details"] == {"exit_code": 7}
+
+
+def test_parallel_with_watch_handles_merge_command_failure_before_success_events() -> None:
+    script_text = Path("scripts/run_full_api_parallel_with_watch.ps1").read_text(encoding="utf-8")
+    merge_index = script_text.index("Invoke-Expression $mergeCommand")
+    report_completed_index = script_text.index(
+        'Write-PipelineEvent -RunRootPath $root -Stage "report" -Status "completed"',
+        merge_index,
+    )
+    merge_failure_branch = script_text[merge_index:report_completed_index]
+
+    assert "$mergeExitCode = $LASTEXITCODE" in merge_failure_branch
+    assert '-Stage "merge" -Status "failed"' in merge_failure_branch
+    assert '-EventType "stage_failed" -Stage "merge"' in merge_failure_branch
+    assert "Write-OpsSummary -RunRootPath $root" in merge_failure_branch
+    assert "exit $mergeExitCode" in merge_failure_branch

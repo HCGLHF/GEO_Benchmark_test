@@ -62,6 +62,11 @@ function Quote-Arg {
   return '"' + $Value.Replace('"', '\"') + '"'
 }
 
+function ConvertTo-NativeJsonArg {
+  param([string]$Json)
+  return $Json.Replace('"', '\"')
+}
+
 function Get-SeedQueries {
   param(
     [string]$SeedRunDir,
@@ -210,6 +215,8 @@ function Write-OpsEvent {
     [string]$Message = "",
     [string]$DetailsJson = "{}"
   )
+  $previousExitCode = $LASTEXITCODE
+  $nativeDetailsJson = ConvertTo-NativeJsonArg -Json $DetailsJson
   $opsArgs = @(
     "scripts\ops_logs.py",
     "record",
@@ -217,7 +224,7 @@ function Write-OpsEvent {
     "--level", $Level,
     "--event-type", $EventType,
     "--message", $Message,
-    "--details-json", $DetailsJson,
+    "--details-json", $nativeDetailsJson,
     "--source", "scripts/run_full_api_parallel_with_watch.ps1"
   )
   if ($Stage) {
@@ -227,17 +234,22 @@ function Write-OpsEvent {
     $opsArgs += @("--model", $Model)
   }
   & python @opsArgs | Out-Null
-  if ($LASTEXITCODE -ne 0) {
+  $opsExitCode = $LASTEXITCODE
+  if ($opsExitCode -ne 0) {
     Write-Warning "Could not write ops event $EventType for $RunRootPath"
   }
+  $global:LASTEXITCODE = $previousExitCode
 }
 
 function Write-OpsSummary {
   param([string]$RunRootPath)
+  $previousExitCode = $LASTEXITCODE
   & python "scripts\ops_logs.py" "doctor" "--run-root" $RunRootPath | Out-Null
-  if ($LASTEXITCODE -ne 0) {
+  $opsExitCode = $LASTEXITCODE
+  if ($opsExitCode -ne 0) {
     Write-Warning "Could not write ops summary for $RunRootPath"
   }
+  $global:LASTEXITCODE = $previousExitCode
 }
 
 function Test-WorkerExitCodeReady {
@@ -381,7 +393,9 @@ if (`$exitCode -eq 0) {
   python "scripts\pipeline_state.py" "append" "--run-root" "$root" "--stage" "answer" "--status" "completed" "--model" "$($worker.Model)" "--message" "Worker completed."
 } else {
   python "scripts\pipeline_state.py" "append" "--run-root" "$root" "--stage" "answer" "--status" "failed" "--model" "$($worker.Model)" "--message" "Worker failed." "--details-json" "{`"exit_code`":`$exitCode}"
-  python "scripts\ops_logs.py" "record" "--run-root" "$root" "--level" "error" "--event-type" "worker_failed" "--stage" "answer" "--model" "$($worker.Model)" "--message" "Worker failed." "--details-json" "{`"exit_code`":`$exitCode}" "--source" "scripts/run_full_api_parallel_with_watch.ps1" | Out-Null
+  `$opsDetailsJson = "{``"exit_code``":`$exitCode}"
+  `$nativeOpsDetailsJson = `$opsDetailsJson.Replace('"', '\"')
+  python "scripts\ops_logs.py" "record" "--run-root" "$root" "--level" "error" "--event-type" "worker_failed" "--stage" "answer" "--model" "$($worker.Model)" "--message" "Worker failed." "--details-json" `$nativeOpsDetailsJson "--source" "scripts/run_full_api_parallel_with_watch.ps1" | Out-Null
   if (`$LASTEXITCODE -ne 0) {
     Write-Warning "Could not write ops event worker_failed for $root"
   }
@@ -483,6 +497,14 @@ if ([int]$runStatus.warning_count -gt 0) {
   Write-PipelineEvent -RunRootPath $root -Stage "merge" -Status "running" -Message "Merging successful model workers."
 }
 Invoke-Expression $mergeCommand
+$mergeExitCode = $LASTEXITCODE
+if ($mergeExitCode -ne 0) {
+  Write-PipelineEvent -RunRootPath $root -Stage "merge" -Status "failed" -Message "Merge command failed." -DetailsJson "{`"exit_code`":$mergeExitCode}"
+  Write-OpsEvent -RunRootPath $root -Level "error" -EventType "stage_failed" -Stage "merge" -Message "Merge command failed." -DetailsJson "{`"exit_code`":$mergeExitCode}"
+  Write-OpsSummary -RunRootPath $root
+  Write-Error "Merge command failed with exit code $mergeExitCode."
+  exit $mergeExitCode
+}
 Write-PipelineEvent -RunRootPath $root -Stage "merge" -Status "completed" -Message "Merged model workers."
 Write-PipelineEvent -RunRootPath $root -Stage "report" -Status "completed" -Message "Merged report available."
 Write-OpsEvent -RunRootPath $root -Level "info" -EventType "run_completed" -Stage "report" -Message "Merged report available."
