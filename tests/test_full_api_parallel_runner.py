@@ -80,8 +80,8 @@ class StrictFakeRuntime(FakeRuntime):
         output_dir = Path(args[args.index("--output-dir") + 1])
         cache_path = Path(args[args.index("--cache-path") + 1])
         model = args[args.index("--include-model") + 1]
-        if not log_path.parent.exists():
-            raise FileNotFoundError(f"missing log parent: {log_path.parent}")
+        with Path(log_path).open("a", encoding="utf-8") as log_handle:
+            log_handle.write("strict fake worker complete\n")
         if not output_dir.exists():
             raise FileNotFoundError(f"missing output dir: {output_dir}")
         if not cache_path.parent.exists():
@@ -106,7 +106,6 @@ class StrictFakeRuntime(FakeRuntime):
             + json.dumps({"task_type": "answer", "model": model, "status": "api_call"}) + "\n",
             encoding="utf-8",
         )
-        log_path.write_text("strict fake worker complete\n", encoding="utf-8")
         return ProcessHandle(pid=9000, process_group_id=None, process=FakeProcess(self.returncode))
 
 
