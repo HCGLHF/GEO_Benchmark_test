@@ -26,9 +26,30 @@ http://127.0.0.1:8765
 - Builds dry-run commands for owned-site recrawl/fetch, owned-site processed corpus replacement, optional AWS sync, and API benchmark execution.
 - Monitors a parallel run root with current stage, per-model progress, API calls, failure counts, log tails, and merged report status.
 - Shows chain health for API runs, including failed workers, API failures, missing outputs, and likely stalls.
+- Shows targeted 402 payment-required and 429 rate-limit guidance so interrupted runs can be stopped and resumed deliberately.
 - Shows pipeline-stage status, pipeline log tails, and recrawl/fetch progress bars from `run_manifest.json`, `pipeline_state.jsonl`, and `logs/*.log` when a run root has them.
+- Shows local operations summaries from `ops_summary.json` when present, including health status, issues, recommended actions, and key files.
+- Preserves detailed troubleshooting through `ops_events.jsonl`, pipeline log tails, worker log tails, and API attempt files under the selected run root.
 - Can launch the backend-generated parallel API benchmark after an explicit browser confirmation.
+- Can stop or resume a UI-launched API benchmark from Run Monitor after explicit browser confirmation.
 - Can launch backend-generated guarded pipeline steps such as owned-site recrawl/fetch, clean, chunk, index, and AWS sync after an explicit browser confirmation.
+
+When the UI runs inside WSL, generated API commands use the Python full API runner and POSIX paths. Stop/resume uses process-group metadata from the launch manifest. For long API runs, launch the UI from the WSL clone under `~/projects/Resourcepool_Gen`, not from `/mnt/d/GEO-ALPHA/Resourcepool_Gen`.
+
+## Local Operations Logs
+
+Each monitored run root may contain:
+
+- `ops_events.jsonl`: structured operations events such as run start, stage failure, API failure, worker failure, and summary generation.
+- `ops_summary.json`: current local health summary with issues, recommended actions, and key files.
+
+Useful commands:
+
+```powershell
+python scripts\ops_logs.py summary --run-root runs\full_api_parallel_ui\<timestamp>
+python scripts\ops_logs.py events --run-root runs\full_api_parallel_ui\<timestamp> --level error
+python scripts\ops_logs.py doctor --run-root runs\full_api_parallel_ui\<timestamp>
+```
 
 ## Boundaries
 
@@ -36,7 +57,7 @@ http://127.0.0.1:8765
 - The UI can launch model API calls or AWS/RDS writes only through generated commands after explicit confirmation.
 - The UI can mutate local raw/processed corpus files only through generated pipeline steps after explicit confirmation.
 - Real runs still use the existing scripts after the user reviews the generated command plan.
-- Run Monitor is read-only; stop/resume buttons are intentionally not enabled in this first slice.
+- Run Monitor status remains file-based, while stop/resume is a guarded execution path that only works for API runs launched through this UI.
 - Pre-API stages should use `scripts/run_pipeline_step.py` if they need to appear in Run Monitor.
 - The launch button only starts the generated API benchmark command; it does not execute arbitrary user-provided shell strings.
 - The step launch button only starts commands generated from the current run plan that are wrapped by `scripts/run_pipeline_step.py`.
@@ -45,6 +66,6 @@ http://127.0.0.1:8765
 
 ## Next UI Work
 
-1. Add stop/resume controls that target both wrapper PowerShell processes and child Python processes safely.
-2. Add launch history and richer log streaming.
+1. Add launch history and richer log streaming.
+2. Add retry/backoff tuning for 429-heavy model workers before they require manual stop/resume.
 3. Add deeper persona/stage weak-page grouping and URL-level content optimization suggestions.

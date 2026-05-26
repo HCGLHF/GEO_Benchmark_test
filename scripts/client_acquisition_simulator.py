@@ -53,6 +53,7 @@ def build_orchestrator_from_config(config: dict[str, Any], caller: ChatCaller = 
         cache_path=Path(llm_cache.get("sqlite", "data/cache/llm_calls.sqlite")),
         run_state_path=Path(run_state.get("sqlite", run_dir / "run_state.sqlite")),
         attempts_path=run_dir / "api_orchestrator_attempts.jsonl",
+        ops_run_root=Path(config.get("run", {}).get("ops_run_root") or run_dir),
         config_hash=canonical_hash(config),
         matrix_hash=path_content_hash(matrix_path),
         corpus_hash=corpus_hash,
@@ -841,6 +842,11 @@ def build_competitive_gap_report(
     gaps = content_gap_signals(target_brand, retrieval_evidence)
     successful_answers = [row for row in answer_rows if not row.get("error")]
     target_corpus = corpus_stats.get(target_brand, {"document_count": 0, "chunk_count": 0, "url_count": 0})
+    leading_winner_by_model = {
+        str(row.get("value") or ""): str(row.get("leading_winner") or "")
+        for row in dimensions
+        if str(row.get("dimension") or "") == "model"
+    }
 
     lines = [
         f"# Competitive Gap Report: {target_brand}",
@@ -863,6 +869,33 @@ def build_competitive_gap_report(
         )
     else:
         lines.append("- Target brand did not appear in retrieval or answer metrics.")
+
+    lines.extend(
+        [
+            "",
+            "## Model Recall Breakdown",
+            "",
+            "| Model | Queries | Recall@1 | Recall@5 | Recall@10 | Mention Rate | Best Rank | Main Winner |",
+            "| --- | ---: | ---: | ---: | ---: | ---: | ---: | --- |",
+        ]
+    )
+    model_rows = [
+        row
+        for row in brand_rows
+        if str(row.get("brand") or "") == target_brand and str(row.get("is_target") or "") == "True"
+    ]
+    if model_rows:
+        for row in sorted(model_rows, key=lambda item: str(item.get("model") or "")):
+            query_count = int(row.get("query_count") or 0)
+            model = str(row.get("model") or "")
+            lines.append(
+                f"| {model} | {query_count} | {pct(int(row.get('top1_count') or 0), query_count)} | "
+                f"{row.get('top5_query_share') or '0.0%'} | {row.get('top10_query_share') or '0.0%'} | "
+                f"{row.get('model_mention_rate') or '0.0%'} | {row.get('best_rank') or 'not ranked'} | "
+                f"{leading_winner_by_model.get(model) or 'n/a'} |"
+            )
+    else:
+        lines.append(f"| No model-level recall rows were available for {target_brand}. |  |  |  |  |  |  |  |")
 
     lines.extend(["", f"## Brands Above {target_brand}", "", "| Brand | Top5 Share | Top10 Share | Top10 Slots | Best Rank | Model Mention | Corpus URLs | Top URLs |", "| --- | ---: | ---: | ---: | ---: | ---: | ---: | --- |"])
     if above_target:

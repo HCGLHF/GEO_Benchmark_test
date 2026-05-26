@@ -8,7 +8,7 @@ from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
 from scripts.ui_app.dashboard import build_dashboard_state
-from scripts.ui_app.execution import launch_guarded_run, launch_guarded_stage
+from scripts.ui_app.execution import launch_guarded_run, launch_guarded_stage, resume_guarded_run, stop_guarded_run
 from scripts.ui_app.page_drilldown_summary import summarize_report_page_drilldown
 from scripts.ui_app.report_history import list_report_history, read_report_preview
 from scripts.ui_app.run_plan import RunPlanRequest, build_run_plan
@@ -295,6 +295,14 @@ HTML = r"""<!doctype html>
               <option value="custom">custom</option>
             </select>
           </label>
+          <label>Platform
+            <select id="platform">
+              <option value="auto">auto</option>
+              <option value="windows">windows</option>
+              <option value="wsl">wsl</option>
+              <option value="linux">linux</option>
+            </select>
+          </label>
         </div>
         <div class="row" style="margin-top:12px;">
           <label>Pipeline run root
@@ -364,6 +372,8 @@ HTML = r"""<!doctype html>
         </div>
         <div style="margin-top:12px;">
           <button class="button secondary" id="monitorRefresh">Refresh Monitor</button>
+          <button class="button secondary" id="stopApiRun">Stop API Run</button>
+          <button class="button" id="resumeApiRun">Resume API Run</button>
           <label class="check" style="display:inline-flex; margin-left:8px; width:auto;">
             <input id="monitorAutoRefresh" type="checkbox" checked> Auto-refresh
           </label>
@@ -597,14 +607,19 @@ HTML = r"""<!doctype html>
     }
 
     async function buildPlan() {
+      const selectedStageLabel = byId("stageCommand").value;
       const params = collectRunParams();
       const response = await fetch(`/api/run-plan?${params.toString()}`);
       const plan = await response.json();
       lastPlan = plan;
       byId("commands").textContent = plan.commands.map((item, index) => `${index + 1}. ${item.label}\n${item.command}\n${item.note}`).join("\n\n");
       byId("warnings").innerHTML = plan.warnings.map((warning) => `<div class="warning">${warning}</div>`).join("");
-      const stageCommands = plan.commands.filter((item) => item.command.startsWith("python scripts\\run_pipeline_step.py"));
-      byId("stageCommand").innerHTML = stageCommands.map((item) => `<option value="${item.label}">${item.label}</option>`).join("");
+      const stageCommands = plan.commands.filter((item) => item.command.replaceAll("\\", "/").startsWith("python scripts/run_pipeline_step.py"));
+      const stageSelect = byId("stageCommand");
+      stageSelect.innerHTML = stageCommands.map((item) => `<option value="${item.label}">${item.label}</option>`).join("");
+      if (Array.from(stageSelect.options).some((option) => option.value === selectedStageLabel)) {
+        stageSelect.value = selectedStageLabel;
+      }
     }
 
     function collectRunParams() {
@@ -612,6 +627,7 @@ HTML = r"""<!doctype html>
       params.set("own_site_url", byId("ownSiteUrl").value);
       params.set("extra_site_urls", byId("extraSiteUrls").value);
       params.set("run_mode", byId("runMode").value);
+      params.set("platform", byId("platform").value);
       params.set("seed_queries_run_dir", byId("seedQueriesRunDir").value);
       params.set("pipeline_run_root", byId("pipelineRunRoot").value);
       params.set("recrawl_own_site", checked("recrawlOwnSite"));
@@ -685,7 +701,7 @@ HTML = r"""<!doctype html>
       const totalPct = (Number(monitor.totals.progress || 0) * 100).toFixed(1);
       byId("monitorProgress").textContent = `${totalTerminal}/${totalExpected} (${totalPct}%)`;
       byId("monitorModels").textContent = monitor.models.length;
-      const health = monitor.health || {status: "unknown", issues: []};
+      const health = monitor.health || {status: "unknown", issues: [], recommended_actions: []};
       byId("monitorHealth").textContent = health.status;
       renderLatestReport(monitor.report);
       if (monitor.report && monitor.report.report_dir) {
@@ -697,13 +713,13 @@ HTML = r"""<!doctype html>
           <thead><tr><th>Model</th><th>Status</th><th>Progress</th><th>API</th><th>Cache</th><th>Failures</th><th>Answers</th></tr></thead>
           <tbody>${monitor.models.map((item) => `
             <tr>
-              <td>${item.safe_name}</td>
-              <td>${item.summary.status}</td>
+              <td>${escapeHtml(item.safe_name)}</td>
+              <td>${escapeHtml(item.summary.status)}</td>
               <td>${renderApiProgress(item.summary)}</td>
-              <td>${item.summary.totals.api_calls}</td>
-              <td>${item.summary.totals.cache_hits}</td>
-              <td>${item.summary.totals.failures}</td>
-              <td>${item.summary.outputs.answer_rows}</td>
+              <td>${escapeHtml(item.summary.totals.api_calls)}</td>
+              <td>${escapeHtml(item.summary.totals.cache_hits)}</td>
+              <td>${escapeHtml(item.summary.totals.failures)}</td>
+              <td>${escapeHtml(item.summary.outputs.answer_rows)}</td>
             </tr>`).join("")}</tbody>
         </table>`;
       const stageRows = Object.entries(monitor.pipeline.stages || {});
@@ -712,11 +728,11 @@ HTML = r"""<!doctype html>
           <thead><tr><th>Stage</th><th>Status</th><th>Progress</th><th>Updated</th><th>Message</th></tr></thead>
           <tbody>${stageRows.map(([stage, item]) => `
             <tr>
-              <td>${stage}</td>
-              <td>${item.status}</td>
+              <td>${escapeHtml(stage)}</td>
+              <td>${escapeHtml(item.status)}</td>
               <td>${renderPipelineProgress((monitor.pipeline_progress || {})[stage])}</td>
-              <td>${item.updated_at || ""}</td>
-              <td>${item.message || ""}</td>
+              <td>${escapeHtml(item.updated_at || "")}</td>
+              <td>${escapeHtml(item.message || "")}</td>
             </tr>`).join("")}</tbody>
         </table>`;
       const pipelineLogs = (monitor.pipeline_log_tails || []).map((item) => {
@@ -724,6 +740,10 @@ HTML = r"""<!doctype html>
         return `# ${item.stage}\n${lines}`;
       });
       const healthLines = [`# chain health`, `status: ${health.status}`].concat((health.issues || []).map((issue) => `- ${issue}`));
+      const recommendedActions = (health.recommended_actions || []).map((action) => `- ${action}`);
+      if (recommendedActions.length) {
+        healthLines.push("", "# recommended actions", ...recommendedActions);
+      }
       const modelLogs = monitor.models.map((item) => {
         const lines = item.log_tail.length ? item.log_tail.join("\n") : "(no worker.log yet)";
         return `# ${item.safe_name}\n${lines}`;
@@ -731,11 +751,52 @@ HTML = r"""<!doctype html>
       byId("monitorLog").textContent = [healthLines.join("\n")].concat(pipelineLogs).concat(modelLogs).join("\n\n") || "(no logs yet)";
     }
 
+    async function stopApiRun() {
+      const runRoot = byId("monitorRunRoot").value.trim();
+      if (!runRoot) return;
+      const reason = window.prompt("Why stop this API run? Use 429, 402, or stalled as a short reason.", "stalled or API issue") || "";
+      const ok = window.confirm(`Stop API run and its child workers?\n${runRoot}`);
+      if (!ok) return;
+      const params = new URLSearchParams();
+      params.set("run_root", runRoot);
+      params.set("reason", reason);
+      params.set("confirmed", "1");
+      const response = await fetch("/api/stop-run", {
+        method: "POST",
+        headers: {"Content-Type": "application/x-www-form-urlencoded"},
+        body: params.toString(),
+      });
+      const result = await response.json();
+      byId("launchStatus").textContent = `${result.status}: stop ${result.monitor_run_root || runRoot} pid ${result.pid || "-"}`;
+      await refreshMonitor();
+    }
+
+    async function resumeApiRun() {
+      const runRoot = byId("monitorRunRoot").value.trim();
+      if (!runRoot) return;
+      const ok = window.confirm(`Resume API run using existing output rows?\n${runRoot}`);
+      if (!ok) return;
+      const params = new URLSearchParams();
+      params.set("run_root", runRoot);
+      params.set("confirmed", "1");
+      const response = await fetch("/api/resume-run", {
+        method: "POST",
+        headers: {"Content-Type": "application/x-www-form-urlencoded"},
+        body: params.toString(),
+      });
+      const result = await response.json();
+      byId("launchStatus").textContent = `${result.status}: resume ${result.monitor_run_root || runRoot} pid ${result.pid || "-"}`;
+      if (result.monitor_run_root) setMonitorRunRoot(result.monitor_run_root);
+      await refreshMonitor();
+    }
+
     byId("refresh").addEventListener("click", loadState);
     byId("plan").addEventListener("click", buildPlan);
     byId("launchApi").addEventListener("click", launchApiRun);
     byId("launchStage").addEventListener("click", launchStage);
     byId("monitorRefresh").addEventListener("click", refreshMonitor);
+    byId("stopApiRun").addEventListener("click", stopApiRun);
+    byId("resumeApiRun").addEventListener("click", resumeApiRun);
     byId("linkedMonitorRoot").addEventListener("change", () => {
       setMonitorRunRoot(byId("linkedMonitorRoot").value);
       refreshMonitor();
@@ -822,6 +883,7 @@ class UIHandler(BaseHTTPRequestHandler):
             ]
             custom_queries = params.get("custom_queries_per_model", [""])[0].strip()
             request = RunPlanRequest(
+                platform=params.get("platform", ["auto"])[0],
                 own_site_url=params.get("own_site_url", ["https://alphaxxxx.com/"])[0],
                 extra_site_urls=extra_urls,
                 run_mode=params.get("run_mode", ["quick"])[0],
@@ -857,6 +919,7 @@ class UIHandler(BaseHTTPRequestHandler):
         ]
         custom_queries = params.get("custom_queries_per_model", [""])[0].strip()
         return RunPlanRequest(
+            platform=params.get("platform", ["auto"])[0],
             own_site_url=params.get("own_site_url", ["https://alphaxxxx.com/"])[0],
             extra_site_urls=extra_urls,
             run_mode=params.get("run_mode", ["quick"])[0],
@@ -890,6 +953,30 @@ class UIHandler(BaseHTTPRequestHandler):
                     project_root=PROJECT_ROOT,
                     request=request,
                     command_label=command_label,
+                    confirmed=confirmed,
+                )
+            )
+            return
+        if parsed.path == "/api/stop-run":
+            run_root = params.get("run_root", [""])[0]
+            reason = params.get("reason", [""])[0]
+            confirmed = params.get("confirmed", ["0"])[0] == "1"
+            self._send_json(
+                stop_guarded_run(
+                    project_root=PROJECT_ROOT,
+                    run_root=run_root,
+                    reason=reason,
+                    confirmed=confirmed,
+                )
+            )
+            return
+        if parsed.path == "/api/resume-run":
+            run_root = params.get("run_root", [""])[0]
+            confirmed = params.get("confirmed", ["0"])[0] == "1"
+            self._send_json(
+                resume_guarded_run(
+                    project_root=PROJECT_ROOT,
+                    run_root=run_root,
                     confirmed=confirmed,
                 )
             )
