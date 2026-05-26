@@ -14,6 +14,7 @@ PopenFactory = Callable[..., Any]
 ProcessRunner = Callable[..., Any]
 KillProcessGroup = Callable[[int, int], None]
 DEFAULT_KILLPG: KillProcessGroup
+POSIX_SIGKILL = getattr(signal, "SIGKILL", 9)
 
 
 def _missing_killpg(process_group_id: int, signal_number: int) -> None:
@@ -119,27 +120,51 @@ class PlatformRuntime:
         try:
             self.killpg(process_group_id, signal.SIGTERM)
         except ProcessLookupError as exc:
-            return StopResult(status="not_found", return_code=1, command=command, stderr=str(exc))
+            return StopResult(status="stopped", return_code=0, command=command, stderr=str(exc))
         except OSError as exc:
-            return StopResult(status="failed", return_code=1, command=command, stderr=str(exc))
+            return StopResult(status="stop_failed", return_code=1, command=command, stderr=str(exc))
+
+        wait = getattr(handle.process, "wait", None)
+        if not callable(wait):
+            return StopResult(status="stopped", return_code=0, command=command)
+
+        try:
+            wait(timeout=5)
+            return StopResult(status="stopped", return_code=0, command=command)
+        except subprocess.TimeoutExpired:
+            try:
+                self.killpg(process_group_id, POSIX_SIGKILL)
+            except ProcessLookupError as exc:
+                return StopResult(status="stopped", return_code=0, command=command, stderr=str(exc))
+            except OSError as exc:
+                return StopResult(status="stop_failed", return_code=1, command=command, stderr=str(exc))
+
+            try:
+                wait(timeout=5)
+                return StopResult(status="stopped", return_code=0, command=command)
+            except subprocess.TimeoutExpired as exc:
+                return StopResult(status="stop_failed", return_code=1, command=command, stderr=str(exc))
+            except OSError as exc:
+                return StopResult(status="stop_failed", return_code=1, command=command, stderr=str(exc))
+        except OSError as exc:
+            return StopResult(status="stop_failed", return_code=1, command=command, stderr=str(exc))
         return StopResult(status="stopped", return_code=0, command=command)
 
     def is_parallel_api_command(self, command: str) -> bool:
-        normalized = _normalize_command_paths(command)
-        parallel_commands = (
-            "scripts/full_api_parallel_runner.py",
-            "scripts/run_full_api_parallel_with_watch.ps1",
-            "scripts/run_full_api_parallel_with_watch.sh",
-        )
-        return any(script in normalized for script in parallel_commands)
+        tokens = _normalized_tokens(command)
+        if len(tokens) >= 2 and tokens[0] in {"python", "python3"}:
+            return tokens[1] == "scripts/full_api_parallel_runner.py"
+        if len(tokens) >= 2 and tokens[0] == "bash":
+            return tokens[1] == "scripts/run_full_api_parallel_with_watch.sh"
+        if tokens and tokens[0] == "powershell":
+            for index, token in enumerate(tokens[:-1]):
+                if token.lower() == "-file":
+                    return tokens[index + 1] == "scripts/run_full_api_parallel_with_watch.ps1"
+        return False
 
     def is_guarded_pipeline_command(self, command: str) -> bool:
-        tokens = _split_command(_normalize_command_paths(command))
-        normalized_tokens = [_normalize_command_paths(token) for token in tokens]
-        for index, token in enumerate(normalized_tokens[:-1]):
-            if token in {"python", "python3"} and normalized_tokens[index + 1] == "scripts/run_pipeline_step.py":
-                return True
-        return False
+        tokens = _normalized_tokens(command)
+        return len(tokens) >= 2 and tokens[0] in {"python", "python3"} and tokens[1] == "scripts/run_pipeline_step.py"
 
 
 def windows_runtime(
@@ -225,3 +250,7 @@ def _split_command(command: str) -> list[str]:
         return shlex.split(command, posix=True)
     except ValueError:
         return command.split()
+
+
+def _normalized_tokens(command: str) -> list[str]:
+    return [_normalize_command_paths(token) for token in _split_command(_normalize_command_paths(command))]

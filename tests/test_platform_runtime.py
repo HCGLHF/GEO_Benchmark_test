@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import signal
+import subprocess
 from pathlib import Path
 
 from scripts.platform_runtime import ProcessHandle, detect_platform, posix_runtime, windows_runtime
@@ -15,6 +17,17 @@ class FakeCompletedProcess:
         self.returncode = returncode
         self.stdout = stdout
         self.stderr = stderr
+
+
+class FakeTimeoutThenStoppedProcess:
+    def __init__(self) -> None:
+        self.wait_calls: list[float] = []
+
+    def wait(self, timeout: float):
+        self.wait_calls.append(timeout)
+        if len(self.wait_calls) == 1:
+            raise subprocess.TimeoutExpired(cmd="fake", timeout=timeout)
+        return 0
 
 
 def test_windows_runtime_formats_command_with_windows_paths() -> None:
@@ -60,12 +73,25 @@ def test_runtime_recognizes_parallel_api_commands() -> None:
     assert not runtime.is_parallel_api_command("python scripts/run_pipeline_step.py --run-root runs/x")
 
 
+def test_runtime_rejects_parallel_api_command_substrings() -> None:
+    runtime = posix_runtime(platform_id="linux")
+
+    assert not runtime.is_parallel_api_command("echo scripts/full_api_parallel_runner.py")
+    assert not runtime.is_parallel_api_command(
+        "cmd /c dangerous && python scripts/run_pipeline_step.py --run-root runs/x"
+    )
+    assert not runtime.is_parallel_api_command("powershell Write-Host scripts/run_full_api_parallel_with_watch.ps1")
+
+
 def test_runtime_recognizes_guarded_pipeline_commands_across_path_styles() -> None:
     runtime = posix_runtime(platform_id="wsl")
 
     assert runtime.is_guarded_pipeline_command("python scripts/run_pipeline_step.py --run-root runs/x --stage clean")
     assert runtime.is_guarded_pipeline_command("python scripts\\run_pipeline_step.py --run-root runs\\x --stage clean")
     assert not runtime.is_guarded_pipeline_command("python scripts/clean_documents.py")
+    assert not runtime.is_guarded_pipeline_command(
+        "cmd /c dangerous && python scripts/run_pipeline_step.py --run-root runs/x"
+    )
 
 
 def test_windows_launch_shell_command_uses_powershell(tmp_path: Path) -> None:
@@ -136,6 +162,24 @@ def test_posix_stop_process_tree_uses_process_group() -> None:
     assert result.return_code == 0
     assert result.command == "kill -- -4321"
     assert signals[0][0] == 4321
+
+
+def test_posix_stop_process_tree_escalates_after_wait_timeout() -> None:
+    signals = []
+    process = FakeTimeoutThenStoppedProcess()
+    sigkill = getattr(signal, "SIGKILL", 9)
+
+    def fake_killpg(process_group_id: int, signal_number: int) -> None:
+        signals.append((process_group_id, signal_number))
+
+    runtime = posix_runtime(platform_id="wsl", killpg=fake_killpg)
+    result = runtime.stop_process_tree(ProcessHandle(pid=1234, process_group_id=4321, process=process))
+
+    assert result.status == "stopped"
+    assert result.return_code == 0
+    assert result.command == "kill -- -4321"
+    assert signals == [(4321, signal.SIGTERM), (4321, sigkill)]
+    assert process.wait_calls == [5, 5]
 
 
 def test_detect_platform_can_be_forced() -> None:
