@@ -47,13 +47,13 @@
 - The industry registry command creates metadata, not access control. IAM permissions, PostgreSQL roles, and RDS network allowlists still need to be managed separately for each teammate or role.
 - The current `geo-agency` corpus has both legacy root-level S3 artifact keys and new `industries/geo-agency/...` keys registered. New tools should prefer the industry-prefixed keys.
 - UI-selected arbitrary model subsets are now supported by the monitored parallel runner through `-Models`, but the selected model ids still must exist in the simulator config.
-- Run Monitor now exposes guarded stop/resume for UI-launched API benchmarks by resolving the prior launch manifest and using `taskkill /T /F` on the recorded wrapper pid.
+- Run Monitor now exposes guarded stop/resume for UI-launched API benchmarks by resolving the prior launch manifest; Windows uses `taskkill /T /F`, while WSL/Linux uses recorded process-group metadata.
 - WSL2 reduces Windows file-lock and process-tree issues only when jobs run from Linux filesystem storage such as `~/projects/Resourcepool_Gen`; running from `/mnt/d/GEO-ALPHA/Resourcepool_Gen` can reintroduce Windows metadata and locking friction.
 - Stop/resume now depends on launch manifest platform metadata. If a launch manifest is edited manually, process-group stop can target the wrong process group.
 - Pipeline stage visibility now depends on scripts using `pipeline_state.py` directly or being launched through `run_pipeline_step.py`; legacy/manual commands will remain invisible to stage-level monitor views.
 - The UI can now launch the generated API benchmark command after confirmation. This is intentional and user-triggered, but it can consume OpenRouter/API credits.
 - The UI can now launch generated `run_pipeline_step.py` commands after confirmation. These can mutate local raw/processed data or write to AWS if the selected stage does so.
-- Launch manifests record the parent PowerShell process id. Stop uses Windows process-tree termination, but detached child processes should still be checked if API calls continue after a stop.
+- Launch manifests record platform, parent pid, and POSIX process-group id when available. Detached child processes outside the recorded tree or group should still be checked if API calls continue after a stop.
 - Worker exit-code files can briefly exist empty at process shutdown on Windows. The parallel runner now waits for non-empty exit-code content before deciding whether a worker failed.
 - `ops_summary.json` is interpretation, not benchmark truth; if it conflicts with underlying files, inspect `pipeline_state.jsonl`, worker exits, API attempts/events, and output artifacts.
 - Local operations logs are stored inside run roots; deleting a run root deletes troubleshooting history, so archive important reports/logs before cleanup.

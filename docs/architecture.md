@@ -91,7 +91,7 @@ The cloud store follows the project split documented in `docs/cloud-database.md`
 - Resume behavior uses persisted output files as the contract: scenario rows, rerank rows, and answer rows determine what is already complete.
 - Seeded parallel runs reuse `api_queries.csv` per model so scenario generation remains fixed while retrieval, rerank, and answer evaluation use the refreshed corpus; the seeded row count must be capped to the effective `queries_per_model`.
 - Corpus variants must write to separate directories such as `data/experiments/without_llms/processed` and separate config files so control experiments cannot overwrite the main resource library.
-- Run-mode selection belongs in the PowerShell orchestration layer: `quick` maps to 50 queries per model, while `standard` maps to 200 queries per model unless `-QueriesPerModel` explicitly overrides it.
+- Run-mode selection belongs in the Python full API runner: `quick` maps to 50 queries per model, while `standard` maps to 200 queries per model unless `--queries-per-model` or the wrapper equivalent explicitly overrides it.
 - `test` run mode belongs to link-checking, not ranking analysis; it maps to 2 seeded queries per model so rerank plus answer normally stays in the five-call class.
 - Cloud import depends on existing processed contracts; it must not become a hidden crawler or evaluator path.
 - PostgreSQL is the queryable corpus and benchmark ledger, S3 is the artifact store, and Qdrant remains a rebuildable retrieval index.

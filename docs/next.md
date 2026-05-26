@@ -15,7 +15,7 @@
 - Rebuilt `runs/full_api_parallel_ui/20260525_214431/merged/competitive_gap_report.md` with the new model recall and weakness diagnosis sections.
 - Added guarded API run stop/resume controls to the UI Run Monitor.
 - Added `/api/stop-run` and `/api/resume-run`, both resolving a prior UI launch manifest by `monitor_run_root` rather than accepting arbitrary commands or pids.
-- Implemented `stop_guarded_run` with Windows process-tree termination through `taskkill /T /F`, pipeline `interrupted` events, and launch-manifest stop metadata.
+- Implemented `stop_guarded_run` with platform-aware process termination, pipeline `interrupted` events, and launch-manifest stop metadata.
 - Implemented `resume_guarded_run` so 429, 402, or stalled runs can be relaunched with the original command and the same run root, allowing existing output rows to act as the resume checkpoint.
 - Added Run Monitor guidance for `402 Payment Required` and `429 Too Many Requests` API failures.
 - Added `scripts/full_api_run_status.py` as the shared fatal/warning classifier for completed full API model workers.
@@ -234,17 +234,17 @@
 - Keeping API launch and stage launch separate makes cost-bearing model runs visibly distinct from local pipeline commands.
 - Guarded execution should regenerate commands from structured form fields on the server; accepting raw command strings from the browser would break the UI boundary.
 - Fixed run stamps make UI launch and Run Monitor line up cleanly because the monitor root is known before the background runner starts.
-- Launch manifests currently track the parent PowerShell process and launch log, which is enough for visibility but not enough for safe stop/resume.
+- Launch manifests now track platform, parent pid, launch log, and POSIX process-group metadata when available; stop/resume must continue to resolve process control from those manifests.
 - `pipeline_state.jsonl` should be treated as an append-only fact log; the latest event per stage is enough for the UI, while the full event list preserves execution history.
 - Pre-API stages need a wrapper because many existing crawl/clean/chunk/index scripts should stay focused on their own work instead of learning UI monitoring concerns.
 - The monitored parallel runner can write top-level lifecycle events, but detailed scenario/rerank/answer progress still comes from the existing per-model simulator output files.
-- Exact model selection belongs in the PowerShell orchestration layer, not only in the UI, because worker creation, cache paths, seeding, monitoring, and merge inputs all depend on the chosen model list.
+- Exact model selection belongs in the Python full API runner, not only in the UI, because worker creation, cache paths, seeding, monitoring, and merge inputs all depend on the chosen model list.
 - The safest Run Monitor first slice is file-based and read-only: per-model summaries come from existing run outputs and `worker.log`, while report metrics come from `merged/`.
-- Stop/resume should be implemented as a separate guarded execution feature because stopping only the wrapper PowerShell process can leave child Python API calls running.
+- Stop/resume is implemented as a separate guarded execution feature for UI-launched API runs; Windows uses process-tree termination and WSL/Linux uses process-group termination.
 - Industry registry creation is useful as a deliberate gate before importing a new vertical: it makes the industry slug visible without uploading documents, chunks, or Qdrant snapshots.
 - The `create_industry` command can dry-run without cloud dependencies; only `--execute` loads `.env` and writes to RDS.
 - The local UI can be useful without adding FastAPI or frontend dependencies; the current standard-library server is enough for dashboard and dry-run planning.
-- The current parallel runner still cannot execute arbitrary UI-selected model subsets exactly; it supports the built-in model set plus optional Doubao.
+- The current parallel runner can execute UI-selected model subsets exactly when the selected ids exist in the simulator config.
 - The cloud S3 artifact layer had already moved toward industry-specific object keys, while PostgreSQL helper functions and schema migration needed the same `industry_id` contract.
 - Background server processes started from the Codex tool environment can be terminated with the parent process, so endpoint verification is safest through a temporary server in the same command; users should launch the UI directly in their PowerShell when they want to keep it open.
 - The intended collaboration model is now explicit: remote team members sync scripts through Git, connect to the shared corpus through RDS/S3, and keep local credentials plus generated data out of Git.
@@ -276,7 +276,7 @@
 - Windows PowerShell `Export-Csv -Encoding UTF8` can write a BOM that Python reads as part of the first CSV field name, so seeded API query files should be written by Python with `encoding="utf-8"`.
 - The first full API retry accidentally regenerated scenario questions because the seed helper import failed when executed as a script; this is now covered by a CLI test.
 - OpenRouter returned `402 Payment Required` after partial rerank progress, which means current API balance/credit is the main blocker for a complete report.
-- The active workspace root is not itself a git repository; the publishable repository is `_publish/GEO_Benchmark_test`.
+- The active workspace root is now a local Git repository without a GitHub remote; publishing should happen from a WSL clone or clean publish repository connected to `https://github.com/HCGLHF/GEO_Benchmark_test.git`.
 - The GitHub CLI is not installed in this environment, so this publish uses direct `git` commands instead of a PR workflow.
 - The existing full API run has complete orchestrator attempts, so the monitor can report exact 1660/1660 completion from existing artifacts.
 - One-command parallel execution is safest when each model gets its own output directory, run-state SQLite, and LLM cache SQLite.
@@ -298,7 +298,7 @@
 - Existing seeded query runs were generated for older model ids. New model ids such as `google/gemini-3.5-flash`, `deepseek/deepseek-v4-flash`, `qwen/qwen3.7-max`, and `x-ai/grok-build-0.1` may need fresh scenario generation unless a model-agnostic seed-copy strategy is added.
 - The new diagnostic reasons are extracted from titles and text previews, not from a separate LLM critique step. They are fast and traceable, but can miss deeper reasons such as authority, page freshness, schema, or answer style.
 - Query loss tables currently show a bounded sample of losses. For strategy work, use the CSV files alongside the Markdown report rather than relying only on the first visible rows.
-- Manually stopped workers can still look `active` in Run Monitor until stop/resume owns process lifecycle and writes an explicit terminal state for each interrupted model.
+- Manual stops outside the UI can still look `active` in Run Monitor until the run writes terminal files or `ops_logs.py doctor` refreshes the summary.
 - Interrupted standard reports are useful directionally but should be labeled in interpretation because excluded models change the model mix and can move aggregate metrics.
 - If a user wants to inspect an older historical run, the latest launched run may become the default after a hard refresh; manually selecting a history item still updates the monitor root.
 - New drilldown tables can still become visually dense on very narrow viewports; keep future page-level dimensions behind table-specific scroll containers.
@@ -318,16 +318,16 @@
 - Existing historical worker logs may use different encodings depending on how PowerShell launched them; the monitor now handles UTF-8 and UTF-16, but truly corrupted logs will still need manual inspection.
 - Guarded stage launches can still mutate files or cloud state depending on the selected stage, so AWS sync and corpus rebuild actions need clear UI labeling before heavy use.
 - The UI launch button can consume external model API credits after confirmation; it should stay visually separate from dry-run planning.
-- The launch layer does not yet capture child Python process ids, so stopping only by manifest pid would be unsafe.
+- Launch manifests capture the parent pid and POSIX process-group id when available; detached descendants outside that process tree or group remain a manual inspection risk.
 - Manual commands that bypass `run_pipeline_step.py` will not appear in Run Monitor stage tables unless the script writes pipeline events itself.
 - The current pipeline state protocol records process exit status, not semantic data quality; crawler quality gates and cloud verification still need their own reports.
 - Selected model ids are passed through to the single-model runner; if a selected id is not present in `config/client_acquisition_simulator.yaml`, that worker will fail fast.
-- The current Run Monitor does not yet own process lifecycle; it can show stale or stalled states but cannot safely stop child API calls.
+- Run Monitor owns process lifecycle only for UI-launched API runs that have a trusted launch manifest; manually launched runs remain file-state-only.
 - Report drilldown is still basic; weak-page and content recommendation views need dedicated aggregation instead of overloading the monitor.
 - Creating an industry registry row does not grant team access by itself; IAM, PostgreSQL users, and RDS allowlists still need separate role-specific setup.
-- The UI currently generates dry-run commands only; adding execution buttons will require explicit approvals, log streaming, and stop/resume handling.
+- The UI now has guarded execution buttons with explicit approvals; future log streaming should keep the same launch-manifest safety boundary.
 - The owned-site refresh commands in the UI are a planning surface and should be reconciled with the latest AlphaXXXX refresh pipeline before they become one-click execution.
-- Exact model subset selection needs a follow-up change in `scripts/run_full_api_parallel_with_watch.ps1`; otherwise the UI can imply finer control than the runner actually has.
+- Exact model subset selection is supported by the Python runner and thin wrappers; selected ids still need to exist in `config/client_acquisition_simulator.yaml`.
 - The industry-isolation migration preserves compatibility with the base schema, but a live multi-industry RDS migration still needs a deliberate rollout plan and backup.
 - Database docs now include non-secret AWS identifiers such as bucket name and RDS endpoint. This is useful for team onboarding, but access must still be controlled with IAM, PostgreSQL credentials, and RDS network allowlists.
 - A Qdrant snapshot can become stale if a later corpus version changes `chunks`; always compare snapshot `corpus_version` before restoring it.
