@@ -2,6 +2,8 @@
 
 ## Done
 
+- Added the WSL2 primary runtime design and implementation plan, choosing a Python core full API runner plus Windows and POSIX platform adapters.
+- Implemented the WSL2 primary runtime boundary with `scripts/platform_runtime.py`, `scripts/full_api_parallel_runner.py`, thin PowerShell/Bash wrappers, platform-aware UI run planning/execution, and WSL process-group stop metadata.
 - Added local operations logging for run roots, including `ops_events.jsonl`, `ops_summary.json`, `scripts/ops_logs.py`, pipeline/API/worker lifecycle hooks, and Run Monitor summary display.
 - Fixed the latest completed UI API run not generating a merged report: the five completed model workers under `runs/full_api_parallel_ui/20260526_002837` are now merged into `runs/full_api_parallel_ui/20260526_002837/merged/competitive_gap_report.md`.
 - Fixed `scripts/run_full_api_parallel_with_watch.ps1` so worker exit codes are written to `worker_exit_codes.json` and passed to `scripts/full_api_run_status.py` with `--exit-code-file`, avoiding Windows PowerShell JSON quote stripping.
@@ -285,6 +287,7 @@
 
 ## Risks
 
+- Codex currently cannot see the user's Ubuntu WSL2 distro from the sandbox Windows user, so final WSL validation must be run by the user inside Ubuntu unless Codex is later attached to that WSL context.
 - Operations summaries can become stale if files are manually edited; use `python scripts\ops_logs.py doctor --run-root <run>` to refresh before relying on them.
 - Any remaining runner-to-Python inline JSON arguments, especially inside nested PowerShell worker commands, can fail similarly if they contain quotes or special characters; prefer files or simple scalar arguments for future state contracts.
 - The new model recall table makes `llms.txt` routing wins easier to see, but a high aggregate Recall@5 can still hide weak money pages if the recalled URLs are mostly router/blog pages.
@@ -348,10 +351,11 @@
 
 ## Next
 
-1. Add dry-run cleanup reporting for old run roots once summaries are stable across real runs.
-2. Add page-intent drilldowns to the report so money-page weakness can be separated from `llms.txt` and blog routing wins.
-3. Audit remaining PowerShell-to-Python JSON argument paths and move any nontrivial payloads to files.
-4. Add retry/backoff tuning for rate-limited model workers so Qwen-style 429 bursts produce fewer warning rows before manual stop/resume is needed.
-5. Add launch history and richer stop/resume state in the UI so users can see which resume attempt produced the final report.
-6. Create role-specific PostgreSQL users and IAM policies for admin, writer, and reader team access, with industry-level access expectations.
-7. Add a restore/download helper for S3 artifacts so remote team members can fetch `qdrant.zip` or processed JSONL by industry and corpus version.
+1. Execute final WSL2 validation from the user's Ubuntu distro and push branch `codex/wsl2-primary-runtime`.
+2. Add dry-run cleanup reporting for old run roots once summaries are stable across real runs.
+3. Add page-intent drilldowns to the report so money-page weakness can be separated from `llms.txt` and blog routing wins.
+4. Audit remaining PowerShell-to-Python JSON argument paths and move any nontrivial payloads to files.
+5. Add retry/backoff tuning for rate-limited model workers so Qwen-style 429 bursts produce fewer warning rows before manual stop/resume is needed.
+6. Add launch history and richer stop/resume state in the UI so users can see which resume attempt produced the final report.
+7. Create role-specific PostgreSQL users and IAM policies for admin, writer, and reader team access, with industry-level access expectations.
+8. Add a restore/download helper for S3 artifacts so remote team members can fetch `qdrant.zip` or processed JSONL by industry and corpus version.

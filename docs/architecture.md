@@ -23,6 +23,10 @@
 - `scripts/watch_full_api_run.py`: read-only monitor for long full API runs, summarizing progress and missing rows from run output files without calling model APIs.
 - `scripts/render_full_api_progress_html.py`: renders a static auto-refreshing HTML dashboard from full API run output files.
 - `scripts/merge_full_api_runs.py`: merges single-model runs into one report.
+- `scripts/platform_runtime.py`: shared platform runtime seam for command formatting, process launch, and stop behavior across Windows, Linux, and WSL.
+- `scripts/full_api_parallel_runner.py`: platform-independent full API parallel runner that owns model worker orchestration, status classification, merge, pipeline-state events, and operations summaries.
+- `scripts/run_full_api_parallel_with_watch.ps1`: Windows wrapper that forwards existing PowerShell parameters to the Python full API parallel runner.
+- `scripts/run_full_api_parallel_with_watch.sh`: WSL/Linux wrapper that forwards shell arguments to the Python full API parallel runner.
 - `scripts/report_diagnostics.py`: builds query-level loss analysis, competitor displacement tables, weakness diagnosis, and page-level optimization plans from completed retrieval and answer artifacts.
 - `scripts/page_drilldown.py`: aggregates owned-page Top5 retrieval hits and weak owned pages from retrieval evidence for report and UI drilldowns.
 - `scripts/alphaxxxx_llms_router.py`: generates the AlphaXXXX `llms.txt` intent router used to direct AI crawlers and retrieval toward the strongest canonical pages.
@@ -102,6 +106,8 @@ The cloud store follows the project split documented in `docs/cloud-database.md`
 - Local operations logging is additive: authoritative facts remain pipeline state, worker exit files, API attempts/events, and output artifacts; summaries interpret those facts for maintenance and troubleshooting.
 - UI execution must regenerate commands from structured request parameters server-side; it must not execute arbitrary command strings sent from the browser.
 - UI stop/resume must resolve a known launch manifest by `monitor_run_root`; it must not accept arbitrary pids or shell commands from the browser.
+- Platform-specific launch and stop behavior belongs in `scripts/platform_runtime.py`; UI and runner modules should not hardcode PowerShell, Bash, `taskkill`, or process-group details.
+- WSL2 is the primary runtime for long full API benchmark runs, report merge, and Git publishing; Windows remains a fallback and UI host.
 
 ## Boundaries
 

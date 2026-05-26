@@ -48,6 +48,8 @@
 - The current `geo-agency` corpus has both legacy root-level S3 artifact keys and new `industries/geo-agency/...` keys registered. New tools should prefer the industry-prefixed keys.
 - UI-selected arbitrary model subsets are now supported by the monitored parallel runner through `-Models`, but the selected model ids still must exist in the simulator config.
 - Run Monitor now exposes guarded stop/resume for UI-launched API benchmarks by resolving the prior launch manifest and using `taskkill /T /F` on the recorded wrapper pid.
+- WSL2 reduces Windows file-lock and process-tree issues only when jobs run from Linux filesystem storage such as `~/projects/Resourcepool_Gen`; running from `/mnt/d/GEO-ALPHA/Resourcepool_Gen` can reintroduce Windows metadata and locking friction.
+- Stop/resume now depends on launch manifest platform metadata. If a launch manifest is edited manually, process-group stop can target the wrong process group.
 - Pipeline stage visibility now depends on scripts using `pipeline_state.py` directly or being launched through `run_pipeline_step.py`; legacy/manual commands will remain invisible to stage-level monitor views.
 - The UI can now launch the generated API benchmark command after confirmation. This is intentional and user-triggered, but it can consume OpenRouter/API credits.
 - The UI can now launch generated `run_pipeline_step.py` commands after confirmation. These can mutate local raw/processed data or write to AWS if the selected stage does so.

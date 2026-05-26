@@ -34,6 +34,8 @@ http://127.0.0.1:8765
 - Can stop or resume a UI-launched API benchmark from Run Monitor after explicit browser confirmation.
 - Can launch backend-generated guarded pipeline steps such as owned-site recrawl/fetch, clean, chunk, index, and AWS sync after an explicit browser confirmation.
 
+When the UI runs inside WSL, generated API commands use the Python full API runner and POSIX paths. Stop/resume uses process-group metadata from the launch manifest. For long API runs, launch the UI from the WSL clone under `~/projects/Resourcepool_Gen`, not from `/mnt/d/GEO-ALPHA/Resourcepool_Gen`.
+
 ## Local Operations Logs
 
 Each monitored run root may contain:
