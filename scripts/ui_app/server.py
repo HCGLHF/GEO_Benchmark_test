@@ -874,6 +874,7 @@ class UIHandler(BaseHTTPRequestHandler):
             ]
             custom_queries = params.get("custom_queries_per_model", [""])[0].strip()
             request = RunPlanRequest(
+                platform=params.get("platform", ["auto"])[0],
                 own_site_url=params.get("own_site_url", ["https://alphaxxxx.com/"])[0],
                 extra_site_urls=extra_urls,
                 run_mode=params.get("run_mode", ["quick"])[0],
@@ -909,6 +910,7 @@ class UIHandler(BaseHTTPRequestHandler):
         ]
         custom_queries = params.get("custom_queries_per_model", [""])[0].strip()
         return RunPlanRequest(
+            platform=params.get("platform", ["auto"])[0],
             own_site_url=params.get("own_site_url", ["https://alphaxxxx.com/"])[0],
             extra_site_urls=extra_urls,
             run_mode=params.get("run_mode", ["quick"])[0],
