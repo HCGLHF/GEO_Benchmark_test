@@ -344,6 +344,8 @@ def _wait_for_workers(
     pending = []
     exit_codes: dict[str, str] = {}
     for worker in workers:
+        worker.run_dir.mkdir(parents=True, exist_ok=True)
+        worker.cache_path.parent.mkdir(parents=True, exist_ok=True)
         append_event(
             run_root,
             stage="answer",

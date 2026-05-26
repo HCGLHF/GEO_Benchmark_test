@@ -74,6 +74,42 @@ class FakeRuntime:
         return ProcessHandle(pid=9000, process_group_id=None, process=FakeProcess(self.returncode))
 
 
+class StrictFakeRuntime(FakeRuntime):
+    def launch_worker(self, args, *, cwd, log_path):
+        self.launched.append(list(args))
+        output_dir = Path(args[args.index("--output-dir") + 1])
+        cache_path = Path(args[args.index("--cache-path") + 1])
+        model = args[args.index("--include-model") + 1]
+        if not log_path.parent.exists():
+            raise FileNotFoundError(f"missing log parent: {log_path.parent}")
+        if not output_dir.exists():
+            raise FileNotFoundError(f"missing output dir: {output_dir}")
+        if not cache_path.parent.exists():
+            raise FileNotFoundError(f"missing cache parent: {cache_path.parent}")
+        (output_dir / "run_config.resolved.json").write_text(
+            json.dumps(
+                {
+                    "models": [{"provider": "openrouter", "model": model}],
+                    "client_acquisition": {"queries_per_model": 1},
+                }
+            ),
+            encoding="utf-8",
+        )
+        (output_dir / "api_queries.csv").write_text("query_id,query\nq001,Need GEO\n", encoding="utf-8")
+        (output_dir / "retrieval_by_model.csv").write_text(f"query_id,model\nq001,{model}\n", encoding="utf-8")
+        (output_dir / "model_answer_evaluations.csv").write_text(
+            f"query_id,model,error\nq001,{model},\n",
+            encoding="utf-8",
+        )
+        (output_dir / "api_orchestrator_attempts.jsonl").write_text(
+            json.dumps({"task_type": "rerank", "model": model, "status": "api_call"}) + "\n"
+            + json.dumps({"task_type": "answer", "model": model, "status": "api_call"}) + "\n",
+            encoding="utf-8",
+        )
+        log_path.write_text("strict fake worker complete\n", encoding="utf-8")
+        return ProcessHandle(pid=9000, process_group_id=None, process=FakeProcess(self.returncode))
+
+
 def fake_options(
     tmp_path: Path,
     *,
@@ -362,6 +398,37 @@ def test_full_api_parallel_runner_fake_execution_writes_run_contracts(tmp_path: 
     assert status["stages"]["answer"]["status"] == "completed"
     assert status["stages"]["merge"]["status"] == "completed"
     assert status["stages"]["report"]["status"] == "completed"
+
+
+def test_full_api_parallel_runner_creates_worker_and_cache_dirs_before_no_seed_launch(
+    tmp_path: Path, monkeypatch
+) -> None:
+    runtime = StrictFakeRuntime()
+
+    def fake_run(args, check=False, text=True, capture_output=False):
+        class Result:
+            returncode = 0
+            stdout = json.dumps(
+                {"status": "complete", "fatal_count": 0, "warning_count": 0, "fatals": [], "warnings": []}
+            )
+            stderr = ""
+
+        joined = " ".join(str(arg) for arg in args)
+        if "merge_full_api_runs.py" in joined:
+            output_dir = Path(args[args.index("--output-dir") + 1])
+            output_dir.mkdir(parents=True, exist_ok=True)
+            (output_dir / "competitive_gap_report.md").write_text("# Report\n", encoding="utf-8")
+        return Result()
+
+    monkeypatch.setattr("scripts.full_api_parallel_runner.subprocess.run", fake_run)
+    monkeypatch.setattr("scripts.full_api_parallel_runner.time.sleep", lambda seconds: None)
+
+    result = run(fake_options(tmp_path), runtime=runtime)
+
+    run_root = tmp_path / "full_api_parallel" / "fixed_stamp"
+    assert result == 0
+    assert (run_root / "openai_gpt-4.1-mini").is_dir()
+    assert (run_root / "cache").is_dir()
 
 
 def test_full_api_parallel_runner_fatal_status_fails_before_merge(tmp_path: Path, monkeypatch) -> None:
