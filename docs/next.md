@@ -326,7 +326,7 @@
 - Report drilldown is still basic; weak-page and content recommendation views need dedicated aggregation instead of overloading the monitor.
 - Creating an industry registry row does not grant team access by itself; IAM, PostgreSQL users, and RDS allowlists still need separate role-specific setup.
 - The UI now has guarded execution buttons with explicit approvals; future log streaming should keep the same launch-manifest safety boundary.
-- The owned-site refresh commands in the UI are a planning surface and should be reconciled with the latest AlphaXXXX refresh pipeline before they become one-click execution.
+- The owned-site refresh commands in the UI can be launched as guarded pipeline steps after confirmation; keep their labels and warnings aligned with the latest AlphaXXXX refresh pipeline before heavy use.
 - Exact model subset selection is supported by the Python runner and thin wrappers; selected ids still need to exist in `config/client_acquisition_simulator.yaml`.
 - The industry-isolation migration preserves compatibility with the base schema, but a live multi-industry RDS migration still needs a deliberate rollout plan and backup.
 - Database docs now include non-secret AWS identifiers such as bucket name and RDS endpoint. This is useful for team onboarding, but access must still be controlled with IAM, PostgreSQL credentials, and RDS network allowlists.
