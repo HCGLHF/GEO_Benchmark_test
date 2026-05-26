@@ -31,8 +31,9 @@ class FakeRuntime:
     path_style = "posix"
     python_executable = "python"
 
-    def __init__(self, returncode: int = 0):
+    def __init__(self, returncode: int = 0, call_order: list[str] | None = None):
         self.returncode = returncode
+        self.call_order = call_order
         self.launched: list[list[str]] = []
 
     def path(self, value):
@@ -45,6 +46,8 @@ class FakeRuntime:
         self.launched.append(list(args))
         output_dir = Path(args[args.index("--output-dir") + 1])
         model = args[args.index("--include-model") + 1]
+        if self.call_order is not None:
+            self.call_order.append(f"launch:{model}")
         output_dir.mkdir(parents=True, exist_ok=True)
         (output_dir / "run_config.resolved.json").write_text(
             json.dumps(
@@ -71,7 +74,13 @@ class FakeRuntime:
         return ProcessHandle(pid=9000, process_group_id=None, process=FakeProcess(self.returncode))
 
 
-def fake_options(tmp_path: Path, *, skip_merge: bool = False) -> RunnerOptions:
+def fake_options(
+    tmp_path: Path,
+    *,
+    models: list[str] | None = None,
+    seed_queries_run_dir: str = "",
+    skip_merge: bool = False,
+) -> RunnerOptions:
     return RunnerOptions(
         config="config/client_acquisition_simulator.yaml",
         run_mode="test",
@@ -79,14 +88,22 @@ def fake_options(tmp_path: Path, *, skip_merge: bool = False) -> RunnerOptions:
         run_root=tmp_path / "full_api_parallel",
         run_stamp="fixed_stamp",
         monitor_interval_seconds=1,
-        seed_queries_run_dir="",
+        seed_queries_run_dir=seed_queries_run_dir,
         progress_html_path="",
-        models=["openai/gpt-4.1-mini"],
+        models=models or ["openai/gpt-4.1-mini"],
         include_doubao=False,
         skip_merge=skip_merge,
         dry_run=False,
         platform="wsl",
     )
+
+
+def write_seed_queries(seed_dir: Path, models: list[str]) -> None:
+    seed_dir.mkdir()
+    rows = ["query_id,provider,scenario_model,persona,stage,query"]
+    for index, model in enumerate(models, start=1):
+        rows.append(f"q{index:04d},openrouter,{model},owner,awareness,Need GEO")
+    (seed_dir / "api_queries.csv").write_text("\n".join(rows), encoding="utf-8")
 
 
 def test_full_api_parallel_runner_dry_run_prints_expected_contract(tmp_path: Path) -> None:
@@ -380,3 +397,86 @@ def test_full_api_parallel_runner_fatal_status_fails_before_merge(tmp_path: Path
     status = read_pipeline_status(run_root)
     assert status["stages"]["answer"]["status"] == "failed"
     assert not any("merge_full_api_runs.py" in call for call in calls)
+
+
+def test_full_api_parallel_runner_seeds_all_models_before_launching_workers(tmp_path: Path, monkeypatch) -> None:
+    models = ["openai/gpt-4.1-mini", "qwen/qwen3.7-max"]
+    seed_dir = tmp_path / "seed_run"
+    write_seed_queries(seed_dir, models)
+    call_order: list[str] = []
+    runtime = FakeRuntime(call_order=call_order)
+
+    def fake_run(args, check=False, text=True, capture_output=False):
+        class Result:
+            returncode = 0
+            stdout = json.dumps(
+                {"status": "complete", "fatal_count": 0, "warning_count": 0, "fatals": [], "warnings": []}
+            )
+            stderr = ""
+
+        joined = " ".join(str(arg) for arg in args)
+        if "seed_api_queries.py" in joined:
+            call_order.append(f"seed:{args[args.index('--model') + 1]}")
+        elif "merge_full_api_runs.py" in joined:
+            output_dir = Path(args[args.index("--output-dir") + 1])
+            output_dir.mkdir(parents=True, exist_ok=True)
+            (output_dir / "competitive_gap_report.md").write_text("# Report\n", encoding="utf-8")
+        return Result()
+
+    monkeypatch.setattr("scripts.full_api_parallel_runner.subprocess.run", fake_run)
+    monkeypatch.setattr("scripts.full_api_parallel_runner.time.sleep", lambda seconds: None)
+
+    result = run(
+        fake_options(tmp_path, models=models, seed_queries_run_dir=str(seed_dir)),
+        runtime=runtime,
+    )
+
+    assert result == 0
+    assert call_order[:4] == [
+        "seed:openai/gpt-4.1-mini",
+        "seed:qwen/qwen3.7-max",
+        "launch:openai/gpt-4.1-mini",
+        "launch:qwen/qwen3.7-max",
+    ]
+
+
+def test_full_api_parallel_runner_seed_failure_preserves_exit_code_in_top_level_json(
+    tmp_path: Path, monkeypatch
+) -> None:
+    model = "openai/gpt-4.1-mini"
+    seed_dir = tmp_path / "seed_run"
+    write_seed_queries(seed_dir, [model])
+    runtime = FakeRuntime()
+
+    def fake_run(args, check=False, text=True, capture_output=False):
+        class Result:
+            returncode = 0
+            stdout = json.dumps(
+                {
+                    "status": "failed",
+                    "fatal_count": 1,
+                    "warning_count": 0,
+                    "fatals": [{"safe_name": "openai_gpt-4.1-mini", "message": "seed failed"}],
+                    "warnings": [],
+                }
+            )
+            stderr = ""
+
+        joined = " ".join(str(arg) for arg in args)
+        if "seed_api_queries.py" in joined:
+            Result.returncode = 7
+            Result.stdout = ""
+            Result.stderr = "seed failed"
+        return Result()
+
+    monkeypatch.setattr("scripts.full_api_parallel_runner.subprocess.run", fake_run)
+    monkeypatch.setattr("scripts.full_api_parallel_runner.time.sleep", lambda seconds: None)
+
+    result = run(fake_options(tmp_path, seed_queries_run_dir=str(seed_dir)), runtime=runtime)
+
+    run_root = tmp_path / "full_api_parallel" / "fixed_stamp"
+    assert result == 1
+    assert runtime.launched == []
+    assert json.loads((run_root / "worker_exit_codes.json").read_text(encoding="utf-8")) == {
+        "openai_gpt-4.1-mini": "7"
+    }

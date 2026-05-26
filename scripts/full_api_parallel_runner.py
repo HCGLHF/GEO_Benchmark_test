@@ -277,9 +277,9 @@ def _write_terminal_summary(run_root: Path, status: str, return_code: int) -> in
     return return_code
 
 
-def _run_seed(worker: WorkerPlan, run_root: Path) -> bool:
+def _run_seed(worker: WorkerPlan, run_root: Path) -> str:
     if worker.seed_args is None:
-        return True
+        return "0"
     result = subprocess.run(worker.seed_args, check=False, text=True, capture_output=True)
     if result.returncode == 0:
         append_event(
@@ -290,7 +290,7 @@ def _run_seed(worker: WorkerPlan, run_root: Path) -> bool:
             model=worker.model,
             details={"safe_name": worker.safe_name, "seeded_query_count": worker.seeded_query_count},
         )
-        return True
+        return "0"
 
     message = f"Seed query command failed for {worker.model} with exit code {result.returncode}."
     print(message, file=sys.stderr)
@@ -316,7 +316,17 @@ def _run_seed(worker: WorkerPlan, run_root: Path) -> bool:
         details={"safe_name": worker.safe_name, "returncode": result.returncode},
         source=OPS_SOURCE,
     )
-    return False
+    return str(result.returncode)
+
+
+def _run_seed_phase(run_root: Path, workers: list[WorkerPlan]) -> dict[str, str]:
+    exit_codes: dict[str, str] = {}
+    for worker in workers:
+        seed_exit_code = _run_seed(worker, run_root)
+        if seed_exit_code != "0":
+            exit_codes[worker.safe_name] = seed_exit_code
+            return exit_codes
+    return exit_codes
 
 
 def _wait_for_workers(
@@ -327,12 +337,13 @@ def _wait_for_workers(
     progress_html_path: Path,
     monitor_interval_seconds: int,
 ) -> dict[str, str]:
+    seed_exit_codes = _run_seed_phase(run_root, workers)
+    if seed_exit_codes:
+        return seed_exit_codes
+
     pending = []
     exit_codes: dict[str, str] = {}
     for worker in workers:
-        if not _run_seed(worker, run_root):
-            exit_codes[worker.safe_name] = "1"
-            return exit_codes
         append_event(
             run_root,
             stage="answer",
