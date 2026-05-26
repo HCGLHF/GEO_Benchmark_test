@@ -336,10 +336,10 @@ def _wait_for_workers(
     workers: list[WorkerPlan],
     progress_html_path: Path,
     monitor_interval_seconds: int,
-) -> dict[str, str]:
+) -> tuple[dict[str, str], bool]:
     seed_exit_codes = _run_seed_phase(run_root, workers)
     if seed_exit_codes:
-        return seed_exit_codes
+        return seed_exit_codes, True
 
     pending = []
     exit_codes: dict[str, str] = {}
@@ -405,7 +405,7 @@ def _wait_for_workers(
         if pending:
             time.sleep(monitor_interval_seconds)
 
-    return exit_codes
+    return exit_codes, False
 
 
 def _classify_runs(
@@ -494,7 +494,7 @@ def run(options: RunnerOptions, runtime: PlatformRuntime | None = None) -> int:
     append_event(run_root, stage="answer", status="running", message="Full API workers starting.")
     _render_progress_html(runtime, workers, progress_html_path)
 
-    exit_codes = _wait_for_workers(
+    exit_codes, seed_failed = _wait_for_workers(
         runtime=runtime,
         run_root=run_root,
         workers=workers,
@@ -503,6 +503,9 @@ def run(options: RunnerOptions, runtime: PlatformRuntime | None = None) -> int:
     )
     exit_code_path = run_root / "worker_exit_codes.json"
     exit_code_path.write_text(json.dumps(exit_codes, ensure_ascii=False, indent=2, sort_keys=True), encoding="utf-8")
+    if seed_failed:
+        actual_exit_code = int(next(iter(exit_codes.values()), "1"))
+        return _write_terminal_summary(run_root, "failed", actual_exit_code)
 
     try:
         classification = _classify_runs(runtime, workers, exit_code_path)

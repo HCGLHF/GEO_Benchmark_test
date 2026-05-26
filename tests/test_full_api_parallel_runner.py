@@ -541,7 +541,7 @@ def test_full_api_parallel_runner_seed_failure_preserves_exit_code_in_top_level_
     result = run(fake_options(tmp_path, seed_queries_run_dir=str(seed_dir)), runtime=runtime)
 
     run_root = tmp_path / "full_api_parallel" / "fixed_stamp"
-    assert result == 1
+    assert result == 7
     assert runtime.launched == []
     assert json.loads((run_root / "worker_exit_codes.json").read_text(encoding="utf-8")) == {
         "openai_gpt-4.1-mini": "7"
