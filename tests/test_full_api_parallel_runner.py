@@ -1,11 +1,92 @@
 from __future__ import annotations
 
+import json
 import subprocess
 import sys
 from pathlib import Path
 
-from scripts.full_api_parallel_runner import build_merge_args, build_run_root, build_worker_plans, parse_args
-from scripts.platform_runtime import detect_platform
+from scripts.full_api_parallel_runner import (
+    RunnerOptions,
+    build_merge_args,
+    build_run_root,
+    build_worker_plans,
+    parse_args,
+    run,
+)
+from scripts.pipeline_state import read_pipeline_status
+from scripts.platform_runtime import ProcessHandle, detect_platform
+
+
+class FakeProcess:
+    def __init__(self, returncode: int = 0):
+        self.pid = 9000
+        self.returncode = returncode
+
+    def poll(self):
+        return self.returncode
+
+
+class FakeRuntime:
+    platform_id = "wsl"
+    path_style = "posix"
+    python_executable = "python"
+
+    def __init__(self, returncode: int = 0):
+        self.returncode = returncode
+        self.launched: list[list[str]] = []
+
+    def path(self, value):
+        return str(value).replace("\\", "/")
+
+    def format_command(self, args):
+        return " ".join(str(arg) for arg in args)
+
+    def launch_worker(self, args, *, cwd, log_path):
+        self.launched.append(list(args))
+        output_dir = Path(args[args.index("--output-dir") + 1])
+        model = args[args.index("--include-model") + 1]
+        output_dir.mkdir(parents=True, exist_ok=True)
+        (output_dir / "run_config.resolved.json").write_text(
+            json.dumps(
+                {
+                    "models": [{"provider": "openrouter", "model": model}],
+                    "client_acquisition": {"queries_per_model": 1},
+                }
+            ),
+            encoding="utf-8",
+        )
+        (output_dir / "api_queries.csv").write_text("query_id,query\nq001,Need GEO\n", encoding="utf-8")
+        (output_dir / "retrieval_by_model.csv").write_text(f"query_id,model\nq001,{model}\n", encoding="utf-8")
+        (output_dir / "model_answer_evaluations.csv").write_text(
+            f"query_id,model,error\nq001,{model},\n",
+            encoding="utf-8",
+        )
+        (output_dir / "api_orchestrator_attempts.jsonl").write_text(
+            json.dumps({"task_type": "rerank", "model": model, "status": "api_call"}) + "\n"
+            + json.dumps({"task_type": "answer", "model": model, "status": "api_call"}) + "\n",
+            encoding="utf-8",
+        )
+        log_path.parent.mkdir(parents=True, exist_ok=True)
+        log_path.write_text("fake worker complete\n", encoding="utf-8")
+        return ProcessHandle(pid=9000, process_group_id=None, process=FakeProcess(self.returncode))
+
+
+def fake_options(tmp_path: Path, *, skip_merge: bool = False) -> RunnerOptions:
+    return RunnerOptions(
+        config="config/client_acquisition_simulator.yaml",
+        run_mode="test",
+        queries_per_model=1,
+        run_root=tmp_path / "full_api_parallel",
+        run_stamp="fixed_stamp",
+        monitor_interval_seconds=1,
+        seed_queries_run_dir="",
+        progress_html_path="",
+        models=["openai/gpt-4.1-mini"],
+        include_doubao=False,
+        skip_merge=skip_merge,
+        dry_run=False,
+        platform="wsl",
+    )
 
 
 def test_full_api_parallel_runner_dry_run_prints_expected_contract(tmp_path: Path) -> None:
@@ -224,3 +305,78 @@ def test_full_api_parallel_runner_seeded_dry_run_prints_seed_command(tmp_path: P
     assert "scripts/seed_api_queries.py" in result.stdout.replace("\\", "/")
     assert "--seed-run-dir" in result.stdout
     assert "--limit 2" in result.stdout
+
+
+def test_full_api_parallel_runner_fake_execution_writes_run_contracts(tmp_path: Path, monkeypatch) -> None:
+    runtime = FakeRuntime()
+
+    def fake_run(args, check=False, text=True, capture_output=False):
+        class Result:
+            returncode = 0
+            stdout = json.dumps(
+                {"status": "complete", "fatal_count": 0, "warning_count": 0, "fatals": [], "warnings": []}
+            )
+            stderr = ""
+
+        joined = " ".join(str(arg) for arg in args)
+        if "merge_full_api_runs.py" in joined:
+            output_dir = Path(args[args.index("--output-dir") + 1])
+            output_dir.mkdir(parents=True, exist_ok=True)
+            (output_dir / "competitive_gap_report.md").write_text("# Report\n", encoding="utf-8")
+        return Result()
+
+    monkeypatch.setattr("scripts.full_api_parallel_runner.subprocess.run", fake_run)
+    monkeypatch.setattr("scripts.full_api_parallel_runner.time.sleep", lambda seconds: None)
+
+    result = run(fake_options(tmp_path), runtime=runtime)
+
+    run_root = tmp_path / "full_api_parallel" / "fixed_stamp"
+    assert result == 0
+    assert runtime.launched
+    assert (run_root / "worker_exit_codes.json").exists()
+    assert json.loads((run_root / "worker_exit_codes.json").read_text(encoding="utf-8")) == {
+        "openai_gpt-4.1-mini": "0"
+    }
+    assert (run_root / "ops_summary.json").exists()
+    assert (run_root / "merged" / "competitive_gap_report.md").exists()
+    status = read_pipeline_status(run_root)
+    assert status["manifest"]["run_type"] == "full_api_parallel"
+    assert status["manifest"]["metadata"] == {"run_mode": "test", "queries_per_model": 1}
+    assert status["stages"]["answer"]["status"] == "completed"
+    assert status["stages"]["merge"]["status"] == "completed"
+    assert status["stages"]["report"]["status"] == "completed"
+
+
+def test_full_api_parallel_runner_fatal_status_fails_before_merge(tmp_path: Path, monkeypatch) -> None:
+    runtime = FakeRuntime()
+    calls: list[str] = []
+
+    def fake_run(args, check=False, text=True, capture_output=False):
+        class Result:
+            returncode = 0
+            stdout = json.dumps(
+                {
+                    "status": "failed",
+                    "fatal_count": 1,
+                    "warning_count": 0,
+                    "fatals": [{"safe_name": "openai_gpt-4.1-mini", "message": "missing answer rows"}],
+                    "warnings": [],
+                }
+            )
+            stderr = ""
+
+        joined = " ".join(str(arg) for arg in args)
+        calls.append(joined)
+        return Result()
+
+    monkeypatch.setattr("scripts.full_api_parallel_runner.subprocess.run", fake_run)
+    monkeypatch.setattr("scripts.full_api_parallel_runner.time.sleep", lambda seconds: None)
+
+    result = run(fake_options(tmp_path), runtime=runtime)
+
+    run_root = tmp_path / "full_api_parallel" / "fixed_stamp"
+    assert result == 1
+    assert (run_root / "ops_summary.json").exists()
+    status = read_pipeline_status(run_root)
+    assert status["stages"]["answer"]["status"] == "failed"
+    assert not any("merge_full_api_runs.py" in call for call in calls)

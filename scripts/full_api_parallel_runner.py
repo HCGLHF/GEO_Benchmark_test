@@ -2,7 +2,10 @@ from __future__ import annotations
 
 import argparse
 import csv
+import json
+import subprocess
 import sys
+import time
 from collections import Counter
 from dataclasses import dataclass
 from datetime import datetime
@@ -12,6 +15,8 @@ from pathlib import Path
 if __package__ is None or __package__ == "":
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+from scripts.ops_logging import write_event, write_summary
+from scripts.pipeline_state import append_event, initialize_manifest, update_manifest
 from scripts.platform_runtime import PlatformRuntime, detect_platform
 
 
@@ -25,6 +30,19 @@ DEFAULT_MODELS = [
 ]
 DOUBAO_MODEL = "bytedance-seed/seed-2.0-pro"
 QUERY_DEFAULTS = {"test": 2, "quick": 50, "standard": 200}
+PIPELINE_STAGES = [
+    "crawl",
+    "clean",
+    "chunk",
+    "index",
+    "AWS sync",
+    "scenario_generation",
+    "rerank",
+    "answer",
+    "merge",
+    "report",
+]
+OPS_SOURCE = "scripts/full_api_parallel_runner.py"
 
 
 @dataclass(frozen=True)
@@ -238,6 +256,160 @@ def display_command(runtime: PlatformRuntime, args: list[str]) -> str:
     return runtime.format_command(args)
 
 
+def _render_progress_html(
+    runtime: PlatformRuntime,
+    workers: list[WorkerPlan],
+    progress_html_path: Path,
+) -> None:
+    args = [
+        runtime.python_executable,
+        runtime.path("scripts/render_full_api_progress_html.py"),
+        "--run-dirs",
+    ]
+    args.extend(runtime.path(worker.run_dir) for worker in workers)
+    args.extend(["--output", runtime.path(progress_html_path)])
+    subprocess.run(args, check=False, text=True, capture_output=True)
+
+
+def _write_terminal_summary(run_root: Path, status: str, return_code: int) -> int:
+    update_manifest(run_root, status=status)
+    write_summary(run_root)
+    return return_code
+
+
+def _run_seed(worker: WorkerPlan, run_root: Path) -> bool:
+    if worker.seed_args is None:
+        return True
+    result = subprocess.run(worker.seed_args, check=False, text=True, capture_output=True)
+    if result.returncode == 0:
+        append_event(
+            run_root,
+            stage="scenario_generation",
+            status="completed",
+            message=f"Seeded queries for {worker.model}.",
+            model=worker.model,
+            details={"safe_name": worker.safe_name, "seeded_query_count": worker.seeded_query_count},
+        )
+        return True
+
+    message = f"Seed query command failed for {worker.model} with exit code {result.returncode}."
+    print(message, file=sys.stderr)
+    if getattr(result, "stderr", ""):
+        print(result.stderr, file=sys.stderr)
+    worker.run_dir.mkdir(parents=True, exist_ok=True)
+    (worker.run_dir / "worker_exit_code.txt").write_text(str(result.returncode), encoding="utf-8")
+    append_event(
+        run_root,
+        stage="scenario_generation",
+        status="failed",
+        message=message,
+        model=worker.model,
+        details={"safe_name": worker.safe_name, "stdout": result.stdout, "stderr": result.stderr},
+    )
+    write_event(
+        run_root,
+        level="error",
+        event_type="stage_failed",
+        stage="scenario_generation",
+        model=worker.model,
+        message=message,
+        details={"safe_name": worker.safe_name, "returncode": result.returncode},
+        source=OPS_SOURCE,
+    )
+    return False
+
+
+def _wait_for_workers(
+    *,
+    runtime: PlatformRuntime,
+    run_root: Path,
+    workers: list[WorkerPlan],
+    progress_html_path: Path,
+    monitor_interval_seconds: int,
+) -> dict[str, str]:
+    pending = []
+    exit_codes: dict[str, str] = {}
+    for worker in workers:
+        if not _run_seed(worker, run_root):
+            exit_codes[worker.safe_name] = "1"
+            return exit_codes
+        append_event(
+            run_root,
+            stage="answer",
+            status="running",
+            message=f"Worker running for {worker.model}.",
+            model=worker.model,
+            details={"safe_name": worker.safe_name},
+        )
+        handle = runtime.launch_worker(worker.python_args, cwd=Path.cwd(), log_path=worker.run_dir / "worker.log")
+        pending.append((worker, handle))
+
+    while pending:
+        remaining = []
+        for worker, handle in pending:
+            process = getattr(handle, "process", None)
+            poll = getattr(process, "poll", None)
+            exit_code = 0 if process is None or not callable(poll) else poll()
+            if exit_code is None:
+                remaining.append((worker, handle))
+                continue
+
+            exit_text = str(exit_code)
+            exit_codes[worker.safe_name] = exit_text
+            worker.run_dir.mkdir(parents=True, exist_ok=True)
+            (worker.run_dir / "worker_exit_code.txt").write_text(exit_text, encoding="utf-8")
+            if exit_text == "0":
+                append_event(
+                    run_root,
+                    stage="answer",
+                    status="completed",
+                    message=f"Worker completed for {worker.model}.",
+                    model=worker.model,
+                    details={"safe_name": worker.safe_name, "exit_code": exit_text},
+                )
+            else:
+                append_event(
+                    run_root,
+                    stage="answer",
+                    status="failed",
+                    message=f"Worker failed for {worker.model} with exit code {exit_text}.",
+                    model=worker.model,
+                    details={"safe_name": worker.safe_name, "exit_code": exit_text},
+                )
+                write_event(
+                    run_root,
+                    level="error",
+                    event_type="worker_failed",
+                    stage="answer",
+                    model=worker.model,
+                    message=f"Worker failed for {worker.model} with exit code {exit_text}.",
+                    details={"safe_name": worker.safe_name, "exit_code": exit_text},
+                    source=OPS_SOURCE,
+                )
+
+        pending = remaining
+        _render_progress_html(runtime, workers, progress_html_path)
+        if pending:
+            time.sleep(monitor_interval_seconds)
+
+    return exit_codes
+
+
+def _classify_runs(
+    runtime: PlatformRuntime,
+    workers: list[WorkerPlan],
+    exit_code_path: Path,
+) -> dict:
+    args = [runtime.python_executable, runtime.path("scripts/full_api_run_status.py")]
+    for worker in workers:
+        args.extend(["--run-dir", runtime.path(worker.run_dir)])
+    args.extend(["--exit-code-file", runtime.path(exit_code_path)])
+    result = subprocess.run(args, check=False, text=True, capture_output=True)
+    if result.returncode != 0:
+        raise RuntimeError(f"Run status classification failed: {result.stderr}")
+    return json.loads(result.stdout)
+
+
 def print_dry_run(
     options: RunnerOptions,
     runtime: PlatformRuntime,
@@ -279,8 +451,8 @@ def print_dry_run(
         print(display_command(runtime, merge_args))
 
 
-def run(options: RunnerOptions) -> int:
-    runtime = detect_platform(options.platform)
+def run(options: RunnerOptions, runtime: PlatformRuntime | None = None) -> int:
+    runtime = runtime or detect_platform(options.platform)
     models = selected_models(options)
     run_root = build_run_root(options)
     progress_html_path = Path(options.progress_html_path) if options.progress_html_path else run_root / "progress.html"
@@ -291,8 +463,149 @@ def run(options: RunnerOptions) -> int:
         print_dry_run(options, runtime, run_root, progress_html_path, workers, merge_args, models)
         return 0
 
-    print("Non-dry-run execution is not implemented in Task 2; use --dry-run.", file=sys.stderr)
-    return 2
+    initialize_manifest(
+        run_root=run_root,
+        run_type="full_api_parallel",
+        stages=PIPELINE_STAGES,
+        models=models,
+        metadata={"run_mode": options.run_mode, "queries_per_model": options.queries_per_model},
+    )
+    write_event(
+        run_root,
+        level="info",
+        event_type="run_started",
+        message="Full API parallel run started.",
+        details={"run_mode": options.run_mode, "queries_per_model": options.queries_per_model, "models": models},
+        source=OPS_SOURCE,
+    )
+    append_event(run_root, stage="answer", status="running", message="Full API workers starting.")
+    _render_progress_html(runtime, workers, progress_html_path)
+
+    exit_codes = _wait_for_workers(
+        runtime=runtime,
+        run_root=run_root,
+        workers=workers,
+        progress_html_path=progress_html_path,
+        monitor_interval_seconds=options.monitor_interval_seconds,
+    )
+    exit_code_path = run_root / "worker_exit_codes.json"
+    exit_code_path.write_text(json.dumps(exit_codes, ensure_ascii=False, indent=2, sort_keys=True), encoding="utf-8")
+
+    try:
+        classification = _classify_runs(runtime, workers, exit_code_path)
+    except (RuntimeError, json.JSONDecodeError) as exc:
+        append_event(run_root, stage="answer", status="failed", message=str(exc))
+        write_event(
+            run_root,
+            level="error",
+            event_type="stage_failed",
+            stage="answer",
+            message=str(exc),
+            source=OPS_SOURCE,
+        )
+        return _write_terminal_summary(run_root, "failed", 1)
+
+    fatal_count = int(classification.get("fatal_count") or 0)
+    warning_count = int(classification.get("warning_count") or 0)
+    if fatal_count > 0:
+        append_event(
+            run_root,
+            stage="answer",
+            status="failed",
+            message=f"Run status classifier found {fatal_count} fatal model issue(s).",
+            details=classification,
+        )
+        write_event(
+            run_root,
+            level="error",
+            event_type="stage_failed",
+            stage="answer",
+            message=f"Run status classifier found {fatal_count} fatal model issue(s).",
+            details=classification,
+            source=OPS_SOURCE,
+        )
+        _render_progress_html(runtime, workers, progress_html_path)
+        return _write_terminal_summary(run_root, "failed", 1)
+
+    if warning_count > 0:
+        append_event(
+            run_root,
+            stage="answer",
+            status="complete_with_model_warnings",
+            message=f"Workers completed with {warning_count} model warning(s).",
+            details=classification,
+        )
+        write_event(
+            run_root,
+            level="warning",
+            event_type="stage_completed",
+            stage="answer",
+            message=f"Workers completed with {warning_count} model warning(s).",
+            details=classification,
+            source=OPS_SOURCE,
+        )
+    else:
+        append_event(run_root, stage="answer", status="completed", message="All workers completed.", details=classification)
+        write_event(
+            run_root,
+            level="info",
+            event_type="stage_completed",
+            stage="answer",
+            message="All workers completed.",
+            details=classification,
+            source=OPS_SOURCE,
+        )
+
+    if options.skip_merge:
+        append_event(run_root, stage="merge", status="skipped", message="Merge skipped by option.")
+        write_event(
+            run_root,
+            level="info",
+            event_type="run_completed",
+            message="Full API parallel run completed with merge skipped.",
+            source=OPS_SOURCE,
+        )
+        _render_progress_html(runtime, workers, progress_html_path)
+        return _write_terminal_summary(run_root, "completed", 0)
+
+    append_event(run_root, stage="merge", status="running", message="Merging model runs.")
+    merge_result = subprocess.run(merge_args, check=False, text=True, capture_output=True)
+    if merge_result.returncode != 0:
+        message = f"Merge failed with exit code {merge_result.returncode}."
+        append_event(
+            run_root,
+            stage="merge",
+            status="failed",
+            message=message,
+            details={"stdout": merge_result.stdout, "stderr": merge_result.stderr},
+        )
+        write_event(
+            run_root,
+            level="error",
+            event_type="stage_failed",
+            stage="merge",
+            message=message,
+            details={"stdout": merge_result.stdout, "stderr": merge_result.stderr},
+            source=OPS_SOURCE,
+        )
+        _render_progress_html(runtime, workers, progress_html_path)
+        return _write_terminal_summary(run_root, "failed", 1)
+
+    append_event(run_root, stage="merge", status="completed", message="Merged model runs.")
+    append_event(run_root, stage="report", status="completed", message="Merged report ready.")
+    write_event(
+        run_root,
+        level="info",
+        event_type="run_completed",
+        message="Full API parallel run completed.",
+        details={"merged_report": str(run_root / "merged" / "competitive_gap_report.md")},
+        source=OPS_SOURCE,
+    )
+    _render_progress_html(runtime, workers, progress_html_path)
+    update_manifest(run_root, status="completed")
+    write_summary(run_root)
+    print(f"Merged report: {runtime.path(run_root / 'merged' / 'competitive_gap_report.md')}")
+    return 0
 
 
 def main(argv: list[str] | None = None) -> int:
