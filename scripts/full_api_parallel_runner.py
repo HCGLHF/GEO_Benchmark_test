@@ -50,8 +50,9 @@ class WorkerPlan:
     safe_name: str
     run_dir: Path
     cache_path: Path
-    command: str
-    watch_command: str
+    python_args: list[str]
+    watch_args: list[str]
+    seed_args: list[str] | None
     seeded_query_count: int = 0
 
 
@@ -182,31 +183,45 @@ def build_worker_plans(
             "--run-dir",
             runtime.path(run_dir),
         ]
+        seed_args = None
+        seeded_query_count = 0
+        if options.seed_queries_run_dir:
+            seeded_query_count = len(get_seed_queries(options.seed_queries_run_dir, model, options.queries_per_model))
+            seed_args = [
+                runtime.python_executable,
+                runtime.path("scripts/seed_api_queries.py"),
+                "--seed-run-dir",
+                runtime.path(options.seed_queries_run_dir),
+                "--model",
+                model,
+                "--output-dir",
+                runtime.path(run_dir),
+                "--limit",
+                str(options.queries_per_model),
+            ]
+
         workers.append(
             WorkerPlan(
                 model=model,
                 safe_name=model_safe_name,
                 run_dir=run_dir,
                 cache_path=cache_path,
-                command=runtime.format_command(python_args),
-                watch_command=runtime.format_command(watch_args),
-                seeded_query_count=len(
-                    get_seed_queries(options.seed_queries_run_dir, model, options.queries_per_model)
-                )
-                if options.seed_queries_run_dir
-                else 0,
+                python_args=python_args,
+                watch_args=watch_args,
+                seed_args=seed_args,
+                seeded_query_count=seeded_query_count,
             )
         )
 
     return workers
 
 
-def build_merge_command(
+def build_merge_args(
     options: RunnerOptions,
     runtime: PlatformRuntime,
     workers: list[WorkerPlan],
     merged_dir: Path,
-) -> str:
+) -> list[str]:
     merge_args = [
         runtime.python_executable,
         runtime.path("scripts/merge_full_api_runs.py"),
@@ -216,7 +231,11 @@ def build_merge_command(
     ]
     merge_args.extend(runtime.path(worker.run_dir) for worker in workers)
     merge_args.extend(["--output-dir", runtime.path(merged_dir)])
-    return runtime.format_command(merge_args)
+    return merge_args
+
+
+def display_command(runtime: PlatformRuntime, args: list[str]) -> str:
+    return runtime.format_command(args)
 
 
 def print_dry_run(
@@ -225,7 +244,7 @@ def print_dry_run(
     run_root: Path,
     progress_html_path: Path,
     workers: list[WorkerPlan],
-    merge_command: str,
+    merge_args: list[str],
     models: list[str],
 ) -> None:
     print("DRY RUN: full API parallel run with monitoring")
@@ -247,15 +266,17 @@ def print_dry_run(
         print(f"Cache: {runtime.path(worker.cache_path)}")
         if options.seed_queries_run_dir:
             print(f"Seeded queries: {worker.seeded_query_count}")
-        print(worker.command)
-        print(f"Watch: {worker.watch_command}")
+            if worker.seed_args is not None:
+                print(f"Seed command: {display_command(runtime, worker.seed_args)}")
+        print(display_command(runtime, worker.python_args))
+        print(f"Watch: {display_command(runtime, worker.watch_args)}")
         print()
 
     print("Merge:")
     if options.skip_merge:
-        print(f"Skip merge set. Merge command: {merge_command}")
+        print(f"Skip merge set. Merge command: {display_command(runtime, merge_args)}")
     else:
-        print(merge_command)
+        print(display_command(runtime, merge_args))
 
 
 def run(options: RunnerOptions) -> int:
@@ -264,10 +285,10 @@ def run(options: RunnerOptions) -> int:
     run_root = build_run_root(options)
     progress_html_path = Path(options.progress_html_path) if options.progress_html_path else run_root / "progress.html"
     workers = build_worker_plans(options, runtime, run_root, models)
-    merge_command = build_merge_command(options, runtime, workers, run_root / "merged")
+    merge_args = build_merge_args(options, runtime, workers, run_root / "merged")
 
     if options.dry_run:
-        print_dry_run(options, runtime, run_root, progress_html_path, workers, merge_command, models)
+        print_dry_run(options, runtime, run_root, progress_html_path, workers, merge_args, models)
         return 0
 
     print("Non-dry-run execution is not implemented in Task 2; use --dry-run.", file=sys.stderr)
