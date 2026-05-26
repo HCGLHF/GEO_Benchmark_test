@@ -2,7 +2,10 @@ import argparse
 import os
 import shutil
 import subprocess
+import sys
 from pathlib import Path
+
+import pytest
 
 from scripts.run_full_api_client_acquisition import prepare_config
 
@@ -167,16 +170,20 @@ def test_bash_wrapper_forwards_to_python_runner_with_posix_paths(tmp_path: Path)
     script_text = script.read_text(encoding="utf-8")
     assert script_text.startswith("#!/usr/bin/env bash\n")
     assert "set -euo pipefail" in script_text
-    assert 'exec python scripts/full_api_parallel_runner.py "$@"' in script_text
+    assert 'PYTHON_BIN="${PYTHON:-python3}"' in script_text
+    assert 'exec "$PYTHON_BIN" scripts/full_api_parallel_runner.py "$@"' in script_text
 
     git_bash_dir = Path("C:/Program Files/Git/bin")
     env = os.environ.copy()
-    bash_command = "bash"
-    if shutil.which("bash") is None and (git_bash_dir / "bash.exe").exists():
+    bash_command = shutil.which("bash")
+    if bash_command is None and (git_bash_dir / "bash.exe").exists():
         existing_path = env.get("PATH") or env.get("Path") or ""
         env["PATH"] = f"{git_bash_dir}{os.pathsep}{existing_path}"
         env["Path"] = env["PATH"]
         bash_command = str(git_bash_dir / "bash.exe")
+    if bash_command is None:
+        pytest.skip("bash is not available in this Windows test environment")
+    env["PYTHON"] = Path(sys.executable).as_posix()
 
     result = subprocess.run(
         [
