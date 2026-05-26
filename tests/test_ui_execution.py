@@ -283,6 +283,49 @@ def test_stop_guarded_run_wsl_uses_manifest_process_group(tmp_path: Path) -> Non
     assert '"stop_command": "kill -- -4321"' in updated_manifest
 
 
+def test_stop_guarded_run_infers_wsl_platform_from_legacy_command(tmp_path: Path) -> None:
+    manifest = tmp_path / "runs" / "ui_launches" / "20260525_010000" / "launch_manifest.json"
+    manifest.parent.mkdir(parents=True)
+    manifest.write_text(
+        """
+{
+  "status": "launched",
+  "pid": 1234,
+  "process_group_id": "",
+  "command": "python scripts/full_api_parallel_runner.py --run-root runs/full_api_parallel_ui --platform wsl",
+  "monitor_run_root": "runs/full_api_parallel_ui/20260525_010000"
+}
+""".strip(),
+        encoding="utf-8",
+    )
+    signals = []
+
+    def fake_killpg(process_group_id: int, signal_number: int) -> None:
+        signals.append((process_group_id, signal_number))
+
+    preview = stop_guarded_run(
+        project_root=tmp_path,
+        run_root="runs/full_api_parallel_ui/20260525_010000",
+        confirmed=False,
+        killpg=fake_killpg,
+    )
+
+    assert preview["status"] == "confirmation_required"
+    assert preview["platform"] == "wsl"
+    assert preview["process_group_id"] is None
+    assert preview["stop_command"] == "kill -- -1234"
+
+    result = stop_guarded_run(
+        project_root=tmp_path,
+        run_root="runs/full_api_parallel_ui/20260525_010000",
+        confirmed=True,
+        killpg=fake_killpg,
+    )
+
+    assert result["status"] == "stopped"
+    assert signals == [(1234, signal.SIGTERM)]
+
+
 def test_stop_guarded_run_rejects_non_api_launch(tmp_path: Path) -> None:
     manifest = tmp_path / "runs" / "ui_launches" / "20260525_010000" / "launch_manifest.json"
     manifest.parent.mkdir(parents=True)

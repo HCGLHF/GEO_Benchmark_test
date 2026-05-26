@@ -55,6 +55,25 @@ def _api_benchmark_command(command: str, platform: str = "auto") -> bool:
     return detect_platform(platform).is_parallel_api_command(command)
 
 
+def _manifest_platform(manifest: dict[str, Any]) -> str:
+    platform = str(manifest.get("platform") or "").strip().lower()
+    if platform:
+        return platform
+    command = str(manifest.get("command") or "").replace("\\", "/").lower()
+    if "--platform wsl" in command or "scripts/run_full_api_parallel_with_watch.sh" in command:
+        return "wsl"
+    if "--platform linux" in command:
+        return "linux"
+    return "windows"
+
+
+def _manifest_process_group_id(manifest: dict[str, Any]) -> int | None:
+    raw_value = manifest.get("process_group_id")
+    if raw_value in {"", None}:
+        return None
+    return int(raw_value)
+
+
 def _find_launch_manifest(root: Path, run_root: str) -> tuple[Path, dict[str, Any]] | None:
     target = _normalize_slashes(run_root).rstrip("/")
     launch_root = root / "runs" / "ui_launches"
@@ -136,7 +155,7 @@ def stop_guarded_run(
         return {"status": "rejected", "error": f"No UI launch manifest found for {run_root}", "monitor_run_root": run_root}
     manifest_path, manifest = found
     command = str(manifest.get("command") or "")
-    platform = str(manifest.get("platform") or "windows")
+    platform = _manifest_platform(manifest)
     if not _api_benchmark_command(command, platform):
         return {
             "status": "rejected",
@@ -147,8 +166,7 @@ def stop_guarded_run(
     pid = int(manifest.get("pid") or 0)
     if pid <= 0:
         return {"status": "rejected", "error": "Launch manifest does not include a valid pid.", "monitor_run_root": run_root}
-    raw_process_group_id = manifest.get("process_group_id")
-    process_group_id = int(raw_process_group_id) if raw_process_group_id is not None else None
+    process_group_id = _manifest_process_group_id(manifest)
     runtime_kwargs: dict[str, Any] = {"process_runner": process_runner}
     if killpg is not None:
         runtime_kwargs["killpg"] = killpg
