@@ -29,10 +29,10 @@ def test_build_parallel_crawl_command_uses_current_cli_flags() -> None:
         disable_paid_fallback=True,
     )
 
-    joined = " ".join(command)
+    joined = " ".join(command).replace("\\", "/")
     assert "scripts.crawl_pages_parallel" in joined
-    assert "--url-inventory data\\raw\\alpha_update_discovered_urls.csv" in joined
-    assert "--pages-output data\\raw\\alpha_update_pages.jsonl" in joined
-    assert "--attempts-output data\\raw\\alpha_update_fetch_attempts.jsonl" in joined
-    assert "--logs-output data\\raw\\alpha_update_crawl_logs.csv" in joined
+    assert "--url-inventory data/raw/alpha_update_discovered_urls.csv" in joined
+    assert "--pages-output data/raw/alpha_update_pages.jsonl" in joined
+    assert "--attempts-output data/raw/alpha_update_fetch_attempts.jsonl" in joined
+    assert "--logs-output data/raw/alpha_update_crawl_logs.csv" in joined
     assert "--disable-paid-fallback" in command

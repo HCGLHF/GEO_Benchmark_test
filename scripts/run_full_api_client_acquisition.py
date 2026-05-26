@@ -36,6 +36,8 @@ def prepare_config(args: argparse.Namespace) -> dict[str, Any]:
     config = copy.deepcopy(load_config(Path(args.config)))
     run_config = config.setdefault("run", {})
     run_config["output_dir"] = args.output_dir or timestamped_output_dir()
+    if getattr(args, "ops_run_root", None):
+        run_config["ops_run_root"] = args.ops_run_root
 
     if args.queries_per_model is not None:
         config.setdefault("client_acquisition", {})["queries_per_model"] = args.queries_per_model
@@ -89,6 +91,7 @@ def main() -> None:
     parser.add_argument("--include-model", action="append", default=[])
     parser.add_argument("--exclude-model", action="append", default=[])
     parser.add_argument("--cache-path", default=None, help="Override the LLM cache SQLite path for this run.")
+    parser.add_argument("--ops-run-root", default=None, help="Write ops events to this parent run root.")
     args = parser.parse_args()
 
     config = prepare_config(args)

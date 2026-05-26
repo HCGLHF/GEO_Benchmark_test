@@ -13,14 +13,20 @@
 - `scripts/client_acquisition_simulator.py`: orchestrates scenario generation, retrieval, rerank, answers, brand metrics, competitive reports, incremental run-output writes, and resume skipping for completed rows.
 - `scripts/geo_eval/orchestrator.py`: wraps external model calls with cache/run-state handling, terminal attempt logging, and in-flight API event logging for diagnostics.
 - `scripts/run_full_api_client_acquisition.py`: user-run entrypoint for highest-fidelity external API evaluation.
-- `scripts/run_full_api_parallel_with_watch.ps1`: one-command local orchestrator that launches one full API worker per model, supports `test`, `quick`, and `standard` run modes, monitors each run, and merges successful outputs.
+- `scripts/full_api_parallel_runner.py`: shared full API parallel orchestrator that launches one worker per model, supports `test`, `quick`, and `standard` run modes, monitors each run, and merges successful outputs.
+- `scripts/full_api_run_status.py`: classifies completed single-model API runs as clean, warning, or fatal based on output completeness and API failure records, so rate-limit warnings do not block merge when rows are complete.
 - `scripts/pipeline_state.py`: shared append-only run-state contract for `run_manifest.json` and `pipeline_state.jsonl`.
+- `scripts/ops_logging.py`: shared local operations event/summary helpers for run-root scoped `ops_events.jsonl` and `ops_summary.json` files.
+- `scripts/ops_logs.py`: local operations log CLI for recording events, filtering events, generating summaries, and running doctor checks.
 - `scripts/run_pipeline_step.py`: guarded shell-step wrapper that records running/completed/failed events for crawl, clean, chunk, index, AWS sync, and other local commands.
 - `scripts/seed_api_queries.py`: copies a bounded set of existing API-generated scenario queries into a single-model run directory so refreshed-corpus runs can skip scenario generation.
 - `scripts/watch_full_api_run.py`: read-only monitor for long full API runs, summarizing progress and missing rows from run output files without calling model APIs.
 - `scripts/render_full_api_progress_html.py`: renders a static auto-refreshing HTML dashboard from full API run output files.
 - `scripts/merge_full_api_runs.py`: merges single-model runs into one report.
-- `scripts/report_diagnostics.py`: builds query-level loss analysis, competitor displacement tables, and page-level optimization plans from completed retrieval and answer artifacts.
+- `scripts/platform_runtime.py`: shared platform runtime seam for command formatting, process launch, and stop behavior across Windows, Linux, and WSL.
+- `scripts/run_full_api_parallel_with_watch.ps1`: Windows wrapper that forwards existing PowerShell parameters to the Python full API parallel runner.
+- `scripts/run_full_api_parallel_with_watch.sh`: WSL/Linux wrapper that forwards shell arguments to the Python full API parallel runner.
+- `scripts/report_diagnostics.py`: builds query-level loss analysis, competitor displacement tables, weakness diagnosis, and page-level optimization plans from completed retrieval and answer artifacts.
 - `scripts/page_drilldown.py`: aggregates owned-page Top5 retrieval hits and weak owned pages from retrieval evidence for report and UI drilldowns.
 - `scripts/alphaxxxx_llms_router.py`: generates the AlphaXXXX `llms.txt` intent router used to direct AI crawlers and retrieval toward the strongest canonical pages.
 - `scripts/build_corpus_variant.py`: builds evaluation corpus variants, currently `without_llms`, from processed artifacts without mutating the main corpus.
@@ -39,9 +45,9 @@
 - `scripts/ui_app/report_summary.py`: finds the latest merged run report and summarizes target ranking, top competitors, and model-level slices.
 - `scripts/ui_app/report_history.py`: discovers completed merged reports under `runs/`, summarizes historical AlphaXXXX performance, and safely previews known `competitive_gap_report.md` files.
 - `scripts/ui_app/run_plan.py`: builds explicit dry-run command plans for owned-site refresh, corpus rebuild, optional cloud sync, and API benchmark execution.
-- `scripts/ui_app/run_monitor.py`: reads parallel run directories, per-model worker logs, pipeline log tails, `watch_full_api_run.py` summaries, chain-health diagnostics, and merged reports to power the UI Run Monitor without mutating run state.
-- `scripts/ui_app/execution.py`: launches only backend-generated guarded API benchmark commands or `run_pipeline_step.py`-wrapped pipeline steps after explicit confirmation, recording launch manifests and logs.
-- `scripts/ui_app/server.py`: serves the local browser console with standard-library HTTP only; it reads status and returns dry-run plans but does not execute API or AWS calls.
+- `scripts/ui_app/run_monitor.py`: reads parallel run directories, per-model worker logs, pipeline log tails, `watch_full_api_run.py` summaries, chain-health diagnostics, API issue guidance, and merged reports to power the UI Run Monitor.
+- `scripts/ui_app/execution.py`: launches only backend-generated guarded API benchmark commands or `run_pipeline_step.py`-wrapped pipeline steps after explicit confirmation, records launch manifests/logs, and provides guarded stop/resume for UI-launched API benchmark runs.
+- `scripts/ui_app/server.py`: serves the local browser console with standard-library HTTP only; it reads status, returns run plans, and routes explicit launch/stop/resume requests to guarded backend execution helpers.
 - `sql/001_initial_schema.sql`: defines the cloud resource-library schema, including corpus versions, artifact objects, documents, chunks, query sets, benchmark runs, and result tables.
 
 ## Data Flow
@@ -84,19 +90,23 @@ The cloud store follows the project split documented in `docs/cloud-database.md`
 - Resume behavior uses persisted output files as the contract: scenario rows, rerank rows, and answer rows determine what is already complete.
 - Seeded parallel runs reuse `api_queries.csv` per model so scenario generation remains fixed while retrieval, rerank, and answer evaluation use the refreshed corpus; the seeded row count must be capped to the effective `queries_per_model`.
 - Corpus variants must write to separate directories such as `data/experiments/without_llms/processed` and separate config files so control experiments cannot overwrite the main resource library.
-- Run-mode selection belongs in the PowerShell orchestration layer: `quick` maps to 50 queries per model, while `standard` maps to 200 queries per model unless `-QueriesPerModel` explicitly overrides it.
+- Run-mode selection belongs in the Python full API runner: `quick` maps to 50 queries per model, while `standard` maps to 200 queries per model unless `--queries-per-model` or the wrapper equivalent explicitly overrides it.
 - `test` run mode belongs to link-checking, not ranking analysis; it maps to 2 seeded queries per model so rerank plus answer normally stays in the five-call class.
 - Cloud import depends on existing processed contracts; it must not become a hidden crawler or evaluator path.
 - PostgreSQL is the queryable corpus and benchmark ledger, S3 is the artifact store, and Qdrant remains a rebuildable retrieval index.
 - Industry isolation belongs in the cloud operation layer: industry registry creation, cloud imports, verification, S3 artifact keys, and Qdrant snapshots must require an explicit `industry_id`.
 - The local UI depends on existing configs, processed artifacts, reports, and cloud environment presence only; it must call orchestration scripts explicitly rather than reimplementing crawler, evaluator, or cloud import logic.
-- Run Monitor depends on run-output files as facts; it must remain read-only until guarded execution controls are implemented separately.
+- Run Monitor depends on run-output files as facts for status, but it can call guarded execution controls for stop/resume when the target run root maps to a known UI launch manifest.
 - Report history depends on completed `runs/**/merged*/competitive_gap_report.md` artifacts as facts; it must remain a read-only view over existing report outputs.
 - Owned-page drilldown depends on `retrieval_evidence_by_model.jsonl` and `data/processed/documents.jsonl`; it must summarize retrieval outcomes rather than changing index scores.
 - Report diagnostics depend on completed `retrieval_by_model.csv`, `retrieval_evidence_by_model.jsonl`, `model_answer_evaluations.csv`, and owned-page drilldown rows; they must explain outcomes and write derived CSVs, not alter benchmark metrics.
 - Pipeline state is an append-only integration contract. Stage runners write it; monitors read it; business logic should not branch on monitor UI state.
 - Pipeline state readers interpret the latest event per stage as authoritative, so recovered stages are not kept failed by older events in the append-only history.
+- Local operations logging is additive: authoritative facts remain pipeline state, worker exit files, API attempts/events, and output artifacts; summaries interpret those facts for maintenance and troubleshooting.
 - UI execution must regenerate commands from structured request parameters server-side; it must not execute arbitrary command strings sent from the browser.
+- UI stop/resume must resolve a known launch manifest by `monitor_run_root`; it must not accept arbitrary pids or shell commands from the browser.
+- Platform-specific launch and stop behavior belongs in `scripts/platform_runtime.py`; UI and runner modules should not hardcode PowerShell, Bash, `taskkill`, or process-group details.
+- WSL2 is the primary runtime for long full API benchmark runs, report merge, and Git publishing; Windows remains a fallback and UI host.
 
 ## Boundaries
 
@@ -113,5 +123,6 @@ The cloud store follows the project split documented in `docs/cloud-database.md`
 - Do not let the UI become a hidden execution layer for paid crawlers, model APIs, or AWS writes; execution buttons need explicit command previews, logs, and guardrails.
 - Do not create a second run-status format for new stages; write `run_manifest.json` and append to `pipeline_state.jsonl`.
 - Do not accept raw shell commands over UI endpoints; launch endpoints must choose from known generated commands.
+- Do not accept raw pids over UI stop/resume endpoints; process control must come from the launch manifest created by a prior guarded UI launch.
 - Do not let report preview endpoints read arbitrary files; previews must be restricted to known completed report directories under `runs/`.
 - Do not treat weak-page drilldown as a crawler quality audit; it is a retrieval-performance signal for pages that need content, intent, and internal-link improvements.
