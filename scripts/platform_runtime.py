@@ -286,10 +286,12 @@ def _normalized_tokens(command: str) -> list[str]:
 
 
 def _has_shell_control_operator(command: str) -> bool:
+    if "\n" in command or "\r" in command:
+        return True
     try:
         lexer = shlex.shlex(command, posix=True, punctuation_chars=True)
         lexer.whitespace_split = True
         tokens = list(lexer)
     except ValueError:
         tokens = command.split()
-    return any(token in {"&&", "||", ";", "|", ">", "<"} for token in tokens)
+    return any(token in {"&&", "||", ";", "|", ">", "<", "&"} for token in tokens)

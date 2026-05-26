@@ -79,6 +79,7 @@ def test_runtime_rejects_parallel_api_command_substrings() -> None:
     assert not runtime.is_parallel_api_command("echo scripts/full_api_parallel_runner.py")
     assert not runtime.is_parallel_api_command("python scripts/full_api_parallel_runner.py && echo bad")
     assert not runtime.is_parallel_api_command("python scripts/full_api_parallel_runner.py ; echo bad")
+    assert not runtime.is_parallel_api_command("python scripts/full_api_parallel_runner.py & echo bad")
     assert not runtime.is_parallel_api_command(
         "cmd /c dangerous && python scripts/run_pipeline_step.py --run-root runs/x"
     )
@@ -96,6 +97,8 @@ def test_runtime_recognizes_guarded_pipeline_commands_across_path_styles() -> No
     )
     assert not runtime.is_guarded_pipeline_command("python scripts/run_pipeline_step.py ; echo bad")
     assert not runtime.is_guarded_pipeline_command("python scripts/run_pipeline_step.py && echo bad")
+    assert not runtime.is_guarded_pipeline_command("python scripts/run_pipeline_step.py & echo bad")
+    assert not runtime.is_guarded_pipeline_command("python scripts/run_pipeline_step.py\necho bad")
 
 
 def test_windows_launch_shell_command_uses_powershell(tmp_path: Path) -> None:
