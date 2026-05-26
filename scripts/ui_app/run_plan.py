@@ -1,7 +1,8 @@
 from __future__ import annotations
 
+import re
 from dataclasses import asdict, dataclass, field
-from typing import Any
+from typing import Any, Sequence
 
 from scripts.platform_runtime import PlatformRuntime, detect_platform
 
@@ -45,11 +46,6 @@ class RunPlan:
         return asdict(self)
 
 
-def _quote(value: str) -> str:
-    escaped = value.replace('"', '\\"')
-    return f'"{escaped}"'
-
-
 def _queries_for_mode(request: RunPlanRequest) -> int:
     if request.custom_queries_per_model:
         return request.custom_queries_per_model
@@ -60,12 +56,25 @@ def _queries_for_mode(request: RunPlanRequest) -> int:
     return 50
 
 
-def _format_command_text(runtime: PlatformRuntime, command: str) -> str:
-    return command.replace("\\", "/") if runtime.path_style != "windows" else command
+_WINDOWS_LITERAL_SAFE = re.compile(r"^[A-Za-z0-9_./\\:,@%+=-]+$")
 
 
-def _pipeline_step(request: RunPlanRequest, runtime: PlatformRuntime, stage: str, command: str) -> str:
-    prefix = runtime.format_command(
+def _quote_powershell_literal(value: str) -> str:
+    if value and _WINDOWS_LITERAL_SAFE.fullmatch(value):
+        return value
+    return "'" + value.replace("'", "''") + "'"
+
+
+def _format_argv(runtime: PlatformRuntime, argv: Sequence[str]) -> str:
+    args = [str(arg) for arg in argv]
+    if runtime.path_style == "windows":
+        return " ".join(_quote_powershell_literal(arg) for arg in args)
+    return runtime.format_command(args)
+
+
+def _pipeline_step(request: RunPlanRequest, runtime: PlatformRuntime, stage: str, command: Sequence[str]) -> str:
+    prefix = _format_argv(
+        runtime,
         [
             "python",
             runtime.path("scripts/run_pipeline_step.py"),
@@ -73,9 +82,9 @@ def _pipeline_step(request: RunPlanRequest, runtime: PlatformRuntime, stage: str
             runtime.path(request.pipeline_run_root),
             "--stage",
             stage,
-        ]
+        ],
     )
-    return f"{prefix} -- {_format_command_text(runtime, command)}"
+    return f"{prefix} -- {_format_argv(runtime, command)}"
 
 
 def _parallel_api_command(request: RunPlanRequest, runtime: PlatformRuntime, queries_per_model: int) -> str:
@@ -99,7 +108,7 @@ def _parallel_api_command(request: RunPlanRequest, runtime: PlatformRuntime, que
         argv.append("--include-doubao")
     if request.selected_models:
         argv.extend(["--models", ",".join(request.selected_models)])
-    return runtime.format_command(argv)
+    return _format_argv(runtime, argv)
 
 
 def build_run_plan(request: RunPlanRequest) -> RunPlan:
@@ -110,7 +119,7 @@ def build_run_plan(request: RunPlanRequest) -> RunPlan:
 
     if request.recrawl_own_site:
         urls = [request.own_site_url] + [url for url in request.extra_site_urls if url.strip()]
-        url_args = " ".join(f"--seed-url {_quote(url)}" for url in urls)
+        url_args = [arg for url in urls for arg in ["--seed-url", url]]
         commands.append(
             PlannedCommand(
                 label="Recrawl and fetch AlphaXXXX pages",
@@ -118,14 +127,22 @@ def build_run_plan(request: RunPlanRequest) -> RunPlan:
                     request,
                     runtime,
                     "owned_site_crawl",
-                    "python scripts\\refresh_owned_site_crawl.py "
-                    "--brand AlphaXXXX "
-                    f"{url_args} "
-                    "--discovered-output data\\raw\\alpha_update_discovered_urls.csv "
-                    "--pages-output data\\raw\\alpha_update_pages.jsonl "
-                    "--attempts-output data\\raw\\alpha_update_fetch_attempts.jsonl "
-                    "--logs-output data\\raw\\alpha_update_crawl_logs.csv "
-                    "--disable-paid-fallback",
+                    [
+                        "python",
+                        runtime.path("scripts/refresh_owned_site_crawl.py"),
+                        "--brand",
+                        "AlphaXXXX",
+                        *url_args,
+                        "--discovered-output",
+                        runtime.path("data/raw/alpha_update_discovered_urls.csv"),
+                        "--pages-output",
+                        runtime.path("data/raw/alpha_update_pages.jsonl"),
+                        "--attempts-output",
+                        runtime.path("data/raw/alpha_update_fetch_attempts.jsonl"),
+                        "--logs-output",
+                        runtime.path("data/raw/alpha_update_crawl_logs.csv"),
+                        "--disable-paid-fallback",
+                    ],
                 ),
                 note="Discover current owned-site URLs and fetch those pages in one monitored step using the local crawler first.",
             )
@@ -137,11 +154,18 @@ def build_run_plan(request: RunPlanRequest) -> RunPlan:
                     request,
                     runtime,
                     "clean",
-                    "python scripts\\refresh_owned_site_processed.py "
-                    "--raw-pages data\\raw\\alpha_update_pages.jsonl "
-                    "--url-inventory data\\raw\\alpha_update_discovered_urls.csv "
-                    "--processed-dir data\\processed "
-                    "--target-domain alphaxxxx.com",
+                    [
+                        "python",
+                        runtime.path("scripts/refresh_owned_site_processed.py"),
+                        "--raw-pages",
+                        runtime.path("data/raw/alpha_update_pages.jsonl"),
+                        "--url-inventory",
+                        runtime.path("data/raw/alpha_update_discovered_urls.csv"),
+                        "--processed-dir",
+                        runtime.path("data/processed"),
+                        "--target-domain",
+                        "alphaxxxx.com",
+                    ],
                 ),
                 note="Replace the old AlphaXXXX processed documents with the latest crawl, then rebuild chunks, signals, evidence cards, and BM25.",
             )
@@ -152,17 +176,17 @@ def build_run_plan(request: RunPlanRequest) -> RunPlan:
             [
                 PlannedCommand(
                     label="Clean documents",
-                    command=_pipeline_step(request, runtime, "clean", "python scripts\\clean_documents.py"),
+                    command=_pipeline_step(request, runtime, "clean", ["python", runtime.path("scripts/clean_documents.py")]),
                     note="Rebuild normalized documents from raw crawled pages.",
                 ),
                 PlannedCommand(
                     label="Chunk documents",
-                    command=_pipeline_step(request, runtime, "chunk", "python scripts\\chunk_documents.py"),
+                    command=_pipeline_step(request, runtime, "chunk", ["python", runtime.path("scripts/chunk_documents.py")]),
                     note="Recreate retrieval chunks after document changes.",
                 ),
                 PlannedCommand(
                     label="Build keyword index",
-                    command=_pipeline_step(request, runtime, "index", "python scripts\\build_keyword_index.py"),
+                    command=_pipeline_step(request, runtime, "index", ["python", runtime.path("scripts/build_keyword_index.py")]),
                     note="Refresh BM25 so retrieval uses the current resource library.",
                 ),
             ]
@@ -188,7 +212,14 @@ def build_run_plan(request: RunPlanRequest) -> RunPlan:
                     request,
                     runtime,
                     "AWS sync",
-                    "python scripts\\cloud\\import_corpus.py --industry geo-agency --corpus-version <new-corpus-version>",
+                    [
+                        "python",
+                        runtime.path("scripts/cloud/import_corpus.py"),
+                        "--industry",
+                        "geo-agency",
+                        "--corpus-version",
+                        "<new-corpus-version>",
+                    ],
                 ),
                 note="Requires AWS and PostgreSQL environment variables; writes processed artifacts to S3/RDS.",
             )
@@ -200,7 +231,14 @@ def build_run_plan(request: RunPlanRequest) -> RunPlan:
                     request,
                     runtime,
                     "AWS sync",
-                    "python scripts\\cloud\\verify_cloud_import.py --industry geo-agency --corpus-version <new-corpus-version>",
+                    [
+                        "python",
+                        runtime.path("scripts/cloud/verify_cloud_import.py"),
+                        "--industry",
+                        "geo-agency",
+                        "--corpus-version",
+                        "<new-corpus-version>",
+                    ],
                 ),
                 note="Confirm RDS/S3 artifact counts before sharing the corpus with other machines.",
             )
@@ -219,11 +257,18 @@ def build_run_plan(request: RunPlanRequest) -> RunPlan:
             commands.append(
                 PlannedCommand(
                     label=f"Run API benchmark: {model}",
-                    command=(
-                        f"python {runtime.path('scripts/run_full_api_client_acquisition.py')} "
-                        f"--config {runtime.path('config/client_acquisition_simulator.yaml')} "
-                        f"--include-model {_quote(model)} "
-                        f"--queries-per-model {queries_per_model}"
+                    command=_format_argv(
+                        runtime,
+                        [
+                            "python",
+                            runtime.path("scripts/run_full_api_client_acquisition.py"),
+                            "--config",
+                            runtime.path("config/client_acquisition_simulator.yaml"),
+                            "--include-model",
+                            model,
+                            "--queries-per-model",
+                            str(queries_per_model),
+                        ],
                     ),
                     note="Serial single-model run; useful for isolating one provider before merging.",
                 )

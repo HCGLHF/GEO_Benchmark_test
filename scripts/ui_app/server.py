@@ -295,6 +295,14 @@ HTML = r"""<!doctype html>
               <option value="custom">custom</option>
             </select>
           </label>
+          <label>Platform
+            <select id="platform">
+              <option value="auto">auto</option>
+              <option value="windows">windows</option>
+              <option value="wsl">wsl</option>
+              <option value="linux">linux</option>
+            </select>
+          </label>
         </div>
         <div class="row" style="margin-top:12px;">
           <label>Pipeline run root
@@ -606,7 +614,7 @@ HTML = r"""<!doctype html>
       lastPlan = plan;
       byId("commands").textContent = plan.commands.map((item, index) => `${index + 1}. ${item.label}\n${item.command}\n${item.note}`).join("\n\n");
       byId("warnings").innerHTML = plan.warnings.map((warning) => `<div class="warning">${warning}</div>`).join("");
-      const stageCommands = plan.commands.filter((item) => item.command.startsWith("python scripts\\run_pipeline_step.py"));
+      const stageCommands = plan.commands.filter((item) => item.command.replaceAll("\\", "/").startsWith("python scripts/run_pipeline_step.py"));
       const stageSelect = byId("stageCommand");
       stageSelect.innerHTML = stageCommands.map((item) => `<option value="${item.label}">${item.label}</option>`).join("");
       if (Array.from(stageSelect.options).some((option) => option.value === selectedStageLabel)) {
@@ -619,6 +627,7 @@ HTML = r"""<!doctype html>
       params.set("own_site_url", byId("ownSiteUrl").value);
       params.set("extra_site_urls", byId("extraSiteUrls").value);
       params.set("run_mode", byId("runMode").value);
+      params.set("platform", byId("platform").value);
       params.set("seed_queries_run_dir", byId("seedQueriesRunDir").value);
       params.set("pipeline_run_root", byId("pipelineRunRoot").value);
       params.set("recrawl_own_site", checked("recrawlOwnSite"));

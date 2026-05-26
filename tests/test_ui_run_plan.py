@@ -1,3 +1,6 @@
+import shlex
+
+from scripts.ui_app import server
 from scripts.ui_app.run_plan import RunPlanRequest, build_run_plan
 
 
@@ -26,8 +29,8 @@ def test_build_run_plan_prefers_quick_parallel_seeded_flow() -> None:
     assert "Fetch AlphaXXXX pages" not in labels
     assert any("refresh_owned_site_crawl.py" in command.command for command in plan.commands)
     assert any("refresh_owned_site_processed.py" in command.command for command in plan.commands)
-    assert any("--seed-url \"https://alphaxxxx.com/\"" in command.command for command in plan.commands)
-    assert any("--seed-url \"https://docs.alphaxxxx.com/\"" in command.command for command in plan.commands)
+    assert any("--seed-url https://alphaxxxx.com/" in command.command for command in plan.commands)
+    assert any("--seed-url https://docs.alphaxxxx.com/" in command.command for command in plan.commands)
     assert any("--stage owned_site_crawl" in command.command for command in plan.commands)
     assert any("scripts\\full_api_parallel_runner.py" in command.command for command in plan.commands)
     assert all("powershell" not in command.command.lower() for command in plan.commands)
@@ -122,3 +125,53 @@ def test_build_run_plan_wsl_parallel_uses_posix_paths_and_preserves_api_args() -
     assert "--seed-queries-run-dir runs/client_acquisition_simulator_full_api_20260517_200716" in api_command
     assert "--include-doubao" in api_command
     assert "--run-stamp 20260526_120000" in api_command
+
+
+def test_build_run_plan_quotes_tricky_seed_urls_for_wsl_nested_command() -> None:
+    tricky_url = 'https://docs.alphaxxxx.com/path with spaces/?q=$deal&name="quoted"`tick'
+    request = RunPlanRequest(
+        platform="wsl",
+        own_site_url=tricky_url,
+        recrawl_own_site=True,
+        rescan_corpus=False,
+        parallel_api=False,
+    )
+
+    plan = build_run_plan(request)
+    crawl_command = next(command.command for command in plan.commands if "refresh_owned_site_crawl.py" in command.command)
+
+    assert f"--seed-url '{tricky_url}'" in crawl_command
+    assert tricky_url in shlex.split(crawl_command)
+    assert "&" not in shlex.split(crawl_command)
+    assert "$deal" not in shlex.split(crawl_command)
+
+
+def test_build_run_plan_quotes_tricky_seed_urls_for_windows_nested_command() -> None:
+    tricky_url = 'https://docs.alphaxxxx.com/path with spaces/?q=$deal&name="quoted"`tick'
+    request = RunPlanRequest(
+        platform="windows",
+        own_site_url=tricky_url,
+        recrawl_own_site=True,
+        rescan_corpus=False,
+        parallel_api=False,
+    )
+
+    plan = build_run_plan(request)
+    crawl_command = next(command.command for command in plan.commands if "refresh_owned_site_crawl.py" in command.command)
+
+    assert f"--seed-url '{tricky_url}'" in crawl_command
+    assert f'--seed-url "{tricky_url}"' not in crawl_command
+    assert f"--seed-url {tricky_url}" not in crawl_command
+
+
+def test_embedded_html_exposes_platform_control_and_collects_platform_param() -> None:
+    assert 'id="platform"' in server.HTML
+    assert '<option value="auto">auto</option>' in server.HTML
+    assert '<option value="windows">windows</option>' in server.HTML
+    assert '<option value="wsl">wsl</option>' in server.HTML
+    assert '<option value="linux">linux</option>' in server.HTML
+    assert 'params.set("platform", byId("platform").value);' in server.HTML
+
+
+def test_embedded_html_normalizes_pipeline_step_filter_for_wsl_paths() -> None:
+    assert 'replaceAll("\\\\", "/").startsWith("python scripts/run_pipeline_step.py")' in server.HTML
