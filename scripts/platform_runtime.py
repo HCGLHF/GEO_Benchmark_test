@@ -55,11 +55,14 @@ class PlatformRuntime:
             return subprocess.list2cmdline(args)
         return " ".join(shlex.quote(arg) for arg in args)
 
-    def format_path(self, path: str | os.PathLike[str]) -> str:
-        normalized = str(path).replace("\\", "/")
+    def path(self, value: str | os.PathLike[str]) -> str:
+        normalized = str(value).replace("\\", "/")
         if self.path_style == "windows":
             return normalized.replace("/", "\\")
         return normalized
+
+    def format_path(self, path: str | os.PathLike[str]) -> str:
+        return self.path(path)
 
     def launch_shell_command(
         self,

@@ -37,6 +37,18 @@ def test_posix_runtime_formats_command_with_shell_quoting() -> None:
     assert runtime.path_style == "posix"
 
 
+def test_windows_runtime_converts_paths_to_windows_style() -> None:
+    runtime = windows_runtime()
+
+    assert runtime.path("scripts/run_pipeline_step.py") == "scripts\\run_pipeline_step.py"
+
+
+def test_posix_runtime_converts_paths_to_posix_style() -> None:
+    runtime = posix_runtime(platform_id="wsl")
+
+    assert runtime.path("scripts\\run_pipeline_step.py") == "scripts/run_pipeline_step.py"
+
+
 def test_runtime_recognizes_parallel_api_commands() -> None:
     runtime = posix_runtime(platform_id="linux")
 
