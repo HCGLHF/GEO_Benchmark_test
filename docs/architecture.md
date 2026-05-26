@@ -13,7 +13,7 @@
 - `scripts/client_acquisition_simulator.py`: orchestrates scenario generation, retrieval, rerank, answers, brand metrics, competitive reports, incremental run-output writes, and resume skipping for completed rows.
 - `scripts/geo_eval/orchestrator.py`: wraps external model calls with cache/run-state handling, terminal attempt logging, and in-flight API event logging for diagnostics.
 - `scripts/run_full_api_client_acquisition.py`: user-run entrypoint for highest-fidelity external API evaluation.
-- `scripts/run_full_api_parallel_with_watch.ps1`: one-command local orchestrator that launches one full API worker per model, supports `test`, `quick`, and `standard` run modes, monitors each run, and merges successful outputs.
+- `scripts/full_api_parallel_runner.py`: shared full API parallel orchestrator that launches one worker per model, supports `test`, `quick`, and `standard` run modes, monitors each run, and merges successful outputs.
 - `scripts/full_api_run_status.py`: classifies completed single-model API runs as clean, warning, or fatal based on output completeness and API failure records, so rate-limit warnings do not block merge when rows are complete.
 - `scripts/pipeline_state.py`: shared append-only run-state contract for `run_manifest.json` and `pipeline_state.jsonl`.
 - `scripts/ops_logging.py`: shared local operations event/summary helpers for run-root scoped `ops_events.jsonl` and `ops_summary.json` files.
@@ -24,7 +24,6 @@
 - `scripts/render_full_api_progress_html.py`: renders a static auto-refreshing HTML dashboard from full API run output files.
 - `scripts/merge_full_api_runs.py`: merges single-model runs into one report.
 - `scripts/platform_runtime.py`: shared platform runtime seam for command formatting, process launch, and stop behavior across Windows, Linux, and WSL.
-- `scripts/full_api_parallel_runner.py`: platform-independent full API parallel runner that owns model worker orchestration, status classification, merge, pipeline-state events, and operations summaries.
 - `scripts/run_full_api_parallel_with_watch.ps1`: Windows wrapper that forwards existing PowerShell parameters to the Python full API parallel runner.
 - `scripts/run_full_api_parallel_with_watch.sh`: WSL/Linux wrapper that forwards shell arguments to the Python full API parallel runner.
 - `scripts/report_diagnostics.py`: builds query-level loss analysis, competitor displacement tables, weakness diagnosis, and page-level optimization plans from completed retrieval and answer artifacts.
