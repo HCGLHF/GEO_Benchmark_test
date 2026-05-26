@@ -101,6 +101,31 @@ class PlatformRuntime:
             if log_file is not None:
                 log_file.close()
 
+    def launch_worker(
+        self,
+        args: Sequence[str | os.PathLike[str]],
+        *,
+        cwd: str | os.PathLike[str],
+        log_path: str | os.PathLike[str],
+    ) -> ProcessHandle:
+        argv = [str(arg) for arg in args]
+        log_file = Path(log_path).open("a", encoding="utf-8")
+        try:
+            popen_kwargs: dict[str, Any] = {
+                "cwd": str(cwd),
+                "stdout": log_file,
+                "stderr": subprocess.STDOUT,
+                "text": True,
+            }
+            if self.path_style != "windows":
+                popen_kwargs["start_new_session"] = True
+            process = self.popen_factory(argv, **popen_kwargs)
+            if self.path_style == "windows":
+                return ProcessHandle(pid=process.pid, process_group_id=None, process=process)
+            return ProcessHandle(pid=process.pid, process_group_id=process.pid, process=process)
+        finally:
+            log_file.close()
+
     def stop_process_tree(self, handle: ProcessHandle) -> StopResult:
         if self.path_style == "windows":
             argv = ["taskkill", "/PID", str(handle.pid), "/T", "/F"]
@@ -151,6 +176,8 @@ class PlatformRuntime:
         return StopResult(status="stopped", return_code=0, command=command)
 
     def is_parallel_api_command(self, command: str) -> bool:
+        if _has_shell_control_operator(command):
+            return False
         tokens = _normalized_tokens(command)
         if len(tokens) >= 2 and tokens[0] in {"python", "python3"}:
             return tokens[1] == "scripts/full_api_parallel_runner.py"
@@ -163,6 +190,8 @@ class PlatformRuntime:
         return False
 
     def is_guarded_pipeline_command(self, command: str) -> bool:
+        if _has_shell_control_operator(command):
+            return False
         tokens = _normalized_tokens(command)
         return len(tokens) >= 2 and tokens[0] in {"python", "python3"} and tokens[1] == "scripts/run_pipeline_step.py"
 
@@ -254,3 +283,13 @@ def _split_command(command: str) -> list[str]:
 
 def _normalized_tokens(command: str) -> list[str]:
     return [_normalize_command_paths(token) for token in _split_command(_normalize_command_paths(command))]
+
+
+def _has_shell_control_operator(command: str) -> bool:
+    try:
+        lexer = shlex.shlex(command, posix=True, punctuation_chars=True)
+        lexer.whitespace_split = True
+        tokens = list(lexer)
+    except ValueError:
+        tokens = command.split()
+    return any(token in {"&&", "||", ";", "|", ">", "<"} for token in tokens)
