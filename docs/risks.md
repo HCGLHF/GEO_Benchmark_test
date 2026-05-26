@@ -14,7 +14,7 @@
 - DeepSeek can lag far behind the other models; partial DeepSeek output should not be merged into the main benchmark unless all 200 answers complete.
 - `llms.txt` can inflate AlphaXXXX retrieval if it is the only strong matching page; evaluate both with and without `llms.txt` to separate routing benefit from page-level content strength.
 - Corpus variants can become misleading if they overwrite the main processed artifacts or use different scenario questions.
-- The new local UI is currently a dry-run planner. Treat generated commands as reviewable plans, not proof that a run has executed.
+- The local UI includes both dry-run planning and guarded execution buttons. Treat generated commands as reviewable plans until an explicit launch confirmation creates a launch manifest and run-root facts.
 
 ## Architecture Drift Signals
 

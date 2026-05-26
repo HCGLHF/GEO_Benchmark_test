@@ -85,7 +85,7 @@
 - Verified that unconfirmed launches return a preview without creating launch files or starting a process.
 - Added `scripts/pipeline_state.py` as the shared `run_manifest.json` and `pipeline_state.jsonl` contract.
 - Added `scripts/run_pipeline_step.py`, a wrapper that records running/completed/failed status for local pipeline commands.
-- Updated `scripts/run_full_api_parallel_with_watch.ps1` to initialize run manifests and append pipeline events for worker launch, worker completion/failure, merge, and report stages.
+- Moved full API run manifests and lifecycle pipeline events for worker launch, worker completion/failure, merge, and report stages into the Python full API runner.
 - Updated the UI run planner so crawl, clean, chunk, index, and AWS sync commands are wrapped by `run_pipeline_step.py`.
 - Updated Run Monitor to read and show pipeline state alongside per-model API progress and merged report metrics.
 - Documented the pipeline state contract in the Run Monitor engineering plan, UI console guide, architecture notes, and risks.
@@ -136,8 +136,8 @@
 - Fixed `generate_query_rows` so a seeded run with enough existing questions does not regenerate scenario questions just because the seed rows are not evenly distributed across persona/stage slots.
 - Ran the refreshed AlphaXXXX quick API benchmark under `runs\full_api_parallel_alpha_refresh_quick_final\20260519_160422`.
 - Completed and merged four quick model runs with 200 total queries, 200 retrieval rows, and 200 answer rows.
-- Added `-RunMode quick|standard` to `scripts\run_full_api_parallel_with_watch.ps1`.
-- Added the same `-RunMode quick|standard` behavior to the older `scripts\run_full_api_parallel.ps1` launcher for consistency.
+- Added `quick` and `standard` run-mode behavior to the full API runner, with thin wrapper parameter forwarding.
+- Kept the older `scripts\run_full_api_parallel.ps1` launcher aligned with the same quick/standard run-mode semantics.
 - Changed the default parallel API run mode to `quick`, which uses 50 queries per model, roughly 100 seeded API calls per model.
 - Kept the previous 200-query, roughly 400-seeded-call behavior available as `-RunMode standard`.
 - Preserved manual `-QueriesPerModel` override for exact sample-size experiments.
