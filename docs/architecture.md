@@ -47,7 +47,7 @@
 - `scripts/ui_app/run_plan.py`: builds explicit dry-run command plans for owned-site refresh, corpus rebuild, optional cloud sync, and API benchmark execution.
 - `scripts/ui_app/run_monitor.py`: reads parallel run directories, per-model worker logs, pipeline log tails, `watch_full_api_run.py` summaries, chain-health diagnostics, API issue guidance, and merged reports to power the UI Run Monitor.
 - `scripts/ui_app/execution.py`: launches only backend-generated guarded API benchmark commands or `run_pipeline_step.py`-wrapped pipeline steps after explicit confirmation, records launch manifests/logs, and provides guarded stop/resume for UI-launched API benchmark runs.
-- `scripts/ui_app/server.py`: serves the local browser console with standard-library HTTP only; it reads status and returns dry-run plans but does not execute API or AWS calls.
+- `scripts/ui_app/server.py`: serves the local browser console with standard-library HTTP only; it reads status, returns run plans, and routes explicit launch/stop/resume requests to guarded backend execution helpers.
 - `sql/001_initial_schema.sql`: defines the cloud resource-library schema, including corpus versions, artifact objects, documents, chunks, query sets, benchmark runs, and result tables.
 
 ## Data Flow
