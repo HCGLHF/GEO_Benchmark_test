@@ -18,7 +18,7 @@ from scripts.platform_runtime import ProcessHandle, detect_platform
 
 
 class FakeProcess:
-    def __init__(self, returncode: int = 0):
+    def __init__(self, returncode: int | None = 0):
         self.pid = 9000
         self.returncode = returncode
 
@@ -107,6 +107,26 @@ class StrictFakeRuntime(FakeRuntime):
             encoding="utf-8",
         )
         return ProcessHandle(pid=9000, process_group_id=None, process=FakeProcess(self.returncode))
+
+
+class LaunchFailingRuntime(FakeRuntime):
+    def __init__(self):
+        super().__init__(returncode=None)
+        self.stopped: list[int] = []
+
+    def launch_worker(self, args, *, cwd, log_path):
+        model = args[args.index("--include-model") + 1]
+        if self.launched:
+            raise RuntimeError(f"launch failed for {model}")
+        self.launched.append(list(args))
+        output_dir = Path(args[args.index("--output-dir") + 1])
+        output_dir.mkdir(parents=True, exist_ok=True)
+        log_path.parent.mkdir(parents=True, exist_ok=True)
+        log_path.write_text("first worker launched\n", encoding="utf-8")
+        return ProcessHandle(pid=9001, process_group_id=None, process=FakeProcess(None))
+
+    def stop_process_tree(self, handle):
+        self.stopped.append(handle.pid)
 
 
 def fake_options(
@@ -240,6 +260,27 @@ def test_full_api_parallel_runner_rejects_empty_model_list(tmp_path: Path) -> No
 
     assert result.returncode != 0
     assert "No models selected" in result.stderr
+
+
+def test_full_api_parallel_runner_rejects_non_positive_monitor_interval() -> None:
+    for value in ["0", "-1"]:
+        result = subprocess.run(
+            [
+                sys.executable,
+                "scripts/full_api_parallel_runner.py",
+                "--monitor-interval-seconds",
+                value,
+                "--models",
+                "openai/gpt-4.1-mini",
+                "--dry-run",
+            ],
+            check=False,
+            text=True,
+            capture_output=True,
+        )
+
+        assert result.returncode != 0
+        assert "positive integer" in result.stderr
 
 
 def test_full_api_parallel_runner_worker_plan_keeps_argv_safe_for_windows_and_wsl(tmp_path: Path) -> None:
@@ -463,6 +504,42 @@ def test_full_api_parallel_runner_fatal_status_fails_before_merge(tmp_path: Path
     status = read_pipeline_status(run_root)
     assert status["stages"]["answer"]["status"] == "failed"
     assert not any("merge_full_api_runs.py" in call for call in calls)
+
+
+def test_full_api_parallel_runner_stops_started_workers_when_later_launch_fails(
+    tmp_path: Path, monkeypatch
+) -> None:
+    runtime = LaunchFailingRuntime()
+
+    def fake_run(args, check=False, text=True, capture_output=False):
+        class Result:
+            returncode = 0
+            stdout = json.dumps(
+                {"status": "failed", "fatal_count": 1, "warning_count": 0, "fatals": [], "warnings": []}
+            )
+            stderr = ""
+
+        return Result()
+
+    monkeypatch.setattr("scripts.full_api_parallel_runner.subprocess.run", fake_run)
+    monkeypatch.setattr("scripts.full_api_parallel_runner.time.sleep", lambda seconds: None)
+
+    result = run(
+        fake_options(tmp_path, models=["openai/gpt-4.1-mini", "qwen/qwen3.7-max"]),
+        runtime=runtime,
+    )
+
+    run_root = tmp_path / "full_api_parallel" / "fixed_stamp"
+    assert result == 1
+    assert runtime.stopped == [9001]
+    assert (run_root / "worker_exit_codes.json").exists()
+    assert json.loads((run_root / "worker_exit_codes.json").read_text(encoding="utf-8")) == {
+        "openai_gpt-4.1-mini": "1",
+        "qwen_qwen3.7-max": "1",
+    }
+    assert (run_root / "ops_summary.json").exists()
+    status = read_pipeline_status(run_root)
+    assert status["stages"]["answer"]["status"] == "failed"
 
 
 def test_full_api_parallel_runner_seeds_all_models_before_launching_workers(tmp_path: Path, monkeypatch) -> None:

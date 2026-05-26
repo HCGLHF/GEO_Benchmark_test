@@ -74,6 +74,13 @@ class WorkerPlan:
     seeded_query_count: int = 0
 
 
+def positive_int(value: str) -> int:
+    parsed = int(value)
+    if parsed <= 0:
+        raise argparse.ArgumentTypeError("must be a positive integer")
+    return parsed
+
+
 def parse_args(argv: list[str] | None = None) -> RunnerOptions:
     parser = argparse.ArgumentParser(description="Run full API client acquisition models in parallel.")
     parser.add_argument("--config", default="config/client_acquisition_simulator.yaml")
@@ -81,7 +88,7 @@ def parse_args(argv: list[str] | None = None) -> RunnerOptions:
     parser.add_argument("--queries-per-model", type=int)
     parser.add_argument("--run-root", default="runs/full_api_parallel")
     parser.add_argument("--run-stamp", default="")
-    parser.add_argument("--monitor-interval-seconds", type=int, default=30)
+    parser.add_argument("--monitor-interval-seconds", type=positive_int, default=30)
     parser.add_argument("--seed-queries-run-dir", default="")
     parser.add_argument("--progress-html-path", default="")
     parser.add_argument("--models", action="append", default=[])
@@ -329,6 +336,37 @@ def _run_seed_phase(run_root: Path, workers: list[WorkerPlan]) -> dict[str, str]
     return exit_codes
 
 
+def _write_worker_exit_code(worker: WorkerPlan, exit_text: str) -> None:
+    worker.run_dir.mkdir(parents=True, exist_ok=True)
+    (worker.run_dir / "worker_exit_code.txt").write_text(exit_text, encoding="utf-8")
+
+
+def _stop_pending_workers(
+    runtime: PlatformRuntime,
+    run_root: Path,
+    pending: list[tuple[WorkerPlan, object]],
+    exit_codes: dict[str, str],
+) -> None:
+    for worker, handle in pending:
+        exit_codes[worker.safe_name] = "1"
+        _write_worker_exit_code(worker, "1")
+        stop_process_tree = getattr(runtime, "stop_process_tree", None)
+        if callable(stop_process_tree):
+            try:
+                stop_process_tree(handle)
+            except Exception as exc:
+                write_event(
+                    run_root,
+                    level="error",
+                    event_type="worker_failed",
+                    stage="answer",
+                    model=worker.model,
+                    message=f"Failed to stop worker for {worker.model}: {exc}",
+                    details={"safe_name": worker.safe_name},
+                    source=OPS_SOURCE,
+                )
+
+
 def _wait_for_workers(
     *,
     runtime: PlatformRuntime,
@@ -336,76 +374,116 @@ def _wait_for_workers(
     workers: list[WorkerPlan],
     progress_html_path: Path,
     monitor_interval_seconds: int,
-) -> tuple[dict[str, str], bool]:
+) -> tuple[dict[str, str], bool, bool]:
     seed_exit_codes = _run_seed_phase(run_root, workers)
     if seed_exit_codes:
-        return seed_exit_codes, True
+        return seed_exit_codes, True, False
 
     pending = []
     exit_codes: dict[str, str] = {}
-    for worker in workers:
-        worker.run_dir.mkdir(parents=True, exist_ok=True)
-        worker.cache_path.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        for worker in workers:
+            worker.run_dir.mkdir(parents=True, exist_ok=True)
+            worker.cache_path.parent.mkdir(parents=True, exist_ok=True)
+            append_event(
+                run_root,
+                stage="answer",
+                status="running",
+                message=f"Worker running for {worker.model}.",
+                model=worker.model,
+                details={"safe_name": worker.safe_name},
+            )
+            handle = runtime.launch_worker(worker.python_args, cwd=Path.cwd(), log_path=worker.run_dir / "worker.log")
+            pending.append((worker, handle))
+    except Exception as exc:
+        exit_codes[worker.safe_name] = "1"
+        _write_worker_exit_code(worker, "1")
+        _stop_pending_workers(runtime, run_root, pending, exit_codes)
+        message = f"Worker launch failed for {worker.model}: {exc}"
         append_event(
             run_root,
             stage="answer",
-            status="running",
-            message=f"Worker running for {worker.model}.",
+            status="failed",
+            message=message,
             model=worker.model,
             details={"safe_name": worker.safe_name},
         )
-        handle = runtime.launch_worker(worker.python_args, cwd=Path.cwd(), log_path=worker.run_dir / "worker.log")
-        pending.append((worker, handle))
+        write_event(
+            run_root,
+            level="error",
+            event_type="stage_failed",
+            stage="answer",
+            model=worker.model,
+            message=message,
+            details={"safe_name": worker.safe_name},
+            source=OPS_SOURCE,
+        )
+        _render_progress_html(runtime, workers, progress_html_path)
+        return exit_codes, False, True
 
     while pending:
         remaining = []
-        for worker, handle in pending:
-            process = getattr(handle, "process", None)
-            poll = getattr(process, "poll", None)
-            exit_code = 0 if process is None or not callable(poll) else poll()
-            if exit_code is None:
-                remaining.append((worker, handle))
-                continue
+        try:
+            for worker, handle in pending:
+                process = getattr(handle, "process", None)
+                poll = getattr(process, "poll", None)
+                exit_code = 0 if process is None or not callable(poll) else poll()
+                if exit_code is None:
+                    remaining.append((worker, handle))
+                    continue
 
-            exit_text = str(exit_code)
-            exit_codes[worker.safe_name] = exit_text
-            worker.run_dir.mkdir(parents=True, exist_ok=True)
-            (worker.run_dir / "worker_exit_code.txt").write_text(exit_text, encoding="utf-8")
-            if exit_text == "0":
-                append_event(
-                    run_root,
-                    stage="answer",
-                    status="completed",
-                    message=f"Worker completed for {worker.model}.",
-                    model=worker.model,
-                    details={"safe_name": worker.safe_name, "exit_code": exit_text},
-                )
-            else:
-                append_event(
-                    run_root,
-                    stage="answer",
-                    status="failed",
-                    message=f"Worker failed for {worker.model} with exit code {exit_text}.",
-                    model=worker.model,
-                    details={"safe_name": worker.safe_name, "exit_code": exit_text},
-                )
-                write_event(
-                    run_root,
-                    level="error",
-                    event_type="worker_failed",
-                    stage="answer",
-                    model=worker.model,
-                    message=f"Worker failed for {worker.model} with exit code {exit_text}.",
-                    details={"safe_name": worker.safe_name, "exit_code": exit_text},
-                    source=OPS_SOURCE,
-                )
+                exit_text = str(exit_code)
+                exit_codes[worker.safe_name] = exit_text
+                _write_worker_exit_code(worker, exit_text)
+                if exit_text == "0":
+                    append_event(
+                        run_root,
+                        stage="answer",
+                        status="completed",
+                        message=f"Worker completed for {worker.model}.",
+                        model=worker.model,
+                        details={"safe_name": worker.safe_name, "exit_code": exit_text},
+                    )
+                else:
+                    append_event(
+                        run_root,
+                        stage="answer",
+                        status="failed",
+                        message=f"Worker failed for {worker.model} with exit code {exit_text}.",
+                        model=worker.model,
+                        details={"safe_name": worker.safe_name, "exit_code": exit_text},
+                    )
+                    write_event(
+                        run_root,
+                        level="error",
+                        event_type="worker_failed",
+                        stage="answer",
+                        model=worker.model,
+                        message=f"Worker failed for {worker.model} with exit code {exit_text}.",
+                        details={"safe_name": worker.safe_name, "exit_code": exit_text},
+                        source=OPS_SOURCE,
+                    )
+        except Exception as exc:
+            _stop_pending_workers(runtime, run_root, pending, exit_codes)
+            message = f"Worker wait failed: {exc}"
+            append_event(run_root, stage="answer", status="failed", message=message)
+            write_event(
+                run_root,
+                level="error",
+                event_type="stage_failed",
+                stage="answer",
+                message=message,
+                source=OPS_SOURCE,
+            )
+            _render_progress_html(runtime, workers, progress_html_path)
+            return exit_codes, False, True
 
         pending = remaining
         _render_progress_html(runtime, workers, progress_html_path)
         if pending:
             time.sleep(monitor_interval_seconds)
 
-    return exit_codes, False
+    return exit_codes, False, False
 
 
 def _classify_runs(
@@ -494,7 +572,7 @@ def run(options: RunnerOptions, runtime: PlatformRuntime | None = None) -> int:
     append_event(run_root, stage="answer", status="running", message="Full API workers starting.")
     _render_progress_html(runtime, workers, progress_html_path)
 
-    exit_codes, seed_failed = _wait_for_workers(
+    exit_codes, seed_failed, worker_runtime_failed = _wait_for_workers(
         runtime=runtime,
         run_root=run_root,
         workers=workers,
@@ -506,6 +584,8 @@ def run(options: RunnerOptions, runtime: PlatformRuntime | None = None) -> int:
     if seed_failed:
         actual_exit_code = int(next(iter(exit_codes.values()), "1"))
         return _write_terminal_summary(run_root, "failed", actual_exit_code)
+    if worker_runtime_failed:
+        return _write_terminal_summary(run_root, "failed", 1)
 
     try:
         classification = _classify_runs(runtime, workers, exit_code_path)
