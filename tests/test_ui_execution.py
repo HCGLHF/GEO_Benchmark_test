@@ -19,7 +19,7 @@ class FakeCompletedProcess:
 def test_launch_guarded_run_requires_confirmation(tmp_path: Path) -> None:
     result = launch_guarded_run(
         project_root=tmp_path,
-        request=RunPlanRequest(selected_models=["openai/gpt-4.1-mini"]),
+        request=RunPlanRequest(platform="windows", selected_models=["openai/gpt-4.1-mini"]),
         confirmed=False,
         popen_factory=lambda *args, **kwargs: FakeProcess(),
         stamp_factory=lambda: "20260522_120000",
@@ -41,6 +41,7 @@ def test_launch_guarded_run_starts_generated_api_command_and_writes_manifest(tmp
     result = launch_guarded_run(
         project_root=tmp_path,
         request=RunPlanRequest(
+            platform="windows",
             selected_models=["openai/gpt-4.1-mini", "deepseek/deepseek-chat"],
             seed_queries_run_dir="runs/seed",
         ),
@@ -96,7 +97,7 @@ def test_launch_guarded_run_wsl_records_platform_group_and_uses_bash(tmp_path: P
 def test_launch_guarded_stage_requires_confirmation_and_uses_generated_command(tmp_path: Path) -> None:
     result = launch_guarded_stage(
         project_root=tmp_path,
-        request=RunPlanRequest(recrawl_own_site=True, selected_models=["openai/gpt-4.1-mini"]),
+        request=RunPlanRequest(platform="windows", recrawl_own_site=True, selected_models=["openai/gpt-4.1-mini"]),
         command_label="Recrawl and fetch AlphaXXXX pages",
         confirmed=False,
         popen_factory=lambda *args, **kwargs: FakeProcess(),
@@ -134,7 +135,7 @@ def test_launch_guarded_stage_starts_and_writes_manifest(tmp_path: Path) -> None
 
     result = launch_guarded_stage(
         project_root=tmp_path,
-        request=RunPlanRequest(recrawl_own_site=True, selected_models=["openai/gpt-4.1-mini"]),
+        request=RunPlanRequest(platform="windows", recrawl_own_site=True, selected_models=["openai/gpt-4.1-mini"]),
         command_label="Recrawl and fetch AlphaXXXX pages",
         confirmed=True,
         popen_factory=fake_popen,

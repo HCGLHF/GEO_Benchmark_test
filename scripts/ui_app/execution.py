@@ -232,7 +232,7 @@ def resume_guarded_run(
         return {"status": "rejected", "error": f"No UI launch manifest found for {run_root}", "monitor_run_root": run_root}
     manifest_path, manifest = found
     command = str(manifest.get("command") or "")
-    platform = str(manifest.get("platform") or "auto")
+    platform = _manifest_platform(manifest)
     if not _api_benchmark_command(command, platform):
         return {
             "status": "rejected",

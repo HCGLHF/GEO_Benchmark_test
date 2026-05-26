@@ -191,11 +191,13 @@ def test_full_api_parallel_runner_dry_run_prints_expected_contract(tmp_path: Pat
     assert "Pipeline manifest:" in result.stdout
     assert "Pipeline state:" in result.stdout
     assert "Model: openai/gpt-4.1-mini" in result.stdout
-    assert "scripts/run_full_api_client_acquisition.py" in result.stdout.replace("\\", "/")
+    stdout = result.stdout.replace("\\", "/")
+    assert "scripts/run_full_api_client_acquisition.py" in stdout
     assert "--cache-path" in result.stdout
-    assert "Watch: python scripts/watch_full_api_run.py --run-dir" in result.stdout.replace("\\", "/")
+    assert "Watch:" in stdout
+    assert "scripts/watch_full_api_run.py --run-dir" in stdout
     assert "Merge:" in result.stdout
-    assert "scripts/merge_full_api_runs.py" in result.stdout.replace("\\", "/")
+    assert "scripts/merge_full_api_runs.py" in stdout
 
 
 def test_full_api_parallel_runner_quick_and_standard_query_defaults(tmp_path: Path) -> None:

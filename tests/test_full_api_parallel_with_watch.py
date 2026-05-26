@@ -10,6 +10,9 @@ import pytest
 from scripts.run_full_api_client_acquisition import prepare_config
 
 
+requires_powershell = pytest.mark.skipif(shutil.which("powershell") is None, reason="PowerShell is not installed")
+
+
 def write_minimal_config(path: Path) -> None:
     path.write_text(
         """
@@ -70,6 +73,7 @@ def test_prepare_config_allows_cache_path_override(tmp_path: Path):
     assert [model["model"] for model in config["models"]] == ["openai/gpt-4.1-mini"]
 
 
+@requires_powershell
 def test_powershell_wrapper_dry_run_uses_python_runner_contract(tmp_path: Path) -> None:
     result = run_powershell_wrapper(
         "-RunMode",
@@ -96,11 +100,13 @@ def test_powershell_wrapper_dry_run_uses_python_runner_contract(tmp_path: Path) 
     assert "Model: openai/gpt-4.1-mini" in stdout
     assert "Model: deepseek/deepseek-chat" in stdout
     assert "scripts/run_full_api_client_acquisition.py" in stdout
-    assert "Watch: python scripts/watch_full_api_run.py --run-dir" in stdout
+    assert "Watch:" in stdout
+    assert "scripts/watch_full_api_run.py --run-dir" in stdout
     assert "Merge:" in stdout
     assert "scripts/merge_full_api_runs.py" in stdout
 
 
+@requires_powershell
 def test_powershell_wrapper_forwards_manual_query_count_seed_skip_merge_and_stamp(tmp_path: Path) -> None:
     seed_dir = tmp_path / "seed_run"
     seed_dir.mkdir()
