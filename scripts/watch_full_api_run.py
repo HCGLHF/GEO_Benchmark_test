@@ -127,7 +127,10 @@ def expected_counts(config: dict[str, Any], actual_queries: int, attempts: list[
         for attempt in attempts or []
         if str(attempt.get("task_type") or "") == "scenario_generation"
     ]
-    scenario_expected = 0 if actual_queries and not scenario_attempts else model_count * len(personas) * len(stages)
+    scenario_slots = len(personas) * len(stages)
+    if queries_per_model:
+        scenario_slots = min(queries_per_model, scenario_slots)
+    scenario_expected = 0 if actual_queries and not scenario_attempts else model_count * scenario_slots
     return {
         "scenario_generation": scenario_expected,
         "rerank": expected_queries,

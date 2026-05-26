@@ -102,6 +102,7 @@ def read_events(run_root: Path | str) -> list[dict[str, Any]]:
 
 def read_pipeline_status(run_root: Path | str) -> dict[str, Any]:
     manifest = read_manifest(run_root)
+    manifest_status = str(manifest.get("status") or "").lower()
     events = read_events(run_root)
     stages: dict[str, dict[str, Any]] = {}
     for stage in manifest.get("stages", []) or []:
@@ -124,12 +125,12 @@ def read_pipeline_status(run_root: Path | str) -> dict[str, Any]:
         if status not in {"completed", "skipped"} and latest_stage_status == status:
             current_stage = stage_name
             break
-    if not current_stage:
+    if not current_stage and manifest_status not in {"complete", "completed", "complete_with_model_warnings"}:
         for stage_name, stage in stages.items():
             if str(stage["status"]).lower() == "pending":
                 current_stage = stage_name
                 break
-    if not current_stage:
+    if not current_stage and manifest_status not in {"complete", "completed", "complete_with_model_warnings"}:
         for stage_name, stage in stages.items():
             if str(stage["status"]).lower() not in {"completed", "skipped"}:
                 current_stage = stage_name
