@@ -99,7 +99,8 @@ def parse_args(argv: list[str] | None = None) -> RunnerOptions:
     parser.add_argument("--models", action="append", default=[])
     parser.add_argument("--include-doubao", action="store_true")
     parser.add_argument("--skip-merge", action="store_true")
-    parser.add_argument("--sync-artifacts", action="store_true")
+    parser.add_argument("--sync-artifacts", dest="sync_artifacts", action="store_true", default=None)
+    parser.add_argument("--no-sync-artifacts", dest="sync_artifacts", action="store_false")
     parser.add_argument("--corpus-version", default=DEFAULT_CORPUS_VERSION)
     parser.add_argument("--industry", default=DEFAULT_INDUSTRY_ID)
     parser.add_argument("--dry-run", action="store_true")
@@ -109,6 +110,12 @@ def parse_args(argv: list[str] | None = None) -> RunnerOptions:
     queries_per_model = args.queries_per_model
     if queries_per_model is None:
         queries_per_model = QUERY_DEFAULTS[args.run_mode]
+    sync_artifacts = (
+        bool(args.sync_artifacts)
+        if args.sync_artifacts is not None
+        else args.run_mode in {"quick", "standard"}
+    )
+    sync_artifacts = sync_artifacts and args.run_mode in {"quick", "standard"}
 
     return RunnerOptions(
         config=args.config,
@@ -122,7 +129,7 @@ def parse_args(argv: list[str] | None = None) -> RunnerOptions:
         models=args.models,
         include_doubao=args.include_doubao,
         skip_merge=args.skip_merge,
-        sync_artifacts=args.sync_artifacts,
+        sync_artifacts=sync_artifacts,
         corpus_version=args.corpus_version,
         industry=args.industry,
         dry_run=args.dry_run,
@@ -293,6 +300,98 @@ def _write_terminal_summary(run_root: Path, status: str, return_code: int) -> in
     update_manifest(run_root, status=status)
     write_summary(run_root)
     return return_code
+
+
+def _sync_payload(
+    options: RunnerOptions,
+    status: str,
+    *,
+    summary: dict | None = None,
+    error: str = "",
+    message: str = "",
+) -> dict:
+    payload = {
+        "status": status,
+        "run_mode": options.run_mode,
+        "industry_id": options.industry,
+        "corpus_version": options.corpus_version,
+    }
+    if summary is not None:
+        payload["summary"] = summary
+    if error:
+        payload["error"] = error
+    if message:
+        payload["message"] = message
+    return payload
+
+
+def _record_artifact_sync_skipped(run_root: Path, options: RunnerOptions, message: str) -> None:
+    payload = _sync_payload(options, "skipped", message=message)
+    update_manifest(run_root, cloud_artifact_sync=payload)
+    append_event(run_root, stage="AWS sync", status="skipped", message=message, details=payload)
+
+
+def _sync_run_artifacts(run_root: Path, options: RunnerOptions) -> None:
+    if options.run_mode not in {"quick", "standard"}:
+        _record_artifact_sync_skipped(run_root, options, "Run artifact sync skipped for test mode.")
+        return
+    if not options.sync_artifacts:
+        _record_artifact_sync_skipped(run_root, options, "Run artifact sync disabled by option.")
+        return
+
+    start_payload = _sync_payload(options, "running")
+    update_manifest(run_root, cloud_artifact_sync=start_payload)
+    append_event(
+        run_root,
+        stage="AWS sync",
+        status="running",
+        message="Syncing run artifacts to cloud store.",
+        details=start_payload,
+    )
+    try:
+        sync_result = run_sync(
+            industry_id=options.industry,
+            corpus_version=options.corpus_version,
+            run_roots=[run_root],
+            run_modes={options.run_mode},
+            execute=True,
+        )
+    except Exception as exc:
+        message = f"Run artifact sync failed: {exc}"
+        failed_payload = _sync_payload(options, "failed", error=str(exc), message=message)
+        update_manifest(run_root, cloud_artifact_sync=failed_payload)
+        append_event(run_root, stage="AWS sync", status="failed", message=message, details=failed_payload)
+        write_event(
+            run_root,
+            level="error",
+            event_type="stage_failed",
+            stage="AWS sync",
+            message=message,
+            details=failed_payload,
+            source=OPS_SOURCE,
+        )
+        return
+
+    summary = sync_result.get("summary", {}) if isinstance(sync_result, dict) else {}
+    status = str(sync_result.get("status") or "synced") if isinstance(sync_result, dict) else "synced"
+    synced_payload = _sync_payload(options, status, summary=summary)
+    update_manifest(run_root, cloud_artifact_sync=synced_payload)
+    append_event(
+        run_root,
+        stage="AWS sync",
+        status="completed",
+        message="Run artifacts synced to cloud store.",
+        details=synced_payload,
+    )
+    write_event(
+        run_root,
+        level="info",
+        event_type="stage_completed",
+        stage="AWS sync",
+        message="Run artifacts synced to cloud store.",
+        details=summary,
+        source=OPS_SOURCE,
+    )
 
 
 def _run_seed(worker: WorkerPlan, run_root: Path) -> str:
@@ -712,23 +811,7 @@ def run(options: RunnerOptions, runtime: PlatformRuntime | None = None) -> int:
     )
     update_manifest(run_root, status="completed")
     _render_progress_html(runtime, workers, progress_html_path)
-    if options.sync_artifacts and options.run_mode in {"quick", "standard"}:
-        sync_result = run_sync(
-            industry_id=options.industry,
-            corpus_version=options.corpus_version,
-            run_roots=[run_root],
-            run_modes={options.run_mode},
-            execute=True,
-        )
-        write_event(
-            run_root,
-            level="info",
-            event_type="stage_completed",
-            stage="AWS sync",
-            message="Run artifacts synced to cloud store.",
-            details=sync_result.get("summary", {}),
-            source=OPS_SOURCE,
-        )
+    _sync_run_artifacts(run_root, options)
     write_summary(run_root)
     print(f"Merged report: {runtime.path(run_root / 'merged' / 'competitive_gap_report.md')}")
     return 0

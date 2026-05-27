@@ -607,7 +607,8 @@ HTML = r"""<!doctype html>
                 <label class="check"><input id="recrawlOwnSite" type="checkbox" checked> Recrawl owned site</label>
                 <label class="check"><input id="rescanCorpus" type="checkbox"> Rescan full corpus</label>
                 <label class="check"><input id="regenerateScenarios" type="checkbox"> Regenerate scenarios</label>
-                <label class="check"><input id="syncAws" type="checkbox"> Sync AWS</label>
+                <label class="check"><input id="syncAws" type="checkbox"> Sync corpus AWS</label>
+                <label class="check"><input id="syncRunArtifacts" type="checkbox" checked> Sync run artifacts</label>
                 <label class="check"><input id="parallelApi" type="checkbox" checked> Parallel API</label>
                 <label class="check">Custom queries <input id="customQueries" type="number" min="1" value=""></label>
               </div>
@@ -1160,6 +1161,7 @@ HTML = r"""<!doctype html>
       params.set("rescan_corpus", checked("rescanCorpus"));
       params.set("regenerate_scenarios", checked("regenerateScenarios"));
       params.set("sync_aws", checked("syncAws"));
+      params.set("sync_run_artifacts", checked("syncRunArtifacts"));
       params.set("parallel_api", checked("parallelApi"));
       params.set("custom_queries_per_model", byId("customQueries").value);
       document.querySelectorAll('input[name="model"]:checked').forEach((item) => params.append("model", item.value));
@@ -1426,6 +1428,7 @@ class UIHandler(BaseHTTPRequestHandler):
                 rescan_corpus=params.get("rescan_corpus", ["0"])[0] == "1",
                 regenerate_scenarios=params.get("regenerate_scenarios", ["0"])[0] == "1",
                 sync_aws=params.get("sync_aws", ["0"])[0] == "1",
+                sync_run_artifacts=params.get("sync_run_artifacts", ["1"])[0] == "1",
                 parallel_api=params.get("parallel_api", ["1"])[0] == "1",
                 seed_queries_run_dir=params.get("seed_queries_run_dir", [""])[0],
                 custom_queries_per_model=int(custom_queries) if custom_queries else None,
@@ -1462,6 +1465,7 @@ class UIHandler(BaseHTTPRequestHandler):
             rescan_corpus=params.get("rescan_corpus", ["0"])[0] == "1",
             regenerate_scenarios=params.get("regenerate_scenarios", ["0"])[0] == "1",
             sync_aws=params.get("sync_aws", ["0"])[0] == "1",
+            sync_run_artifacts=params.get("sync_run_artifacts", ["1"])[0] == "1",
             parallel_api=params.get("parallel_api", ["1"])[0] == "1",
             seed_queries_run_dir=params.get("seed_queries_run_dir", [""])[0],
             custom_queries_per_model=int(custom_queries) if custom_queries else None,

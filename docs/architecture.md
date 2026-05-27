@@ -70,7 +70,7 @@
 11. Brand and gap reports, including query-level loss analysis, competitor displacement, owned-page Top5, weak-page drilldowns, and prioritized page optimization plans
 12. Optional corpus-variant comparison for with/without `llms.txt` experiments
 13. Optional cloud import of clean inventory/documents/chunks into PostgreSQL, with source snapshots registered in S3 as artifacts
-14. Optional cloud sync of completed quick/standard run reports and run-state artifacts into S3/RDS
+14. Default cloud sync of completed quick/standard run reports and run-state artifacts into S3/RDS, unless explicitly disabled for a local-only run
 15. Optional pipeline state tracking through `run_manifest.json` and `pipeline_state.jsonl`
 16. Optional local UI review of corpus status, configured models, competitors, latest reports, historical reports, report previews, and dry-run command plans
 17. Optional server or developer checkout hydration from S3/RDS when ignored `data/` and `runs/` artifacts are missing
@@ -101,7 +101,7 @@ The cloud store follows the project split documented in `docs/cloud-database.md`
 - Run-mode selection belongs in the Python full API runner: `quick` maps to 50 queries per model, while `standard` maps to 200 queries per model unless `--queries-per-model` or the wrapper equivalent explicitly overrides it.
 - `test` run mode belongs to link-checking, not ranking analysis; it maps to 2 seeded queries per model so rerank plus answer normally stays in the five-call class.
 - Cloud import depends on existing processed contracts; it must not become a hidden crawler or evaluator path.
-- Run artifact sync depends on completed quick/standard merged report outputs; it must not promote test runs or invent report data.
+- Run artifact sync depends on completed quick/standard merged report outputs; quick and standard full API parallel runs perform it by default after merge, `test` runs do not, and failed S3/RDS credentials must be visible in manifest, pipeline state, ops logs, and Run Monitor without invalidating the local report.
 - Hydration depends on the S3/RDS artifact registry and should restore missing files without replacing existing local artifacts unless explicitly requested.
 - The EC2 deployment update script depends on Git, the existing virtual environment, hydration, verifier, systemd, and `/api/state`; it writes operational logs under ignored `runs/deployments/` rather than Git.
 - PostgreSQL is the queryable corpus and benchmark ledger, S3 is the artifact store, and Qdrant remains a rebuildable retrieval index.

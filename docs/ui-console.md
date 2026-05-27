@@ -50,6 +50,7 @@ That hostname is the `GEO Admin Console` Access application. It routes through C
 - Shows non-secret cloud configuration presence from environment variables.
 - Shows deployment status from local Git metadata and the latest `runs/deployments/*.json` log, including current corpus version, cloud verifier result, artifact count, API document/chunk counts, and latest hydrated report path.
 - Builds dry-run commands for owned-site recrawl/fetch, owned-site processed corpus replacement, optional AWS sync, and API benchmark execution.
+- Shows a separate `Sync run artifacts` control for quick/standard API runs; it is on by default so completed merged reports promote to S3/RDS unless the operator deliberately disables it.
 - Monitors a parallel run root with current stage, per-model progress, API calls, failure counts, log tails, and merged report status.
 - Shows chain health for API runs, including failed workers, API failures, missing outputs, and likely stalls.
 - Shows targeted 402 payment-required and 429 rate-limit guidance so interrupted runs can be stopped and resumed deliberately.
@@ -83,6 +84,7 @@ python scripts\ops_logs.py doctor --run-root runs\full_api_parallel_ui\<timestam
 - The Cloudflare hostname is an authenticated admin entry only; it is not an external subscription API.
 - The UI does not run paid crawler fallback in the default owned-site recrawl/fetch step.
 - The UI can launch model API calls or AWS/RDS writes only through generated commands after explicit confirmation.
+- Quick/standard API launches include default run-artifact sync after merge; `test` launches do not sync artifacts, and disabled or failed sync state appears in the run manifest and monitor.
 - The UI can mutate local raw/processed corpus files only through generated pipeline steps after explicit confirmation.
 - Real runs still use the existing scripts after the user reviews the generated command plan.
 - Run Monitor status remains file-based, while stop/resume is a guarded execution path that only works for API runs launched through this UI.

@@ -169,6 +169,8 @@ If the server checkout predates this wrapper, first run the manual Git fetch/pul
 
 Hydration skips files that already exist by default, which protects Phase 1 copied data or newer server-local artifacts. Use `--overwrite` only when intentionally replacing server files with the S3/RDS artifact copy.
 
+New `quick` and `standard` full API parallel runs sync their merged report artifacts to S3/RDS by default after merge, so future server updates should only need the deployment wrapper hydration step. `test` runs do not sync by default, and operators can deliberately keep a quick/standard run local with `--no-sync-artifacts`. If credentials are missing, the run still keeps its local merged report and marks `AWS sync` as failed in the run manifest, pipeline state, ops summary, and Run Monitor.
+
 Run a cloud verifier after changes that touch cloud access or corpus contracts:
 
 ```bash

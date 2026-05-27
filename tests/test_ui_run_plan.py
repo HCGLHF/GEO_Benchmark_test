@@ -22,7 +22,7 @@ def test_build_run_plan_prefers_quick_parallel_seeded_flow() -> None:
     plan = build_run_plan(request)
 
     assert plan.requires_api is True
-    assert plan.requires_aws is False
+    assert plan.requires_aws is True
     assert plan.estimated_queries_per_model == 50
     labels = [command.label for command in plan.commands]
     assert labels.count("Recrawl and fetch AlphaXXXX pages") == 1
@@ -36,6 +36,7 @@ def test_build_run_plan_prefers_quick_parallel_seeded_flow() -> None:
     assert all("powershell" not in command.command.lower() for command in plan.commands)
     assert any("REM Reuse data\\processed and existing BM25 artifacts" == command.command for command in plan.commands)
     assert any("--run-mode quick" in command.command for command in plan.commands)
+    assert not any("--no-sync-artifacts" in command.command for command in plan.commands)
     assert any("--seed-queries-run-dir" in command.command for command in plan.commands)
     assert any("--models openai/gpt-4.1-mini,google/gemini-2.5-flash" in command.command for command in plan.commands)
 
@@ -77,9 +78,28 @@ def test_build_run_plan_test_mode_keeps_api_calls_under_five_class() -> None:
     plan = build_run_plan(request)
 
     assert plan.estimated_queries_per_model == 2
+    assert plan.requires_aws is False
     assert plan.estimated_api_calls_per_model == 4
     assert any("--run-mode test" in command.command for command in plan.commands)
     assert any("--queries-per-model 2" in command.command for command in plan.commands)
+
+
+def test_build_run_plan_allows_disabling_default_run_artifact_sync() -> None:
+    request = RunPlanRequest(
+        platform="windows",
+        run_mode="quick",
+        selected_models=["openai/gpt-4.1-mini"],
+        recrawl_own_site=False,
+        rescan_corpus=False,
+        parallel_api=True,
+        sync_run_artifacts=False,
+    )
+
+    plan = build_run_plan(request)
+    api_command = next(command.command for command in plan.commands if "full_api_parallel_runner.py" in command.command)
+
+    assert plan.requires_aws is False
+    assert "--no-sync-artifacts" in api_command
 
 
 def test_build_run_plan_warns_when_test_mode_regenerates_scenarios() -> None:
@@ -171,6 +191,11 @@ def test_embedded_html_exposes_platform_control_and_collects_platform_param() ->
     assert '<option value="wsl">wsl</option>' in server.HTML
     assert '<option value="linux">linux</option>' in server.HTML
     assert 'params.set("platform", byId("platform").value);' in server.HTML
+
+
+def test_embedded_html_exposes_run_artifact_sync_toggle() -> None:
+    assert 'id="syncRunArtifacts"' in server.HTML
+    assert 'params.set("sync_run_artifacts", checked("syncRunArtifacts"));' in server.HTML
 
 
 def test_embedded_html_normalizes_pipeline_step_filter_for_wsl_paths() -> None:

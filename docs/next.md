@@ -6,7 +6,7 @@
 - Updated the Reports workspace with the `AX` rail brand, a lightweight Top5/Mention trend line graph, and the latest report's top-five brand overview.
 - Added `scripts/cloud/sync_run_artifacts.py` so completed quick/standard merged benchmark reports and run-state artifacts can be uploaded to S3 and registered in PostgreSQL.
 - Added `scripts/cloud/hydrate_artifacts.py` so EC2 or a fresh checkout can restore corpus files and quick/standard report history from S3/RDS without overwriting existing files by default.
-- Added `--sync-artifacts`, `--industry`, and `--corpus-version` to the full API parallel runner so successful quick/standard merges can promote their artifacts automatically.
+- Made run artifact sync the default for successful `quick` and `standard` full API parallel merges, added `--no-sync-artifacts` for deliberate local-only runs, kept `test` runs local by default, and surfaced sync failures through run manifests, pipeline state, ops logs, summaries, and the UI monitor without breaking local merged reports.
 - Updated cloud and EC2 runbook documentation to make the deployment split explicit: Git updates code, while hydrate restores ignored `data/` and `runs/` artifacts for the UI.
 - Fixed report discovery after hydration so Latest Report and Report History sort by run id timestamp and deduplicate `cloud_synced` copies behind original local run paths.
 - Imported the refreshed AlphaXXXX corpus as cloud corpus version `2026-05-27-alpha-refresh`, verified RDS/S3 counts at 1,683 inventory rows, 1,705 documents, 6,283 chunks, and 51 artifacts.
@@ -315,7 +315,7 @@
 - Hydration skips existing files by default to avoid replacing newer Phase 1 copied corpus files with older cloud artifacts; use `--overwrite` only for an intentional cloud restore.
 - Report UI ordering must continue to use the run id timestamp, not file modification time, because S3 hydration gives old reports fresh download mtimes.
 - The `2026-05-27-alpha-refresh` import still required `--allow-quality-issues` for four known replacement-character rows from HornTech Chinese blog list content and SEOIndia homepage content; these are competitor/source rows and should be cleaned in a separate corpus-quality pass.
-- Automatic `--sync-artifacts` depends on S3/RDS credentials and should fail visibly if cloud access is missing after a successful merge.
+- Default quick/standard run artifact sync depends on S3/RDS credentials; missing cloud access should leave the local report intact while marking `AWS sync` failed in the manifest, monitor, and ops summary.
 - Icon-only navigation must keep accessible labels and visible active state, otherwise the simpler layout becomes harder to operate for keyboard and screen-reader users.
 - The Cloudflare Access allow policy contains the current owner email and `junhao59@163.com`. Additional team use needs explicit teammate emails or identity-provider groups added before sharing the admin entry.
 - The EC2 instance public IP is not durable unless an Elastic IP is attached, so documentation should keep using the instance name/id and Cloudflare hostname as durable references.
@@ -389,8 +389,8 @@
 3. Decide whether the EC2 instance needs an Elastic IP; browser access no longer depends on the public IP, but SSH operations still do unless another admin path is added.
 4. Execute final WSL2 validation from the user's Ubuntu distro and push branch `codex/wsl2-primary-runtime`.
 5. Add dry-run cleanup reporting for old run roots once summaries are stable across real runs.
-6. Add page-intent drilldowns to the report so money-page weakness can be separated from `llms.txt` and blog routing wins.
+6. Add page-intent drilldowns to the report so money-page weakness can be separated from `llms.txt` and blog routing wins, with persona/stage slices that explain where AlphaXXXX loses.
 7. Audit remaining PowerShell-to-Python JSON argument paths and move any nontrivial payloads to files.
 8. Add retry/backoff tuning for rate-limited model workers so Qwen-style 429 bursts produce fewer warning rows before manual stop/resume is needed.
-9. Add launch-history detail inside the Monitor workspace so users can see which UI launch or resume attempt produced the current run root.
-10. Add URL/domain-level latest top-five overview if future reports need website ranking separate from brand ranking.
+9. Wrap the server refresh/deployment workflow in a safer UI operation or expose the latest deployment log details directly beside the current status table.
+10. Add URL/domain-level latest top-five overview if future reports need website ranking separate from brand ranking, including money-page grouping, internal-link/FAQ/schema suggestions, and weak-page content priorities.

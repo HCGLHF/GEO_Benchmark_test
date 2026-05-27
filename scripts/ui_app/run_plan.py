@@ -18,6 +18,7 @@ class RunPlanRequest:
     rescan_corpus: bool = False
     regenerate_scenarios: bool = False
     sync_aws: bool = False
+    sync_run_artifacts: bool = True
     parallel_api: bool = True
     seed_queries_run_dir: str = ""
     custom_queries_per_model: int | None = None
@@ -108,7 +109,13 @@ def _parallel_api_command(request: RunPlanRequest, runtime: PlatformRuntime, que
         argv.append("--include-doubao")
     if request.selected_models:
         argv.extend(["--models", ",".join(request.selected_models)])
+    if request.run_mode in {"quick", "standard"} and not request.sync_run_artifacts:
+        argv.append("--no-sync-artifacts")
     return _format_argv(runtime, argv)
+
+
+def _parallel_artifact_sync_enabled(request: RunPlanRequest) -> bool:
+    return bool(request.parallel_api and request.sync_run_artifacts and request.run_mode in {"quick", "standard"})
 
 
 def build_run_plan(request: RunPlanRequest) -> RunPlan:
@@ -249,7 +256,12 @@ def build_run_plan(request: RunPlanRequest) -> RunPlan:
             PlannedCommand(
                 label="Run full API benchmark in parallel",
                 command=_parallel_api_command(request, runtime, queries_per_model),
-                note="Runs one worker per model and renders progress.html while the benchmark is active.",
+                note=(
+                    "Runs one worker per model and renders progress.html while the benchmark is active. "
+                    "Quick and standard completions sync report artifacts to S3/RDS by default."
+                    if _parallel_artifact_sync_enabled(request)
+                    else "Runs one worker per model and renders progress.html while the benchmark is active."
+                ),
             )
         )
     else:
@@ -285,7 +297,7 @@ def build_run_plan(request: RunPlanRequest) -> RunPlan:
         commands=commands,
         warnings=warnings,
         requires_api=True,
-        requires_aws=request.sync_aws,
+        requires_aws=request.sync_aws or _parallel_artifact_sync_enabled(request),
         estimated_queries_per_model=queries_per_model,
         estimated_api_calls_per_model=queries_per_model * 2,
     )

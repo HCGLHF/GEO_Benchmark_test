@@ -176,6 +176,14 @@ Only `quick` and `standard` runs should be promoted to this shared run-artifact 
 
 Git updates code only. Local data directories such as `data/` and `runs/` are intentionally ignored, so server updates must also hydrate artifacts from S3/RDS when the UI needs existing corpus files and report history.
 
+Future `quick` and `standard` full API parallel runs now sync report artifacts automatically after a successful merge, using the default industry and corpus version from `scripts/cloud/defaults.py`. `test` runs stay local by default. If cloud credentials are missing, the local merged report remains available, while `run_manifest.json`, `pipeline_state.jsonl`, `ops_events.jsonl`, `ops_summary.json`, and the UI Run Monitor show the `AWS sync` failure.
+
+Use `--no-sync-artifacts` only when a quick/standard run should deliberately stay local:
+
+```powershell
+python scripts\full_api_parallel_runner.py --run-mode quick --no-sync-artifacts
+```
+
 Completed quick and standard run artifacts can be planned locally before upload:
 
 ```powershell
@@ -190,10 +198,10 @@ When the dry run looks correct, add `--execute` to upload artifacts to S3 and re
 python scripts\cloud\sync_run_artifacts.py --industry geo-agency --corpus-version 2026-05-27-alpha-refresh --run-root runs\full_api_parallel_ui --run-mode quick --run-mode standard --execute
 ```
 
-The full API parallel runner can sync the current run automatically after a successful merge:
+The manual sync CLI remains useful for backfilling historical quick/standard runs or repairing a missed upload:
 
 ```powershell
-python scripts\full_api_parallel_runner.py --run-mode quick --sync-artifacts --industry geo-agency --corpus-version 2026-05-27-alpha-refresh
+python scripts\cloud\sync_run_artifacts.py --industry geo-agency --corpus-version 2026-05-27-alpha-refresh --run-root runs\full_api_parallel_ui --run-mode quick --run-mode standard --execute
 ```
 
 To rebuild a server or a new developer checkout from the shared artifact store:

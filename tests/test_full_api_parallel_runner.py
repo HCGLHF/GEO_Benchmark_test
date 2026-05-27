@@ -266,6 +266,67 @@ def test_full_api_parallel_runner_parses_sync_artifact_options(tmp_path: Path) -
     assert options.corpus_version == "2026-05-22-initial"
 
 
+def test_full_api_parallel_runner_defaults_quick_and_standard_to_sync_artifacts(tmp_path: Path) -> None:
+    quick = parse_args(
+        [
+            "--run-mode",
+            "quick",
+            "--run-root",
+            str(tmp_path / "quick"),
+            "--models",
+            "openai/gpt-4.1-mini",
+            "--dry-run",
+        ]
+    )
+    standard = parse_args(
+        [
+            "--run-mode",
+            "standard",
+            "--run-root",
+            str(tmp_path / "standard"),
+            "--models",
+            "openai/gpt-4.1-mini",
+            "--dry-run",
+        ]
+    )
+
+    assert quick.sync_artifacts is True
+    assert standard.sync_artifacts is True
+
+
+def test_full_api_parallel_runner_test_mode_does_not_default_to_sync_artifacts(tmp_path: Path) -> None:
+    options = parse_args(
+        [
+            "--run-mode",
+            "test",
+            "--run-root",
+            str(tmp_path / "test"),
+            "--models",
+            "openai/gpt-4.1-mini",
+            "--dry-run",
+        ]
+    )
+
+    assert options.sync_artifacts is False
+
+
+def test_full_api_parallel_runner_no_sync_artifacts_disables_default(tmp_path: Path) -> None:
+    options = parse_args(
+        [
+            "--run-mode",
+            "quick",
+            "--run-root",
+            str(tmp_path / "quick"),
+            "--models",
+            "openai/gpt-4.1-mini",
+            "--no-sync-artifacts",
+            "--dry-run",
+        ]
+    )
+
+    assert options.sync_artifacts is False
+
+
 def test_full_api_parallel_runner_defaults_to_current_cloud_corpus_version(tmp_path: Path) -> None:
     options = parse_args(
         [
@@ -507,13 +568,21 @@ def test_full_api_parallel_runner_syncs_artifacts_after_successful_merge(tmp_pat
         sync_calls.append(kwargs)
         return {"status": "synced", "summary": {"run_count": 1, "artifact_count": 3, "size_bytes": 100}}
 
-    options = RunnerOptions(
-        **{
-            **fake_options(tmp_path).__dict__,
-            "run_mode": "quick",
-            "sync_artifacts": True,
-            "industry": "geo-agency",
-        }
+    options = parse_args(
+        [
+            "--run-mode",
+            "quick",
+            "--queries-per-model",
+            "1",
+            "--run-root",
+            str(tmp_path / "full_api_parallel"),
+            "--run-stamp",
+            "fixed_stamp",
+            "--models",
+            "openai/gpt-4.1-mini",
+            "--platform",
+            "wsl",
+        ]
     )
     monkeypatch.setattr("scripts.full_api_parallel_runner.subprocess.run", fake_run)
     monkeypatch.setattr("scripts.full_api_parallel_runner.time.sleep", lambda seconds: None)
@@ -528,6 +597,81 @@ def test_full_api_parallel_runner_syncs_artifacts_after_successful_merge(tmp_pat
     assert sync_calls[0]["run_roots"] == [tmp_path / "full_api_parallel" / options.run_stamp]
     assert sync_calls[0]["run_modes"] == {"quick"}
     assert sync_calls[0]["execute"] is True
+
+
+def test_full_api_parallel_runner_sync_failure_is_visible_without_failing_report(tmp_path: Path, monkeypatch) -> None:
+    runtime = FakeRuntime()
+
+    def fake_run(args, check=False, text=True, capture_output=False):
+        class Result:
+            returncode = 0
+            stdout = json.dumps(
+                {"status": "complete", "fatal_count": 0, "warning_count": 0, "fatals": [], "warnings": []}
+            )
+            stderr = ""
+
+        joined = " ".join(str(arg) for arg in args)
+        if "merge_full_api_runs.py" in joined:
+            output_dir = Path(args[args.index("--output-dir") + 1])
+            output_dir.mkdir(parents=True, exist_ok=True)
+            (output_dir / "competitive_gap_report.md").write_text("# Report\n", encoding="utf-8")
+            (output_dir / "brand_performance_by_model.csv").write_text("brand,query_count\nAlphaXXXX,1\n", encoding="utf-8")
+            (output_dir / "merge_manifest.json").write_text(
+                json.dumps({"result": {"query_rows": 1, "source_run_count": 1}}),
+                encoding="utf-8",
+            )
+        return Result()
+
+    def fake_sync(**kwargs):
+        raise RuntimeError("missing cloud credentials")
+
+    options = parse_args(
+        [
+            "--run-mode",
+            "quick",
+            "--queries-per-model",
+            "1",
+            "--run-root",
+            str(tmp_path / "full_api_parallel"),
+            "--run-stamp",
+            "fixed_stamp",
+            "--models",
+            "openai/gpt-4.1-mini",
+            "--platform",
+            "wsl",
+        ]
+    )
+    monkeypatch.setattr("scripts.full_api_parallel_runner.subprocess.run", fake_run)
+    monkeypatch.setattr("scripts.full_api_parallel_runner.time.sleep", lambda seconds: None)
+    monkeypatch.setattr("scripts.full_api_parallel_runner.run_sync", fake_sync)
+
+    result = run(options, runtime=runtime)
+
+    run_root = tmp_path / "full_api_parallel" / "fixed_stamp"
+    manifest = json.loads((run_root / "run_manifest.json").read_text(encoding="utf-8"))
+    ops_events = [
+        json.loads(line)
+        for line in (run_root / "ops_events.jsonl").read_text(encoding="utf-8").splitlines()
+        if line.strip()
+    ]
+    ops_summary = json.loads((run_root / "ops_summary.json").read_text(encoding="utf-8"))
+    status = read_pipeline_status(run_root)
+
+    assert result == 0
+    assert (run_root / "merged" / "competitive_gap_report.md").exists()
+    assert manifest["status"] == "completed"
+    assert manifest["cloud_artifact_sync"]["status"] == "failed"
+    assert "missing cloud credentials" in manifest["cloud_artifact_sync"]["error"]
+    assert status["stages"]["AWS sync"]["status"] == "failed"
+    assert any(
+        event["level"] == "error"
+        and event["event_type"] == "stage_failed"
+        and event["stage"] == "AWS sync"
+        and "missing cloud credentials" in event["message"]
+        for event in ops_events
+    )
+    assert ops_summary["status"] == "error"
+    assert any("AWS sync failed" in issue and "missing cloud credentials" in issue for issue in ops_summary["issues"])
 
 
 def test_full_api_parallel_runner_creates_worker_and_cache_dirs_before_no_seed_launch(
