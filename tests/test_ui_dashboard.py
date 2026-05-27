@@ -96,6 +96,33 @@ def test_ui_html_constrains_code_blocks_inside_grid() -> None:
     assert "overflow-wrap: anywhere;" in HTML
 
 
+def test_ui_html_renders_command_center_shell() -> None:
+    assert 'class="app-shell"' in HTML
+    assert 'class="nav-rail"' in HTML
+    assert 'data-view-target="overview"' in HTML
+    assert 'data-view-target="run-setup"' in HTML
+    assert 'data-view-target="monitor"' in HTML
+    assert 'data-view-target="reports"' in HTML
+    assert 'data-view-target="pages"' in HTML
+    assert 'data-view-target="cloud"' in HTML
+    assert 'data-view-target="commands"' in HTML
+    assert 'aria-label="Overview"' in HTML
+    assert 'aria-label="Run setup"' in HTML
+    assert 'aria-label="Run monitor"' in HTML
+    assert 'aria-current="page"' in HTML
+
+
+def test_ui_html_renders_icons_and_workspaces() -> None:
+    assert 'class="icon icon-overview"' in HTML
+    assert 'class="icon icon-run"' in HTML
+    assert 'class="icon icon-monitor"' in HTML
+    assert 'class="workspace active" data-view="overview"' in HTML
+    assert 'class="workspace" data-view="run-setup"' in HTML
+    assert 'class="workspace" data-view="monitor"' in HTML
+    assert 'id="globalHealthBadge"' in HTML
+    assert 'id="activeWorkspaceTitle"' in HTML
+
+
 def test_ui_html_renders_pipeline_progress_bars() -> None:
     assert ".progress-track" in HTML
     assert ".progress-fill" in HTML

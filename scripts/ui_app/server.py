@@ -27,41 +27,134 @@ HTML = r"""<!doctype html>
   <style>
     :root {
       color-scheme: light;
-      --ink: #1f2933;
+      --ink: #172033;
       --muted: #667085;
-      --line: #d9dee7;
-      --surface: #f6f7f9;
+      --line: #d8dee9;
+      --surface: #f4f6fa;
       --panel: #ffffff;
+      --rail: #152033;
+      --rail-muted: #9ca8ba;
       --accent: #0f766e;
       --accent-weak: #d9f4ef;
       --warn: #9a3412;
+      --danger: #b42318;
+      --ok: #067647;
     }
     * { box-sizing: border-box; }
     body {
       margin: 0;
-      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       color: var(--ink);
       background: var(--surface);
     }
-    header {
+    h1 { font-size: 20px; margin: 0; letter-spacing: 0; }
+    h2 { font-size: 15px; margin: 0 0 12px; letter-spacing: 0; }
+    .app-shell {
+      display: grid;
+      grid-template-columns: 76px minmax(0, 1fr);
+      min-height: 100vh;
+    }
+    .nav-rail {
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      background: var(--rail);
+      color: #fff;
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      justify-items: center;
+      padding: 14px 10px;
+      z-index: 2;
+    }
+    .rail-brand {
+      width: 42px;
+      height: 42px;
+      border-radius: 8px;
+      display: grid;
+      place-items: center;
+      background: var(--accent);
+      font-weight: 800;
+    }
+    .rail-nav {
+      display: grid;
+      gap: 8px;
+      align-content: start;
+      margin-top: 20px;
+    }
+    .rail-button {
+      width: 44px;
+      height: 44px;
+      border: 0;
+      border-radius: 8px;
+      display: grid;
+      place-items: center;
+      color: var(--rail-muted);
+      background: transparent;
+      cursor: pointer;
+    }
+    .rail-button:hover,
+    .rail-button.active {
+      color: #fff;
+      background: rgba(255, 255, 255, 0.12);
+    }
+    .rail-button[aria-current="page"] {
+      color: #fff;
+      background: var(--accent);
+    }
+    .rail-button:focus-visible,
+    .button:focus-visible,
+    input:focus-visible,
+    textarea:focus-visible,
+    select:focus-visible {
+      outline: 2px solid #54c6b8;
+      outline-offset: 2px;
+    }
+    .content-shell {
+      min-width: 0;
+      display: grid;
+      grid-template-rows: auto minmax(0, 1fr);
+    }
+    .topbar {
+      min-width: 0;
       padding: 18px 24px;
       border-bottom: 1px solid var(--line);
-      background: var(--panel);
+      background: rgba(255, 255, 255, 0.88);
+      backdrop-filter: blur(12px);
       display: flex;
       align-items: center;
       justify-content: space-between;
       gap: 16px;
+      position: sticky;
+      top: 0;
+      z-index: 1;
     }
-    h1 { font-size: 20px; margin: 0; letter-spacing: 0; }
-    h2 { font-size: 15px; margin: 0 0 12px; letter-spacing: 0; }
-    main {
+    .topbar-actions {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    .workspace-wrap {
+      padding: 18px;
+      min-width: 0;
+    }
+    .workspace {
+      display: none;
+      min-width: 0;
+    }
+    .workspace.active {
       display: grid;
-      grid-template-columns: minmax(360px, 460px) minmax(0, 1fr);
       gap: 16px;
-      padding: 16px;
+    }
+    .panel-grid {
+      display: grid;
+      grid-template-columns: repeat(12, minmax(0, 1fr));
+      gap: 16px;
       align-items: start;
     }
-    section {
+    .panel {
+      grid-column: span 12;
       background: var(--panel);
       border: 1px solid var(--line);
       border-radius: 8px;
@@ -69,20 +162,24 @@ HTML = r"""<!doctype html>
       min-width: 0;
       overflow: hidden;
     }
-    .stack { display: grid; gap: 16px; min-width: 0; align-content: start; }
+    .panel.half { grid-column: span 6; }
+    .panel.third { grid-column: span 4; }
+    .panel.two-third { grid-column: span 8; }
     .metrics {
       display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
+      grid-template-columns: repeat(4, minmax(0, 1fr));
       gap: 10px;
     }
     .metric {
       border: 1px solid var(--line);
       border-radius: 8px;
       padding: 12px;
-      min-height: 74px;
+      min-height: 82px;
       background: #fbfcfe;
+      display: grid;
+      gap: 8px;
     }
-    .metric strong { display: block; font-size: 24px; line-height: 1.2; }
+    .metric strong { display: block; font-size: 24px; line-height: 1.15; }
     .metric span, label, .muted { color: var(--muted); font-size: 13px; }
     .row {
       display: grid;
@@ -116,20 +213,61 @@ HTML = r"""<!doctype html>
     }
     .button {
       border: 0;
-      border-radius: 6px;
+      border-radius: 7px;
       background: var(--accent);
       color: #fff;
       padding: 10px 14px;
       font: inherit;
       cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      min-height: 38px;
     }
     .button.secondary {
       background: #344054;
+    }
+    .button.ghost {
+      color: var(--ink);
+      background: #eef2f7;
+    }
+    .button.danger {
+      background: var(--danger);
+    }
+    .button:disabled {
+      opacity: 0.62;
+      cursor: wait;
     }
     .button.inline {
       padding: 6px 9px;
       font-size: 12px;
     }
+    .icon {
+      width: 18px;
+      height: 18px;
+      flex: 0 0 auto;
+      stroke: currentColor;
+      fill: none;
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      border-radius: 999px;
+      padding: 5px 9px;
+      font-size: 12px;
+      border: 1px solid var(--line);
+      background: #fff;
+      color: var(--muted);
+      white-space: nowrap;
+    }
+    .status-badge.ok { color: var(--ok); background: #ecfdf3; border-color: #abefc6; }
+    .status-badge.warning { color: var(--warn); background: #fff7ed; border-color: #fed7aa; }
+    .status-badge.error { color: var(--danger); background: #fef3f2; border-color: #fecdca; }
     .list {
       display: grid;
       gap: 6px;
@@ -225,165 +363,246 @@ HTML = r"""<!doctype html>
       overflow-wrap: break-word;
       word-break: normal;
     }
-    @media (max-width: 920px) {
-      main { grid-template-columns: 1fr; }
-      .row, .checks { grid-template-columns: 1fr; }
+    @media (max-width: 1080px) {
+      .panel.half, .panel.third, .panel.two-third { grid-column: span 12; }
+      .metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+    @media (max-width: 720px) {
+      .app-shell { grid-template-columns: 1fr; }
+      .nav-rail {
+        position: static;
+        height: auto;
+        grid-template-columns: auto 1fr;
+        grid-template-rows: auto;
+        justify-items: start;
+      }
+      .rail-nav {
+        display: flex;
+        overflow-x: auto;
+        margin: 0 0 0 12px;
+      }
+      .metrics, .row, .checks { grid-template-columns: 1fr; }
+      .topbar { align-items: flex-start; flex-direction: column; }
     }
   </style>
 </head>
 <body>
-  <header>
-    <h1>GEO Benchmark Console</h1>
-    <button class="button secondary" id="refresh">Refresh</button>
-  </header>
-  <main>
-    <div class="stack">
-      <section>
-        <h2>Resource Library</h2>
-        <div class="metrics">
-          <div class="metric"><strong id="companyCount">0</strong><span>companies</span></div>
-          <div class="metric"><strong id="urlCount">0</strong><span>URLs</span></div>
-          <div class="metric"><strong id="documentCount">0</strong><span>documents</span></div>
-          <div class="metric"><strong id="chunkCount">0</strong><span>chunks</span></div>
+  <div class="app-shell">
+    <aside class="nav-rail" aria-label="Primary">
+      <div class="rail-brand" title="GEO Benchmark Console">G</div>
+      <nav class="rail-nav" aria-label="Workspaces">
+        <button class="rail-button active" data-view-target="overview" aria-label="Overview" aria-current="page" title="Overview" type="button"><svg class="icon icon-overview" viewBox="0 0 24 24"><path d="M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z"/></svg></button>
+        <button class="rail-button" data-view-target="run-setup" aria-label="Run setup" title="Run setup" type="button"><svg class="icon icon-run" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg></button>
+        <button class="rail-button" data-view-target="monitor" aria-label="Run monitor" title="Run monitor" type="button"><svg class="icon icon-monitor" viewBox="0 0 24 24"><path d="M4 19V5M4 19h16M8 15v-4M12 15V7M16 15v-6"/></svg></button>
+        <button class="rail-button" data-view-target="reports" aria-label="Reports" title="Reports" type="button"><svg class="icon icon-reports" viewBox="0 0 24 24"><path d="M7 3h7l5 5v13H7zM14 3v5h5M9 14h8M9 18h6"/></svg></button>
+        <button class="rail-button" data-view-target="pages" aria-label="Owned pages" title="Owned pages" type="button"><svg class="icon icon-pages" viewBox="0 0 24 24"><path d="M4 5h16v14H4zM8 9h8M8 13h5M8 17h7"/></svg></button>
+        <button class="rail-button" data-view-target="cloud" aria-label="Cloud store" title="Cloud store" type="button"><svg class="icon icon-cloud" viewBox="0 0 24 24"><path d="M17 18H7a4 4 0 1 1 .8-7.9A5.5 5.5 0 0 1 18.4 12 3 3 0 0 1 17 18z"/></svg></button>
+        <button class="rail-button" data-view-target="commands" aria-label="Commands" title="Commands" type="button"><svg class="icon icon-commands" viewBox="0 0 24 24"><path d="M4 17l5-5-5-5M12 19h8"/></svg></button>
+      </nav>
+    </aside>
+    <div class="content-shell">
+      <header class="topbar">
+        <div>
+          <h1 id="activeWorkspaceTitle">Overview</h1>
+          <div class="muted">GEO Benchmark Console</div>
         </div>
-      </section>
-      <section>
-        <h2>Latest Report</h2>
-        <div class="metrics">
-          <div class="metric"><strong id="targetRank">-</strong><span>AlphaXXXX rank</span></div>
-          <div class="metric"><strong id="targetTop5">-</strong><span>Retrieval Top5</span></div>
-          <div class="metric"><strong id="targetMention">-</strong><span>Model mention</span></div>
-          <div class="metric"><strong id="answerCount">-</strong><span>answers</span></div>
+        <div class="topbar-actions">
+          <span class="status-badge" id="globalHealthBadge">status unknown</span>
+          <button class="button ghost" id="refresh" type="button"><svg class="icon" viewBox="0 0 24 24"><path d="M20 6v5h-5M4 18v-5h5M18.7 9A7 7 0 0 0 6.8 6.8M5.3 15A7 7 0 0 0 17.2 17.2"/></svg>Refresh</button>
         </div>
-        <div id="reportPath" class="muted" style="margin-top:10px;"></div>
-      </section>
-      <section>
-        <h2>Report History</h2>
-        <div id="reportHistoryTable" class="muted">No report history loaded</div>
-      </section>
-      <section>
-        <h2>Report Preview</h2>
-        <pre id="reportPreview">(select a report)</pre>
-      </section>
-      <section>
-        <h2>Owned Page Drilldown</h2>
-        <div id="ownedPageSource" class="muted">Select or load a report</div>
-        <h2 style="margin-top:14px;">Top5 Retrieved Pages</h2>
-        <div id="ownedTopPagesTable" class="muted">No report loaded</div>
-        <h2 style="margin-top:14px;">Weak Pages To Optimize</h2>
-        <div id="ownedWeakPagesTable" class="muted">No report loaded</div>
-      </section>
-      <section>
-        <h2>Cloud Store</h2>
-        <table>
-          <tbody id="cloudRows"></tbody>
-        </table>
-      </section>
+      </header>
+      <main class="workspace-wrap">
+        <section class="workspace active" data-view="overview">
+          <div class="panel-grid">
+            <div class="panel half">
+              <h2>Resource Library</h2>
+              <div class="metrics">
+                <div class="metric"><strong id="companyCount">0</strong><span>companies</span></div>
+                <div class="metric"><strong id="urlCount">0</strong><span>URLs</span></div>
+                <div class="metric"><strong id="documentCount">0</strong><span>documents</span></div>
+                <div class="metric"><strong id="chunkCount">0</strong><span>chunks</span></div>
+              </div>
+            </div>
+            <div class="panel half">
+              <h2>Latest Report</h2>
+              <div class="metrics">
+                <div class="metric"><strong id="targetRank">-</strong><span>AlphaXXXX rank</span></div>
+                <div class="metric"><strong id="targetTop5">-</strong><span>Retrieval Top5</span></div>
+                <div class="metric"><strong id="targetMention">-</strong><span>Model mention</span></div>
+                <div class="metric"><strong id="answerCount">-</strong><span>answers</span></div>
+              </div>
+              <div id="reportPath" class="muted" style="margin-top:10px;"></div>
+            </div>
+            <div class="panel two-third">
+              <h2>Competitors</h2>
+              <div id="competitors"></div>
+            </div>
+            <div class="panel third">
+              <h2>Next Action</h2>
+              <button class="button" type="button" data-view-target="run-setup"><svg class="icon" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>Prepare Run</button>
+            </div>
+          </div>
+        </section>
+        <section class="workspace" data-view="run-setup">
+          <div class="panel-grid">
+            <div class="panel two-third">
+              <h2>Run Setup</h2>
+              <div class="row">
+                <label>Main site
+                  <input id="ownSiteUrl" type="text" value="https://alphaxxxx.com/">
+                </label>
+                <label>Run mode
+                  <select id="runMode">
+                    <option value="test">test</option>
+                    <option value="quick">quick</option>
+                    <option value="standard">standard</option>
+                    <option value="custom">custom</option>
+                  </select>
+                </label>
+                <label>Platform
+                  <select id="platform">
+                    <option value="auto">auto</option>
+                    <option value="windows">windows</option>
+                    <option value="wsl">wsl</option>
+                    <option value="linux">linux</option>
+                  </select>
+                </label>
+              </div>
+              <div class="row" style="margin-top:12px;">
+                <label>Pipeline run root
+                  <input id="pipelineRunRoot" type="text" value="runs/ui_pipeline/<timestamp>">
+                </label>
+                <label>Monitor run root
+                  <input id="linkedMonitorRoot" type="text" value="runs/full_api_parallel_alpha_refresh_quick_final/20260519_160422">
+                </label>
+              </div>
+              <div class="row" style="margin-top:12px;">
+                <label>Extra owned URLs
+                  <textarea id="extraSiteUrls"></textarea>
+                </label>
+                <label>Seed query run
+                  <input id="seedQueriesRunDir" type="text" value="runs/client_acquisition_simulator_full_api_20260517_200716">
+                </label>
+              </div>
+              <div class="checks">
+                <label class="check"><input id="recrawlOwnSite" type="checkbox" checked> Recrawl owned site</label>
+                <label class="check"><input id="rescanCorpus" type="checkbox"> Rescan full corpus</label>
+                <label class="check"><input id="regenerateScenarios" type="checkbox"> Regenerate scenarios</label>
+                <label class="check"><input id="syncAws" type="checkbox"> Sync AWS</label>
+                <label class="check"><input id="parallelApi" type="checkbox" checked> Parallel API</label>
+                <label class="check">Custom queries <input id="customQueries" type="number" min="1" value=""></label>
+              </div>
+            </div>
+            <div class="panel third">
+              <h2>Models</h2>
+              <div class="list" id="modelList"></div>
+            </div>
+            <div class="panel">
+              <h2>Actions</h2>
+              <div>
+                <button class="button" id="plan" type="button"><svg class="icon" viewBox="0 0 24 24"><path d="M7 8h10M7 12h10M7 16h6M5 3h14v18H5z"/></svg>Build Run Plan</button>
+                <button class="button secondary" id="launchApi" type="button"><svg class="icon" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>Launch API Run</button>
+              </div>
+              <div class="row" style="margin-top:12px;">
+                <label>Pipeline step
+                  <select id="stageCommand"></select>
+                </label>
+                <label>Step launch
+                  <button class="button secondary" id="launchStage" type="button"><svg class="icon" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Launch Step</button>
+                </label>
+              </div>
+              <div id="launchStatus" class="muted" style="margin-top:10px;"></div>
+            </div>
+          </div>
+        </section>
+        <section class="workspace" data-view="monitor">
+          <div class="panel-grid">
+            <div class="panel">
+              <h2>Run Monitor</h2>
+              <div class="row">
+                <label>Parallel run root
+                  <input id="monitorRunRoot" type="text" value="runs/full_api_parallel_alpha_refresh_quick_final/20260519_160422">
+                </label>
+                <label>Current stage
+                  <input id="monitorStage" type="text" readonly>
+                </label>
+              </div>
+              <div class="metrics" style="margin-top:12px;">
+                <div class="metric"><strong id="monitorApiCalls">-</strong><span>API calls</span></div>
+                <div class="metric"><strong id="monitorFailures">-</strong><span>failures</span></div>
+                <div class="metric"><strong id="monitorProgress">-</strong><span>terminal progress</span></div>
+                <div class="metric"><strong id="monitorModels">-</strong><span>model workers</span></div>
+                <div class="metric"><strong id="monitorHealth">-</strong><span>chain health</span></div>
+              </div>
+              <div style="margin-top:12px;">
+                <button class="button secondary" id="monitorRefresh" type="button"><svg class="icon" viewBox="0 0 24 24"><path d="M20 6v5h-5M4 18v-5h5M18.7 9A7 7 0 0 0 6.8 6.8M5.3 15A7 7 0 0 0 17.2 17.2"/></svg>Refresh Monitor</button>
+                <button class="button danger" id="stopApiRun" type="button"><svg class="icon" viewBox="0 0 24 24"><path d="M6 6h12v12H6z"/></svg>Stop API Run</button>
+                <button class="button" id="resumeApiRun" type="button"><svg class="icon" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>Resume API Run</button>
+                <label class="check" style="display:inline-flex; margin-left:8px; width:auto;">
+                  <input id="monitorAutoRefresh" type="checkbox" checked> Auto-refresh
+                </label>
+              </div>
+            </div>
+            <div class="panel">
+              <h2>Model Workers</h2>
+              <div id="monitorModelsTable"></div>
+            </div>
+            <div class="panel">
+              <h2>Pipeline Stages</h2>
+              <div id="monitorStagesTable"></div>
+            </div>
+            <div class="panel">
+              <h2>Monitor Log</h2>
+              <pre id="monitorLog"></pre>
+            </div>
+          </div>
+        </section>
+        <section class="workspace" data-view="reports">
+          <div class="panel-grid">
+            <div class="panel half">
+              <h2>Report History</h2>
+              <div id="reportHistoryTable" class="muted">No report history loaded</div>
+            </div>
+            <div class="panel half">
+              <h2>Report Preview</h2>
+              <pre id="reportPreview">(select a report)</pre>
+            </div>
+          </div>
+        </section>
+        <section class="workspace" data-view="pages">
+          <div class="panel-grid">
+            <div class="panel">
+              <h2>Owned Page Drilldown</h2>
+              <div id="ownedPageSource" class="muted">Select or load a report</div>
+            </div>
+            <div class="panel half">
+              <h2>Top5 Retrieved Pages</h2>
+              <div id="ownedTopPagesTable" class="muted">No report loaded</div>
+            </div>
+            <div class="panel half">
+              <h2>Weak Pages To Optimize</h2>
+              <div id="ownedWeakPagesTable" class="muted">No report loaded</div>
+            </div>
+          </div>
+        </section>
+        <section class="workspace" data-view="cloud">
+          <div class="panel">
+            <h2>Cloud Store</h2>
+            <table>
+              <tbody id="cloudRows"></tbody>
+            </table>
+          </div>
+        </section>
+        <section class="workspace" data-view="commands">
+          <div class="panel">
+            <h2>Dry Run Commands</h2>
+            <pre id="commands"></pre>
+            <div id="warnings"></div>
+          </div>
+        </section>
+      </main>
     </div>
-    <div class="stack">
-      <section>
-        <h2>Run Setup</h2>
-        <div class="row">
-          <label>Main site
-            <input id="ownSiteUrl" type="text" value="https://alphaxxxx.com/">
-          </label>
-          <label>Run mode
-            <select id="runMode">
-              <option value="test">test</option>
-              <option value="quick">quick</option>
-              <option value="standard">standard</option>
-              <option value="custom">custom</option>
-            </select>
-          </label>
-          <label>Platform
-            <select id="platform">
-              <option value="auto">auto</option>
-              <option value="windows">windows</option>
-              <option value="wsl">wsl</option>
-              <option value="linux">linux</option>
-            </select>
-          </label>
-        </div>
-        <div class="row" style="margin-top:12px;">
-          <label>Pipeline run root
-            <input id="pipelineRunRoot" type="text" value="runs/ui_pipeline/<timestamp>">
-          </label>
-          <label>Monitor run root
-            <input id="linkedMonitorRoot" type="text" value="runs/full_api_parallel_alpha_refresh_quick_final/20260519_160422">
-          </label>
-        </div>
-        <div class="row" style="margin-top:12px;">
-          <label>Extra owned URLs
-            <textarea id="extraSiteUrls"></textarea>
-          </label>
-          <label>Seed query run
-            <input id="seedQueriesRunDir" type="text" value="runs/client_acquisition_simulator_full_api_20260517_200716">
-          </label>
-        </div>
-        <div class="checks">
-          <label class="check"><input id="recrawlOwnSite" type="checkbox" checked> Recrawl owned site</label>
-          <label class="check"><input id="rescanCorpus" type="checkbox"> Rescan full corpus</label>
-          <label class="check"><input id="regenerateScenarios" type="checkbox"> Regenerate scenarios</label>
-          <label class="check"><input id="syncAws" type="checkbox"> Sync AWS</label>
-          <label class="check"><input id="parallelApi" type="checkbox" checked> Parallel API</label>
-          <label class="check">Custom queries <input id="customQueries" type="number" min="1" value=""></label>
-        </div>
-        <h2 style="margin-top:16px;">Models</h2>
-        <div class="list" id="modelList"></div>
-        <div style="margin-top:12px;">
-          <button class="button" id="plan">Build Run Plan</button>
-          <button class="button secondary" id="launchApi">Launch API Run</button>
-        </div>
-        <div class="row" style="margin-top:12px;">
-          <label>Pipeline step
-            <select id="stageCommand"></select>
-          </label>
-          <label>Step launch
-            <button class="button secondary" id="launchStage" type="button">Launch Step</button>
-          </label>
-        </div>
-        <div id="launchStatus" class="muted" style="margin-top:10px;"></div>
-      </section>
-      <section>
-        <h2>Competitors</h2>
-        <div id="competitors"></div>
-      </section>
-      <section>
-        <h2>Dry Run Commands</h2>
-        <pre id="commands"></pre>
-        <div id="warnings"></div>
-      </section>
-      <section>
-        <h2>Run Monitor</h2>
-        <div class="row">
-          <label>Parallel run root
-            <input id="monitorRunRoot" type="text" value="runs/full_api_parallel_alpha_refresh_quick_final/20260519_160422">
-          </label>
-          <label>Current stage
-            <input id="monitorStage" type="text" readonly>
-          </label>
-        </div>
-        <div class="metrics" style="margin-top:12px;">
-          <div class="metric"><strong id="monitorApiCalls">-</strong><span>API calls</span></div>
-          <div class="metric"><strong id="monitorFailures">-</strong><span>failures</span></div>
-          <div class="metric"><strong id="monitorProgress">-</strong><span>terminal progress</span></div>
-          <div class="metric"><strong id="monitorModels">-</strong><span>model workers</span></div>
-          <div class="metric"><strong id="monitorHealth">-</strong><span>chain health</span></div>
-        </div>
-        <div style="margin-top:12px;">
-          <button class="button secondary" id="monitorRefresh">Refresh Monitor</button>
-          <button class="button secondary" id="stopApiRun">Stop API Run</button>
-          <button class="button" id="resumeApiRun">Resume API Run</button>
-          <label class="check" style="display:inline-flex; margin-left:8px; width:auto;">
-            <input id="monitorAutoRefresh" type="checkbox" checked> Auto-refresh
-          </label>
-        </div>
-        <div id="monitorModelsTable" style="margin-top:12px;"></div>
-        <div id="monitorStagesTable" style="margin-top:12px;"></div>
-        <pre id="monitorLog"></pre>
-      </section>
-    </div>
-  </main>
+  </div>
   <script>
     let state = null;
     let lastPlan = null;
