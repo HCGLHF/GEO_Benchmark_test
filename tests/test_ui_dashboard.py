@@ -89,9 +89,9 @@ def test_build_dashboard_state_returns_latest_monitor_run_root(tmp_path: Path) -
 
 
 def test_ui_html_constrains_code_blocks_inside_grid() -> None:
-    assert ".stack { display: grid; gap: 16px; min-width: 0;" in HTML
-    assert "align-content: start;" in HTML
-    assert "section {" in HTML
+    assert ".content-shell" in HTML
+    assert ".workspace-wrap" in HTML
+    assert ".panel {" in HTML
     assert "min-width: 0;" in HTML
     assert "overflow-wrap: anywhere;" in HTML
 
