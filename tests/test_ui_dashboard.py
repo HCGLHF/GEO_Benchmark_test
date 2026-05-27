@@ -90,6 +90,41 @@ def test_build_dashboard_state_returns_latest_monitor_run_root(tmp_path: Path) -
     assert state["latest_monitor_run_root"] == "runs/full_api_parallel_ui/20260523_040450"
 
 
+def test_build_dashboard_state_skips_failed_latest_monitor_run_root(tmp_path: Path) -> None:
+    old_launch = tmp_path / "runs" / "ui_launches" / "20260523_010000" / "launch_manifest.json"
+    failed_launch = tmp_path / "runs" / "ui_launches" / "20260523_040450" / "launch_manifest.json"
+    old_launch.parent.mkdir(parents=True)
+    failed_launch.parent.mkdir(parents=True)
+    old_launch.write_text(
+        json.dumps({"status": "launched", "monitor_run_root": "runs/full_api_parallel_ui/20260523_010000"}),
+        encoding="utf-8",
+    )
+    failed_launch.write_text(
+        json.dumps({"status": "failed", "monitor_run_root": "runs/full_api_parallel_ui/20260523_040450"}),
+        encoding="utf-8",
+    )
+
+    state = build_dashboard_state(tmp_path)
+
+    assert state["latest_monitor_run_root"] == "runs/full_api_parallel_ui/20260523_010000"
+
+
+def test_build_dashboard_state_skips_failed_run_manifest_even_when_launch_is_stale(tmp_path: Path) -> None:
+    launch = tmp_path / "runs" / "ui_launches" / "20260523_040450" / "launch_manifest.json"
+    launch.parent.mkdir(parents=True)
+    launch.write_text(
+        json.dumps({"status": "launched", "monitor_run_root": "runs/full_api_parallel_ui/20260523_040450"}),
+        encoding="utf-8",
+    )
+    run_root = tmp_path / "runs" / "full_api_parallel_ui" / "20260523_040450"
+    run_root.mkdir(parents=True)
+    (run_root / "run_manifest.json").write_text(json.dumps({"status": "failed"}), encoding="utf-8")
+
+    state = build_dashboard_state(tmp_path)
+
+    assert state["latest_monitor_run_root"] == ""
+
+
 def test_ui_html_constrains_code_blocks_inside_grid() -> None:
     assert ".content-shell" in HTML
     assert ".workspace-wrap" in HTML
@@ -181,6 +216,11 @@ def test_ui_html_restores_latest_monitor_after_refresh() -> None:
     assert "latest_monitor_run_root" in HTML
     assert "geo.monitorRunRoot" in HTML
     assert "setMonitorRunRoot" in HTML
+    assert 'const restoredMonitorRoot = state.latest_monitor_run_root || "";' in HTML
+    assert "state.latest_monitor_run_root || localStorage.getItem" not in HTML
+    assert 'id="monitorRunRoot" type="text" value=""' in HTML
+    assert 'id="linkedMonitorRoot" type="text" value=""' in HTML
+    assert "full_api_parallel_alpha_refresh_quick_final" not in HTML
 
 
 def test_ui_html_renders_report_history_and_preview() -> None:

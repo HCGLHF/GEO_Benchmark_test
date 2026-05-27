@@ -14,6 +14,9 @@ from scripts.ui_app.report_history import list_report_history
 from scripts.ui_app.report_summary import summarize_latest_report
 
 
+TERMINAL_MONITOR_STATUSES = {"failed", "rejected", "stopped", "stop_failed", "interrupted"}
+
+
 def _database_host_from_url(database_url: str | None) -> str | None:
     if not database_url:
         return None
@@ -40,6 +43,28 @@ def _cloud_status(project_root: Path) -> dict[str, Any]:
     }
 
 
+def _resolve_monitor_root(project_root: Path, monitor_root: str) -> Path:
+    path = Path(monitor_root)
+    if path.is_absolute():
+        return path
+    return project_root / path
+
+
+def _monitor_root_is_auto_restorable(project_root: Path, launch_data: dict[str, Any], monitor_root: str) -> bool:
+    launch_status = str(launch_data.get("status") or "").strip().lower()
+    if launch_status in TERMINAL_MONITOR_STATUSES:
+        return False
+
+    manifest_path = _resolve_monitor_root(project_root, monitor_root) / "run_manifest.json"
+    try:
+        run_manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return True
+
+    run_status = str(run_manifest.get("status") or "").strip().lower()
+    return run_status not in TERMINAL_MONITOR_STATUSES
+
+
 def _latest_monitor_run_root(project_root: Path) -> str:
     launch_dir = project_root / "runs" / "ui_launches"
     if not launch_dir.exists():
@@ -55,7 +80,7 @@ def _latest_monitor_run_root(project_root: Path) -> str:
         except (OSError, json.JSONDecodeError):
             continue
         monitor_root = str(data.get("monitor_run_root") or "").strip()
-        if monitor_root:
+        if monitor_root and _monitor_root_is_auto_restorable(project_root, data, monitor_root):
             return monitor_root
     return ""
 

@@ -611,7 +611,7 @@ HTML = r"""<!doctype html>
                   <input id="pipelineRunRoot" type="text" value="runs/ui_pipeline/<timestamp>">
                 </label>
                 <label>Monitor run root
-                  <input id="linkedMonitorRoot" type="text" value="runs/full_api_parallel_alpha_refresh_quick_final/20260519_160422">
+                  <input id="linkedMonitorRoot" type="text" value="">
                 </label>
               </div>
               <div class="row" style="margin-top:12px;">
@@ -660,7 +660,7 @@ HTML = r"""<!doctype html>
               <h2>Run Monitor</h2>
               <div class="row">
                 <label>Parallel run root
-                  <input id="monitorRunRoot" type="text" value="runs/full_api_parallel_alpha_refresh_quick_final/20260519_160422">
+                  <input id="monitorRunRoot" type="text" value="">
                 </label>
                 <label>Current stage
                   <input id="monitorStage" type="text" readonly>
@@ -907,7 +907,7 @@ HTML = r"""<!doctype html>
       renderReportTrendChart(state.report_history || []);
       renderLatestTopBrands(report.top_brands || []);
       if (report.report_dir) await loadPageDrilldown(report.report_dir);
-      const restoredMonitorRoot = state.latest_monitor_run_root || localStorage.getItem(monitorStorageKey) || "";
+      const restoredMonitorRoot = state.latest_monitor_run_root || "";
       if (restoredMonitorRoot) setMonitorRunRoot(restoredMonitorRoot, true);
       await buildPlan();
     }
