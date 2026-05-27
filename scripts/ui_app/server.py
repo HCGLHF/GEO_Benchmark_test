@@ -8,6 +8,7 @@ from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
 from scripts.ui_app.dashboard import build_dashboard_state
+from scripts.ui_app.deployment_action import handle_server_update_request
 from scripts.ui_app.execution import launch_guarded_run, launch_guarded_stage, resume_guarded_run, stop_guarded_run
 from scripts.ui_app.page_drilldown_summary import summarize_report_page_drilldown
 from scripts.ui_app.report_history import list_report_history, read_report_preview
@@ -316,6 +317,8 @@ HTML = r"""<!doctype html>
       padding: 9px 10px;
       font-size: 13px;
       background: #fff;
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
     }
     .notice.warning { color: var(--warn); background: #fff7ed; border-color: #fed7aa; }
     .notice.error { color: var(--danger); background: #fef3f2; border-color: #fecdca; }
@@ -732,6 +735,18 @@ HTML = r"""<!doctype html>
                 <tbody id="deploymentRows"></tbody>
               </table>
             </div>
+            <div class="panel">
+              <h2>Server Data Refresh</h2>
+              <div class="muted">Runs the fixed server workflow: git pull, hydrate artifacts, verify cloud import, restart service, then check /api/state.</div>
+              <div style="margin-top:12px;">
+                <button class="button secondary" id="runServerUpdate" type="button"><svg class="icon" viewBox="0 0 24 24"><path d="M20 6v5h-5M4 18v-5h5M18.7 9A7 7 0 0 0 6.8 6.8M5.3 15A7 7 0 0 0 17.2 17.2"/></svg>Run Server Update</button>
+              </div>
+              <div id="serverUpdateStatus" class="muted" style="margin-top:10px;"></div>
+            </div>
+            <div class="panel">
+              <h2>Deployment Log Details</h2>
+              <div id="deploymentStepsTable" class="muted">No deployment log loaded</div>
+            </div>
           </div>
         </section>
         <section class="workspace" data-view="commands">
@@ -801,6 +816,10 @@ HTML = r"""<!doctype html>
       const node = byId(id);
       node.className = tone ? `notice ${tone}` : "muted";
       node.textContent = message || "";
+    }
+
+    function commandText(command) {
+      return Array.isArray(command) ? command.join(" ") : String(command || "");
     }
 
     async function withButtonBusy(button, busyText, action) {
@@ -1084,6 +1103,7 @@ HTML = r"""<!doctype html>
       const last = deployment.last_deployment || {};
       const verification = deployment.cloud_verification || {};
       const apiState = deployment.api_state || {};
+      const updateAction = deployment.update_action || {};
       const verifierStatus = verification.ok === null || verification.ok === undefined ? "-" : (verification.ok ? "ok" : "failed");
       const rows = [
         ["Git branch", git.branch || "-"],
@@ -1098,6 +1118,34 @@ HTML = r"""<!doctype html>
         ["Latest report", apiState.latest_report_dir || "-"],
       ];
       byId("deploymentRows").innerHTML = rows.map(([key, value]) => `<tr><th>${escapeHtml(key)}</th><td>${escapeHtml(value)}</td></tr>`).join("");
+      byId("runServerUpdate").disabled = Boolean(updateAction.busy);
+      if (updateAction.busy) {
+        setNotice("serverUpdateStatus", `Deployment running: pid ${updateAction.pid || "-"} started ${updateAction.started_at || "-"}`, "warning");
+      } else if (updateAction.stale) {
+        setNotice("serverUpdateStatus", `Previous update launcher is stale; latest completed deployment log is shown below.`, "warning");
+      } else {
+        setNotice("serverUpdateStatus", "");
+      }
+      renderDeploymentSteps(deployment.deployment_steps || []);
+    }
+
+    function renderDeploymentSteps(steps) {
+      if (!steps.length) {
+        byId("deploymentStepsTable").textContent = "No deployment log loaded";
+        return;
+      }
+      byId("deploymentStepsTable").innerHTML = `
+        <table>
+          <thead><tr><th>Step</th><th>Status</th><th>Attempts</th><th>Return</th><th>Duration</th></tr></thead>
+          <tbody>${steps.map((step) => `
+            <tr>
+              <td>${escapeHtml(step.name || "-")}</td>
+              <td>${escapeHtml(step.status || "-")}</td>
+              <td>${escapeHtml(step.attempts ?? "-")}</td>
+              <td>${escapeHtml(step.returncode ?? "-")}</td>
+              <td>${escapeHtml(step.duration_seconds ?? "-")}</td>
+            </tr>`).join("")}</tbody>
+        </table>`;
     }
 
     function checked(id) {
@@ -1319,6 +1367,41 @@ HTML = r"""<!doctype html>
       await refreshMonitor();
     }
 
+    async function runServerUpdate() {
+      const ok = window.confirm("Run server update? This will git pull, hydrate artifacts, verify cloud import, restart service, and check /api/state.");
+      if (!ok) return;
+      const button = byId("runServerUpdate");
+      const originalText = button.innerHTML;
+      button.disabled = true;
+      button.textContent = "Starting...";
+      const params = new URLSearchParams();
+      params.set("confirmed", "1");
+      try {
+        const response = await fetch("/api/server-update", {
+          method: "POST",
+          headers: {"Content-Type": "application/x-www-form-urlencoded"},
+          body: params.toString(),
+        });
+        const result = await response.json();
+        const tone = result.status === "launched" ? "ok" : "warning";
+        let message = `${result.status}: ${result.pid ? "pid " + result.pid : result.confirmation_message || ""}`;
+        if (result.status === "manual_required") {
+          message = `${result.status}: ${result.message || ""}\n${result.launcher_reason || ""}\nManual command: ${commandText(result.manual_command)}`;
+        }
+        if (result.status === "busy") {
+          message = `${result.status}: deployment already running since ${result.started_at || "-"} pid ${result.pid || "-"}`;
+        }
+        setNotice("serverUpdateStatus", message, tone);
+        if (result.status !== "manual_required") {
+          await loadState();
+        }
+      } finally {
+        button.innerHTML = originalText;
+        const busy = state && state.deployment && state.deployment.update_action && state.deployment.update_action.busy;
+        button.disabled = Boolean(busy);
+      }
+    }
+
     byId("refresh").addEventListener("click", loadState);
     byId("plan").addEventListener("click", buildPlan);
     byId("launchApi").addEventListener("click", () => withButtonBusy(byId("launchApi"), "Launching...", launchApiRun));
@@ -1326,6 +1409,7 @@ HTML = r"""<!doctype html>
     byId("monitorRefresh").addEventListener("click", () => withButtonBusy(byId("monitorRefresh"), "Refreshing...", refreshMonitor));
     byId("stopApiRun").addEventListener("click", () => withButtonBusy(byId("stopApiRun"), "Stopping...", stopApiRun));
     byId("resumeApiRun").addEventListener("click", () => withButtonBusy(byId("resumeApiRun"), "Resuming...", resumeApiRun));
+    byId("runServerUpdate").addEventListener("click", runServerUpdate);
     byId("linkedMonitorRoot").addEventListener("change", () => {
       setMonitorRunRoot(byId("linkedMonitorRoot").value);
       refreshMonitor();
@@ -1518,6 +1602,9 @@ class UIHandler(BaseHTTPRequestHandler):
                     confirmed=confirmed,
                 )
             )
+            return
+        if parsed.path == "/api/server-update":
+            self._send_json(handle_server_update_request(project_root=PROJECT_ROOT, params=params))
             return
         self.send_error(HTTPStatus.NOT_FOUND)
 

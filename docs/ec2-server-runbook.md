@@ -171,6 +171,19 @@ Hydration skips files that already exist by default, which protects Phase 1 copi
 
 New `quick` and `standard` full API parallel runs sync their merged report artifacts to S3/RDS by default after merge, so future server updates should only need the deployment wrapper hydration step. `test` runs do not sync by default, and operators can deliberately keep a quick/standard run local with `--no-sync-artifacts`. If credentials are missing, the run still keeps its local merged report and marks `AWS sync` as failed in the run manifest, pipeline state, ops summary, and Run Monitor.
 
+The Cloud Store workspace now exposes this update path as `Run Server Update`. The browser endpoint does not accept arbitrary shell commands; it can only use the fixed deployment runner after confirmation. A lock file under `runs/deployments/server_update.lock` prevents concurrent launches, and the UI shows `busy` while a deployment is already running.
+
+The EC2 `resourcepool-ui.service` currently runs with `NoNewPrivileges` and no user systemd bus, so the UI process cannot safely detach an updater that later restarts the service. In that case the endpoint returns `manual_required` instead of a false `launched` state, and the UI shows the fixed command to run over SSH:
+
+```bash
+cd /opt/resourcepool/Resourcepool_Gen
+/opt/resourcepool/Resourcepool_Gen/.venv/bin/python scripts/cloud/deploy_ec2_update.py --project-root /opt/resourcepool/Resourcepool_Gen --python-executable /opt/resourcepool/Resourcepool_Gen/.venv/bin/python --execute
+```
+
+To enable one-click execution later, provision a dedicated systemd helper or policy-limited service that can run only this fixed update path and restart `resourcepool-ui.service`; do not grant the browser endpoint arbitrary shell access.
+
+The same Cloud Store view shows the latest deployment log details without secrets: step status, attempts, return code, duration, failed step, completion time, cloud verifier counts, and API state summary. It intentionally does not render raw stdout/stderr, `.env`, AWS keys, PostgreSQL passwords, or full database URLs.
+
 Run a cloud verifier after changes that touch cloud access or corpus contracts:
 
 ```bash

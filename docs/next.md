@@ -14,6 +14,7 @@
 - Updated the full API parallel runner's default artifact-sync corpus version to `2026-05-27-alpha-refresh`.
 - Added `scripts/cloud/deploy_ec2_update.py` as the repeatable EC2 update path: Git fast-forward, dependency install, quick/standard artifact hydration, cloud verifier, service restart, `/api/state` check, and a non-secret deployment log under ignored `runs/deployments/`.
 - Added UI deployment status visibility so the Cloud Store workspace shows current Git commit/branch, active default corpus version, latest deployment status, cloud verifier counts, API corpus counts, and latest hydrated report path without rendering secrets.
+- Added guarded server data refresh in the Cloud Store workspace: a confirmed `Run Server Update` action starts only the fixed deployment runner when a safe detached launcher is available, otherwise returns `manual_required` with the fixed server command; it uses a lock to prevent concurrent launches and shows latest deployment step details without exposing stdout/stderr or credentials.
 - Provisioned the first internal EC2 server for the project: `resourcepool-gen-internal-01` in `ap-northeast-1`, running Ubuntu 24.04 on `t3.xlarge` with a 100 GB encrypted root volume.
 - Published the current local project version to GitHub branch `codex/local-ops-logging` at commit `a78ce41`, then checked out the same branch and commit on the EC2 server under `/opt/resourcepool/Resourcepool_Gen`.
 - Copied the local `.env` to the EC2 server with `600` permissions, created `.venv`, installed project dependencies plus Playwright Chromium, and started the UI as `resourcepool-ui.service` bound to `127.0.0.1:8765`.
@@ -310,7 +311,7 @@
 ## Risks
 
 - The EC2 UI service is reachable through Cloudflare Access at `admin.alphaxxxx.com`; do not bypass this by opening public AWS ingress to `8765`.
-- A server `git pull` still cannot restore ignored local data or run output directories by itself; use `scripts/cloud/deploy_ec2_update.py --execute` so hydration, verifier, restart, and `/api/state` checking happen with the code update.
+- A server `git pull` still cannot restore ignored local data or run output directories by itself; use Cloud Store `Run Server Update` when it can safely launch, or run the fixed `scripts/cloud/deploy_ec2_update.py --execute` command shown by the UI when it returns `manual_required`, so hydration, verifier, restart, and `/api/state` checking happen with the code update.
 - Hydrated reports live under `runs/cloud_synced/{run_mode}/{run_id}/merged`, so local modification-time ordering can differ from the original workstation's `runs/` tree.
 - Hydration skips existing files by default to avoid replacing newer Phase 1 copied corpus files with older cloud artifacts; use `--overwrite` only for an intentional cloud restore.
 - Report UI ordering must continue to use the run id timestamp, not file modification time, because S3 hydration gives old reports fresh download mtimes.
@@ -392,5 +393,6 @@
 6. Add page-intent drilldowns to the report so money-page weakness can be separated from `llms.txt` and blog routing wins, with persona/stage slices that explain where AlphaXXXX loses.
 7. Audit remaining PowerShell-to-Python JSON argument paths and move any nontrivial payloads to files.
 8. Add retry/backoff tuning for rate-limited model workers so Qwen-style 429 bursts produce fewer warning rows before manual stop/resume is needed.
-9. Wrap the server refresh/deployment workflow in a safer UI operation or expose the latest deployment log details directly beside the current status table.
-10. Add URL/domain-level latest top-five overview if future reports need website ranking separate from brand ranking, including money-page grouping, internal-link/FAQ/schema suggestions, and weak-page content priorities.
+9. Add launch-history detail inside the Monitor workspace so users can see which UI launch or resume attempt produced the current run root.
+10. Provision a dedicated systemd helper or policy-limited service for one-click server updates, restricted to the fixed deployment workflow and service restart only.
+11. Add URL/domain-level latest top-five overview if future reports need website ranking separate from brand ranking, including money-page grouping, internal-link/FAQ/schema suggestions, and weak-page content priorities.

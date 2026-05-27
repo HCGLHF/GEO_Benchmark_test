@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any, Callable
 
 from scripts.cloud.defaults import DEFAULT_CORPUS_VERSION
+from scripts.ui_app.deployment_action import read_server_update_lock
 
 GitRunner = Callable[..., subprocess.CompletedProcess]
 
@@ -90,6 +91,29 @@ def _api_state_summary(log_data: dict[str, Any] | None) -> dict[str, Any]:
     }
 
 
+def _deployment_steps(log_data: dict[str, Any] | None) -> list[dict[str, Any]]:
+    if not log_data:
+        return []
+    steps = log_data.get("steps")
+    if not isinstance(steps, list):
+        return []
+    safe_steps: list[dict[str, Any]] = []
+    for step in steps:
+        if not isinstance(step, dict):
+            continue
+        safe_steps.append(
+            {
+                "name": str(step.get("name") or ""),
+                "description": str(step.get("description") or ""),
+                "status": str(step.get("status") or ""),
+                "attempts": step.get("attempts"),
+                "returncode": step.get("returncode"),
+                "duration_seconds": step.get("duration_seconds"),
+            }
+        )
+    return safe_steps
+
+
 def summarize_deployment_status(
     project_root: Path | str = Path("."),
     *,
@@ -110,4 +134,6 @@ def summarize_deployment_status(
         },
         "cloud_verification": _verification_summary(log_data),
         "api_state": _api_state_summary(log_data),
+        "deployment_steps": _deployment_steps(log_data),
+        "update_action": read_server_update_lock(root),
     }

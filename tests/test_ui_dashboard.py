@@ -208,8 +208,19 @@ def test_ui_html_renders_owned_page_drilldown() -> None:
 def test_ui_html_renders_deployment_status() -> None:
     assert "Deployment Status" in HTML
     assert "deploymentRows" in HTML
+    assert "deploymentStepsTable" in HTML
+    assert "runServerUpdate" in HTML
+    assert "Run Server Update" in HTML
     assert "function renderDeployment" in HTML
+    assert "manual_required" in HTML
+    assert "Manual command:" in HTML
+    assert 'if (result.status !== "manual_required")' in HTML
+    assert "Previous update launcher is stale" in HTML
     assert "renderDeployment(state.deployment)" in HTML
+    assert "/api/server-update" in HTML
+    assert "git pull, hydrate artifacts, verify cloud import, restart service" in HTML
+    assert 'byId("runServerUpdate").disabled = Boolean(updateAction.busy);' in HTML
+    assert 'byId("runServerUpdate").addEventListener("click", runServerUpdate);' in HTML
 
 
 def test_ui_html_constrains_owned_page_tables() -> None:

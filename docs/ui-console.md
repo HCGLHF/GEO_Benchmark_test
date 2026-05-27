@@ -49,6 +49,8 @@ That hostname is the `GEO Admin Console` Access application. It routes through C
 - Shows owned-page drilldowns for the selected report: which AlphaXXXX URLs entered retrieval Top5 and which owned pages are weakest or never entered Top5.
 - Shows non-secret cloud configuration presence from environment variables.
 - Shows deployment status from local Git metadata and the latest `runs/deployments/*.json` log, including current corpus version, cloud verifier result, artifact count, API document/chunk counts, and latest hydrated report path.
+- Shows deployment log details for the latest server update: step name, status, attempts, return code, duration, failed step, completed time, cloud verifier counts, and API state summary. Raw stdout/stderr and environment values are not rendered in the browser.
+- Provides a guarded `Run Server Update` action in Cloud Store. After browser confirmation, the backend either starts only the fixed `scripts/ui_app/run_deployment_update.py` workflow or returns `manual_required` with the fixed server command when the UI process does not have a safe detached launcher. The workflow runs the existing `scripts/cloud/deploy_ec2_update.py` path: Git fast-forward, hydrate artifacts, verify cloud import, restart `resourcepool-ui.service`, and check `/api/state`.
 - Builds dry-run commands for owned-site recrawl/fetch, owned-site processed corpus replacement, optional AWS sync, and API benchmark execution.
 - Shows a separate `Sync run artifacts` control for quick/standard API runs; it is on by default so completed merged reports promote to S3/RDS unless the operator deliberately disables it.
 - Monitors a parallel run root with current stage, per-model progress, API calls, failure counts, log tails, and merged report status.
@@ -84,6 +86,7 @@ python scripts\ops_logs.py doctor --run-root runs\full_api_parallel_ui\<timestam
 - The Cloudflare hostname is an authenticated admin entry only; it is not an external subscription API.
 - The UI does not run paid crawler fallback in the default owned-site recrawl/fetch step.
 - The UI can launch model API calls or AWS/RDS writes only through generated commands after explicit confirmation.
+- The server update button ignores browser-supplied command, branch, service, or shell parameters. It uses a fixed backend command and a deployment lock; a running update disables the button or returns `busy`. If the process cannot safely launch the detached updater, the UI shows `manual_required`, the fixed manual command, and the latest deployment log instead of pretending a run started.
 - Quick/standard API launches include default run-artifact sync after merge; `test` launches do not sync artifacts, and disabled or failed sync state appears in the run manifest and monitor.
 - The UI can mutate local raw/processed corpus files only through generated pipeline steps after explicit confirmation.
 - Real runs still use the existing scripts after the user reviews the generated command plan.
