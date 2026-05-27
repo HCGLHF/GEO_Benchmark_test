@@ -37,8 +37,11 @@ An internal EC2 application host now runs the local UI console for server-side o
 - Project path: `/opt/resourcepool/Resourcepool_Gen`
 - UI service: `resourcepool-ui.service`
 - UI bind address: `127.0.0.1:8765`
+- Admin browser entry: `https://admin.alphaxxxx.com/`
+- Access layer: Cloudflare Access application `GEO Admin Console`
+- Tunnel: Cloudflare Tunnel `resourcepool-admin-ec2`
 
-The UI is intentionally not exposed directly to the public internet. See `docs/ec2-server-runbook.md` for the SSH tunnel command, service management, and verification steps.
+The UI is intentionally not exposed directly to the public internet. Team browser access goes through Cloudflare Access and Cloudflare Tunnel; operators can still use the SSH tunnel command for direct maintenance. See `docs/ec2-server-runbook.md` for access, service management, and verification steps.
 
 The RDS security group allows PostgreSQL `5432` from the EC2 application security group `sg-09c1d2510694af21f`. This is a security-group source allow rule, not a broad CIDR rule.
 

@@ -22,13 +22,21 @@ The first internal EC2 deployment runs this same local console as a systemd serv
 resourcepool-ui.service
 ```
 
-The service binds to `127.0.0.1:8765` on the server. It is reachable through an SSH tunnel, not through a public UI security-group rule:
+The service binds to `127.0.0.1:8765` on the server. Operators can still reach it through an SSH tunnel:
 
 ```powershell
 ssh -i "$env:USERPROFILE\.ssh\resourcepool-gen-ec2-20260527.pem" -L 8765:127.0.0.1:8765 ubuntu@<ec2-public-ip>
 ```
 
-Then open `http://127.0.0.1:8765` locally. See `docs/ec2-server-runbook.md` for the deployed instance, cloud permissions, and service commands.
+Then open `http://127.0.0.1:8765` locally.
+
+Team browser access is now routed through Cloudflare Access:
+
+```text
+https://admin.alphaxxxx.com/
+```
+
+That hostname is the `GEO Admin Console` Access application. It routes through Cloudflare Tunnel `resourcepool-admin-ec2` to the EC2 origin `http://127.0.0.1:8765`. The initial Access policy allows only the current owner email; add teammate emails in Cloudflare Access before sharing the URL broadly. See `docs/ec2-server-runbook.md` for the deployed instance, cloud permissions, service commands, and Cloudflare route.
 
 ## Current Capabilities
 
@@ -69,6 +77,7 @@ python scripts\ops_logs.py doctor --run-root runs\full_api_parallel_ui\<timestam
 
 ## Boundaries
 
+- The Cloudflare hostname is an authenticated admin entry only; it is not an external subscription API.
 - The UI does not run paid crawler fallback in the default owned-site recrawl/fetch step.
 - The UI can launch model API calls or AWS/RDS writes only through generated commands after explicit confirmation.
 - The UI can mutate local raw/processed corpus files only through generated pipeline steps after explicit confirmation.

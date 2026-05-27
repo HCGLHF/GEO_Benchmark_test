@@ -25,8 +25,10 @@
 
 ## Operational Risks
 
-- The EC2 UI service currently has no team access layer beyond SSH tunneling. Do not open port `8765` publicly; add Tailscale, VPN, Cloudflare Access, or another authenticated internal access path before giving the team browser access.
-- The EC2 instance does not have an Elastic IP. Its public IP can change after stop/start, so use the EC2 instance name or id as the durable reference.
+- The EC2 UI service is now reachable through Cloudflare Access at `admin.alphaxxxx.com`. Keep the EC2 service bound to `127.0.0.1:8765`; do not add a public AWS security-group rule for `8765`.
+- The initial Cloudflare Access policy allows only the current owner email. Add teammate emails or groups deliberately, and keep OTP or an IdP requirement paired with explicit allow rules.
+- Cloudflare Tunnel tokens are bearer secrets. Do not commit them, paste them into docs, or leave them in shell history.
+- The EC2 instance does not have an Elastic IP. Its public IP can change after stop/start, but the Cloudflare Tunnel should remain the durable browser entry as long as `cloudflared` reconnects.
 - The RDS security group now allows PostgreSQL access from the EC2 application security group. Keep this as a security-group source rule instead of replacing it with a broad public CIDR rule.
 - Large raw page files are expensive to copy and should not be used as the primary downstream input when `documents.jsonl` or `chunks.jsonl` is enough.
 - Paid fallback usage should remain traceable by URL, reason, provider, and quality score.

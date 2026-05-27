@@ -7,6 +7,8 @@
 - Copied the local `.env` to the EC2 server with `600` permissions, created `.venv`, installed project dependencies plus Playwright Chromium, and started the UI as `resourcepool-ui.service` bound to `127.0.0.1:8765`.
 - Added RDS security-group access for PostgreSQL `5432` from the EC2 application security group, verified EC2-to-RDS TCP connectivity, verified S3 access, and confirmed the `geo-agency/2026-05-22-initial` cloud corpus with 1,683 inventory rows, 1,683 documents, 6,225 chunks, and 8 artifacts.
 - Added `docs/ec2-server-runbook.md` and updated cloud/UI/risk documentation with the EC2 service, access model, verification commands, and remaining team-access work.
+- Activated Cloudflare Zero Trust Free, created Access application `GEO Admin Console` for `admin.alphaxxxx.com`, created Tunnel `resourcepool-admin-ec2`, installed `cloudflared` as an EC2 service, and routed the hostname to `http://127.0.0.1:8765`.
+- Verified unauthenticated external access redirects to Cloudflare Access login instead of exposing the UI directly, while EC2 local UI health remains HTTP `200`.
 - Added the WSL2 primary runtime design and implementation plan, choosing a Python core full API runner plus Windows and POSIX platform adapters.
 - Implemented the WSL2 primary runtime boundary with `scripts/platform_runtime.py`, `scripts/full_api_parallel_runner.py`, thin PowerShell/Bash wrappers, platform-aware UI run planning/execution, and WSL process-group stop metadata.
 - Added local operations logging for run roots, including `ops_events.jsonl`, `ops_summary.json`, `scripts/ops_logs.py`, pipeline/API/worker lifecycle hooks, and Run Monitor summary display.
@@ -292,8 +294,9 @@
 
 ## Risks
 
-- The EC2 UI service is operational but still only reachable through SSH tunneling; team browser access needs a deliberate internal access layer before wider use.
-- The EC2 instance public IP is not durable unless an Elastic IP is attached, so documentation should keep using the instance name/id and access-layer DNS once configured.
+- The EC2 UI service is reachable through Cloudflare Access at `admin.alphaxxxx.com`; do not bypass this by opening public AWS ingress to `8765`.
+- The initial Cloudflare Access allow policy contains only the current owner email. Team use needs explicit teammate emails or identity-provider groups added before sharing the admin entry.
+- The EC2 instance public IP is not durable unless an Elastic IP is attached, so documentation should keep using the instance name/id and Cloudflare hostname as durable references.
 - Codex currently cannot see the user's Ubuntu WSL2 distro from the sandbox Windows user, so final WSL validation must be run by the user inside Ubuntu unless Codex is later attached to that WSL context.
 - Operations summaries can become stale if files are manually edited; use `python scripts\ops_logs.py doctor --run-root <run>` to refresh before relying on them.
 - Any remaining runner-to-Python inline JSON arguments, especially inside nested PowerShell worker commands, can fail similarly if they contain quotes or special characters; prefer files or simple scalar arguments for future state contracts.
@@ -358,9 +361,9 @@
 
 ## Next
 
-1. Configure team browser access for the EC2 UI through Tailscale, VPN, Cloudflare Access, or another authenticated internal access layer.
+1. Add approved teammate emails or identity-provider groups to Cloudflare Access for `GEO Admin Console`.
 2. Create role-specific PostgreSQL users and IAM policies for admin, writer, and reader team access, with industry-level access expectations.
-3. Decide whether the EC2 instance needs an Elastic IP or whether team access should use private-network DNS only.
+3. Decide whether the EC2 instance needs an Elastic IP; browser access no longer depends on the public IP, but SSH operations still do unless another admin path is added.
 4. Execute final WSL2 validation from the user's Ubuntu distro and push branch `codex/wsl2-primary-runtime`.
 5. Add dry-run cleanup reporting for old run roots once summaries are stable across real runs.
 6. Add page-intent drilldowns to the report so money-page weakness can be separated from `llms.txt` and blog routing wins.

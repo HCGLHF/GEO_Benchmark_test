@@ -21,12 +21,13 @@ The instance public IP is not documented as a durable value because it can chang
 
 ## Access Model
 
-The server is currently an internal operations host, not a public web app.
+The server is an internal operations host exposed through Cloudflare Access, not a public unauthenticated web app.
 
 - SSH is allowed only from the current admin `/32` address in the EC2 security group.
 - The UI binds to `127.0.0.1:8765` on the EC2 instance.
 - No UI port is open to the public internet.
-- Team browser access should be added through Tailscale, VPN, Cloudflare Access, or another authenticated internal access layer before opening the service to more users.
+- Team browser access enters through Cloudflare Access at `https://admin.alphaxxxx.com/`.
+- The initial Access policy allows only the current owner email. Add teammate emails deliberately before sharing the URL.
 
 Local operator tunnel:
 
@@ -40,6 +41,14 @@ Then open:
 http://127.0.0.1:8765
 ```
 
+Cloudflare admin entry:
+
+```text
+https://admin.alphaxxxx.com/
+```
+
+Unauthenticated requests should redirect to Cloudflare Access login for `GEO Admin Console`.
+
 ## What Was Provisioned
 
 1. Upgraded the AWS account plan from Free to Paid so a `t3.xlarge` instance could be launched.
@@ -52,6 +61,10 @@ http://127.0.0.1:8765
 8. Copied the local `.env` to the server and set permissions to `600`. Do not commit this file.
 9. Created `.venv`, installed `.[dev]`, and installed Playwright Chromium plus Linux browser dependencies.
 10. Added systemd service `resourcepool-ui.service` for the UI console.
+11. Activated Cloudflare Zero Trust Free for the Cloudflare account.
+12. Created Cloudflare Access application `GEO Admin Console` for `admin.alphaxxxx.com`.
+13. Created Cloudflare Tunnel `resourcepool-admin-ec2` and installed it as the EC2 `cloudflared` service.
+14. Added a published application route from `admin.alphaxxxx.com` to `http://127.0.0.1:8765`, with the catch-all rule left at `http_status:404`.
 
 ## Database And Cloud Access
 
@@ -99,6 +112,35 @@ sudo journalctl -u resourcepool-ui.service -f
 curl -fsS http://127.0.0.1:8765/
 ```
 
+## Cloudflare Tunnel And Access
+
+Cloudflare objects:
+
+```text
+Access application: GEO Admin Console
+Hostname: admin.alphaxxxx.com
+Tunnel: resourcepool-admin-ec2
+Tunnel id: b813cf28-bc72-42f1-abfa-ff4567604e9e
+Connector host: ip-172-31-45-201
+Origin service: http://127.0.0.1:8765
+Catch-all: http_status:404
+```
+
+EC2 service:
+
+```bash
+sudo systemctl status cloudflared
+sudo systemctl restart cloudflared
+sudo journalctl -u cloudflared -f
+```
+
+Security notes:
+
+- Do not document, commit, or paste the Cloudflare Tunnel token.
+- Do not add a public AWS security-group rule for `8765`.
+- Keep `resourcepool-ui.service` bound to `127.0.0.1`.
+- Add team members through the Cloudflare Access policy, not by opening the EC2 port.
+
 ## Deployment Update
 
 After pushing a new branch or commit:
@@ -127,14 +169,17 @@ python scripts/cloud/verify_cloud_import.py --industry geo-agency --corpus-versi
 ## Setup Verification Performed
 
 - `systemctl is-active resourcepool-ui.service`: `active`.
+- `systemctl is-active cloudflared`: `active`.
 - `curl http://127.0.0.1:8765/`: HTTP `200`, HTML returned.
+- `curl -I https://admin.alphaxxxx.com/`: HTTP `302` to Cloudflare Access login, with `Www-Authenticate: Cloudflare-Access`.
+- Chrome visit to `https://admin.alphaxxxx.com/`: Cloudflare Access login page for `GEO Admin Console`.
 - `python scripts/cloud/verify_cloud_import.py --industry geo-agency --corpus-version 2026-05-22-initial`: `ok: true`.
 - UI/cloud test subset on EC2: `17 passed`.
 - Root disk after setup: about 84 GB free.
 
 ## Not Done Yet
 
-- No Tailscale, VPN, Cloudflare Access, domain, HTTPS, or authenticated team access layer has been configured yet.
 - No public UI ingress rule has been opened.
+- Additional teammate emails have not been added to the Cloudflare Access policy yet.
 - No role-specific PostgreSQL users or IAM policies have been created for individual teammates.
 - No Elastic IP has been attached, so the public IP should not be treated as stable.
