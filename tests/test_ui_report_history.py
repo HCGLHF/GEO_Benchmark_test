@@ -50,6 +50,29 @@ def test_list_report_history_returns_completed_reports_newest_first(tmp_path: Pa
     assert history[0].brands_above_target[0].brand == "HornTech"
 
 
+def test_list_report_history_deduplicates_hydrated_reports_by_run_id(tmp_path: Path) -> None:
+    local_newer = tmp_path / "runs" / "full_api_parallel_ui" / "20260526_002837" / "merged"
+    cloud_duplicate = tmp_path / "runs" / "cloud_synced" / "quick" / "20260526_002837" / "merged"
+    older_hydrated = tmp_path / "runs" / "cloud_synced" / "standard" / "20260523_040450" / "merged"
+    for report_dir in [local_newer, cloud_duplicate, older_hydrated]:
+        _write_report(
+            report_dir,
+            "openrouter,openai/gpt-4.1-mini,AlphaXXXX,True,10,3,30.0%,10.0%,2,2.0\n",
+        )
+    import os
+
+    old_time = 1_700_000_000
+    hydrated_download_time = 1_800_000_000
+    os.utime(local_newer / "competitive_gap_report.md", (old_time, old_time))
+    os.utime(cloud_duplicate / "competitive_gap_report.md", (hydrated_download_time, hydrated_download_time))
+    os.utime(older_hydrated / "competitive_gap_report.md", (hydrated_download_time + 100, hydrated_download_time + 100))
+
+    history = list_report_history(tmp_path, target_brand="AlphaXXXX", limit=10)
+
+    assert [item.report_dir for item in history] == [local_newer, older_hydrated]
+    assert history[0].updated_at.startswith("2026-05-26T00:28:37")
+
+
 def test_read_report_preview_only_allows_known_report_dirs_under_runs(tmp_path: Path) -> None:
     report_dir = tmp_path / "runs" / "parallel" / "20260523_010000" / "merged"
     _write_report(

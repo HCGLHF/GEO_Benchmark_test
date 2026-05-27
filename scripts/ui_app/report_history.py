@@ -1,11 +1,16 @@
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from scripts.ui_app.report_summary import BrandMetric, summarize_report_dir
+from scripts.ui_app.report_summary import (
+    BrandMetric,
+    canonical_report_dirs,
+    report_sort_key,
+    report_updated_at_iso,
+    summarize_report_dir,
+)
 
 
 @dataclass(frozen=True)
@@ -41,11 +46,6 @@ def _report_candidates(project_root: Path) -> list[Path]:
     ]
 
 
-def _timestamp(path: Path) -> str:
-    updated = datetime.fromtimestamp(path.stat().st_mtime, tz=timezone.utc)
-    return updated.isoformat().replace("+00:00", "Z")
-
-
 def _model_names(summary: Any) -> list[str]:
     names = [str(item.model) for item in summary.model_breakdowns if str(item.model).strip()]
     if names:
@@ -71,15 +71,16 @@ def list_report_history(
 ) -> list[ReportHistoryItem]:
     root = Path(project_root)
     items: list[ReportHistoryItem] = []
-    for report_path in _report_candidates(root):
-        report_dir = report_path.parent
+    report_dirs = canonical_report_dirs([report_path.parent for report_path in _report_candidates(root)])
+    for report_dir in report_dirs:
+        report_path = report_dir / "competitive_gap_report.md"
         summary = summarize_report_dir(report_dir, target_brand=target_brand)
         items.append(
             ReportHistoryItem(
                 run_root=report_dir.parent,
                 report_dir=report_dir,
                 report_path=report_path,
-                updated_at=_timestamp(report_path),
+                updated_at=report_updated_at_iso(report_dir, report_path),
                 query_count=summary.query_count,
                 answer_count=summary.answer_count,
                 target_top5_share=summary.target_top5_share,
@@ -89,7 +90,7 @@ def list_report_history(
                 models=_model_names(summary),
             )
         )
-    items.sort(key=lambda item: item.report_path.stat().st_mtime, reverse=True)
+    items.sort(key=lambda item: report_sort_key(item.report_dir, item.report_path), reverse=True)
     return items[:limit]
 
 

@@ -68,3 +68,30 @@ def test_summarize_latest_report_returns_top_five_brands(tmp_path: Path) -> None
     assert [brand.brand for brand in summary.top_brands] == ["HornTech", "Semrush", "OtterlyAI", "AlphaXXXX", "PeecAI"]
     assert summary.top_brands[0].top5_share == 90.0
     assert summary.top_brands[0].model_mention_rate == 70.0
+
+
+def test_summarize_latest_report_uses_run_id_over_hydrate_mtime(tmp_path: Path) -> None:
+    newer = tmp_path / "runs" / "full_api_parallel_ui" / "20260526_002837" / "merged"
+    older_hydrated = tmp_path / "runs" / "cloud_synced" / "standard" / "20260523_040450" / "merged"
+    for report_dir, query_count in [(newer, 250), (older_hydrated, 400)]:
+        report_dir.mkdir(parents=True)
+        (report_dir / "merge_manifest.json").write_text(
+            f'{{"result":{{"query_rows":{query_count},"answer_rows":{query_count}}}}}',
+            encoding="utf-8",
+        )
+        (report_dir / "brand_performance_by_model.csv").write_text(
+            "provider,model,brand,is_target,query_count,top5_count,top5_query_share,model_mention_rate,best_rank,average_best_rank\n"
+            f"openrouter,openai/gpt-4.1-mini,AlphaXXXX,True,{query_count},10,4.0%,2.0%,1,3.0\n",
+            encoding="utf-8",
+        )
+    import os
+
+    old_time = 1_700_000_000
+    hydrated_download_time = 1_800_000_000
+    os.utime(newer / "brand_performance_by_model.csv", (old_time, old_time))
+    os.utime(older_hydrated / "brand_performance_by_model.csv", (hydrated_download_time, hydrated_download_time))
+
+    summary = summarize_latest_report(tmp_path, target_brand="AlphaXXXX")
+
+    assert summary.report_dir == newer
+    assert summary.query_count == 250

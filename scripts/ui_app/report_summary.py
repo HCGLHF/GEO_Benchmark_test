@@ -3,6 +3,7 @@ from __future__ import annotations
 import csv
 import json
 from dataclasses import asdict, dataclass
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -43,6 +44,57 @@ class LatestReportSummary:
         return payload
 
 
+MERGED_DIR_PREFERENCE = {"merged": 0, "merged_with_page_drilldown": 1, "merged_3_models": 2}
+RUN_ID_FORMAT = "%Y%m%d_%H%M%S"
+
+
+def _run_datetime(report_dir: Path) -> datetime | None:
+    try:
+        return datetime.strptime(report_dir.parent.name, RUN_ID_FORMAT).replace(tzinfo=timezone.utc)
+    except ValueError:
+        return None
+
+
+def _is_cloud_synced(report_dir: Path) -> bool:
+    return "cloud_synced" in {part.lower() for part in report_dir.parts}
+
+
+def _report_preference(report_dir: Path) -> tuple[int, int]:
+    cloud_rank = 1 if _is_cloud_synced(report_dir) else 0
+    merged_rank = MERGED_DIR_PREFERENCE.get(report_dir.name.lower(), 99)
+    return cloud_rank, merged_rank
+
+
+def _marker_mtime(report_dir: Path, marker_path: Path | None = None) -> float:
+    marker = marker_path or report_dir / "competitive_gap_report.md"
+    if marker.exists():
+        return marker.stat().st_mtime
+    return report_dir.stat().st_mtime
+
+
+def report_sort_key(report_dir: Path, marker_path: Path | None = None) -> tuple[float, int, int, float]:
+    run_dt = _run_datetime(report_dir)
+    timestamp = run_dt.timestamp() if run_dt else _marker_mtime(report_dir, marker_path)
+    cloud_rank, merged_rank = _report_preference(report_dir)
+    return (timestamp, -cloud_rank, -merged_rank, _marker_mtime(report_dir, marker_path))
+
+
+def report_updated_at_iso(report_dir: Path, marker_path: Path | None = None) -> str:
+    run_dt = _run_datetime(report_dir)
+    updated = run_dt if run_dt else datetime.fromtimestamp(_marker_mtime(report_dir, marker_path), tz=timezone.utc)
+    return updated.isoformat().replace("+00:00", "Z")
+
+
+def canonical_report_dirs(report_dirs: list[Path]) -> list[Path]:
+    best_by_run_id: dict[str, Path] = {}
+    for report_dir in report_dirs:
+        run_id = report_dir.parent.name
+        current = best_by_run_id.get(run_id)
+        if current is None or report_sort_key(report_dir) > report_sort_key(current):
+            best_by_run_id[run_id] = report_dir
+    return list(best_by_run_id.values())
+
+
 def _percent(value: str | float | int | None) -> float:
     if value is None:
         return 0.0
@@ -66,14 +118,16 @@ def _int(value: str | int | None) -> int:
 
 def _latest_merged_dir(root: Path) -> Path | None:
     runs_dir = root / "runs" if (root / "runs").exists() else root
-    candidates = [
-        path
-        for path in runs_dir.rglob("brand_performance_by_model.csv")
-        if path.parent.name.lower().startswith("merged")
-    ]
+    candidates = canonical_report_dirs(
+        [
+            path.parent
+            for path in runs_dir.rglob("brand_performance_by_model.csv")
+            if path.parent.name.lower().startswith("merged")
+        ]
+    )
     if not candidates:
         return None
-    return max(candidates, key=lambda path: path.stat().st_mtime).parent
+    return max(candidates, key=report_sort_key)
 
 
 def _read_manifest_counts(report_dir: Path) -> tuple[int, int]:

@@ -8,6 +8,7 @@
 - Added `scripts/cloud/hydrate_artifacts.py` so EC2 or a fresh checkout can restore corpus files and quick/standard report history from S3/RDS without overwriting existing files by default.
 - Added `--sync-artifacts`, `--industry`, and `--corpus-version` to the full API parallel runner so successful quick/standard merges can promote their artifacts automatically.
 - Updated cloud and EC2 runbook documentation to make the deployment split explicit: Git updates code, while hydrate restores ignored `data/` and `runs/` artifacts for the UI.
+- Fixed report discovery after hydration so Latest Report and Report History sort by run id timestamp and deduplicate `cloud_synced` copies behind original local run paths.
 - Provisioned the first internal EC2 server for the project: `resourcepool-gen-internal-01` in `ap-northeast-1`, running Ubuntu 24.04 on `t3.xlarge` with a 100 GB encrypted root volume.
 - Published the current local project version to GitHub branch `codex/local-ops-logging` at commit `a78ce41`, then checked out the same branch and commit on the EC2 server under `/opt/resourcepool/Resourcepool_Gen`.
 - Copied the local `.env` to the EC2 server with `600` permissions, created `.venv`, installed project dependencies plus Playwright Chromium, and started the UI as `resourcepool-ui.service` bound to `127.0.0.1:8765`.
@@ -307,6 +308,7 @@
 - A server `git pull` still cannot restore ignored local data or run output directories by itself; run artifact hydration is required after deploy when the UI needs corpus counts or report history.
 - Hydrated reports live under `runs/cloud_synced/{run_mode}/{run_id}/merged`, so local modification-time ordering can differ from the original workstation's `runs/` tree.
 - Hydration skips existing files by default to avoid replacing newer Phase 1 copied corpus files with older cloud artifacts; use `--overwrite` only for an intentional cloud restore.
+- Report UI ordering must continue to use the run id timestamp, not file modification time, because S3 hydration gives old reports fresh download mtimes.
 - Automatic `--sync-artifacts` depends on S3/RDS credentials and should fail visibly if cloud access is missing after a successful merge.
 - Icon-only navigation must keep accessible labels and visible active state, otherwise the simpler layout becomes harder to operate for keyboard and screen-reader users.
 - The Cloudflare Access allow policy contains the current owner email and `junhao59@163.com`. Additional team use needs explicit teammate emails or identity-provider groups added before sharing the admin entry.
