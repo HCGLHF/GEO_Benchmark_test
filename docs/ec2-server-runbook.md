@@ -27,7 +27,7 @@ The server is an internal operations host exposed through Cloudflare Access, not
 - The UI binds to `127.0.0.1:8765` on the EC2 instance.
 - No UI port is open to the public internet.
 - Team browser access enters through Cloudflare Access at `https://admin.alphaxxxx.com/`.
-- The initial Access policy allows only the current owner email. Add teammate emails deliberately before sharing the URL.
+- The Access policy allows the current owner email plus approved teammate emails. Add new teammates deliberately before sharing the URL.
 
 Local operator tunnel:
 
@@ -119,6 +119,8 @@ Cloudflare objects:
 ```text
 Access application: GEO Admin Console
 Hostname: admin.alphaxxxx.com
+Policy: Allow owner admin access
+Allowed emails: current owner email, junhao59@163.com
 Tunnel: resourcepool-admin-ec2
 Tunnel id: b813cf28-bc72-42f1-abfa-ff4567604e9e
 Connector host: ip-172-31-45-201
@@ -173,6 +175,7 @@ python scripts/cloud/verify_cloud_import.py --industry geo-agency --corpus-versi
 - `curl http://127.0.0.1:8765/`: HTTP `200`, HTML returned.
 - `curl -I https://admin.alphaxxxx.com/`: HTTP `302` to Cloudflare Access login, with `Www-Authenticate: Cloudflare-Access`.
 - Chrome visit to `https://admin.alphaxxxx.com/`: Cloudflare Access login page for `GEO Admin Console`.
+- Cloudflare Access policy `Allow owner admin access`: owner email and `junhao59@163.com` are allowed.
 - `python scripts/cloud/verify_cloud_import.py --industry geo-agency --corpus-version 2026-05-22-initial`: `ok: true`.
 - UI/cloud test subset on EC2: `17 passed`.
 - Root disk after setup: about 84 GB free.
@@ -180,6 +183,6 @@ python scripts/cloud/verify_cloud_import.py --industry geo-agency --corpus-versi
 ## Not Done Yet
 
 - No public UI ingress rule has been opened.
-- Additional teammate emails have not been added to the Cloudflare Access policy yet.
+- First teammate email `junhao59@163.com` has been added to the Cloudflare Access policy; additional teammates still need explicit approval before adding.
 - No role-specific PostgreSQL users or IAM policies have been created for individual teammates.
 - No Elastic IP has been attached, so the public IP should not be treated as stable.

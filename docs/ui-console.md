@@ -36,7 +36,7 @@ Team browser access is now routed through Cloudflare Access:
 https://admin.alphaxxxx.com/
 ```
 
-That hostname is the `GEO Admin Console` Access application. It routes through Cloudflare Tunnel `resourcepool-admin-ec2` to the EC2 origin `http://127.0.0.1:8765`. The initial Access policy allows only the current owner email; add teammate emails in Cloudflare Access before sharing the URL broadly. See `docs/ec2-server-runbook.md` for the deployed instance, cloud permissions, service commands, and Cloudflare route.
+That hostname is the `GEO Admin Console` Access application. It routes through Cloudflare Tunnel `resourcepool-admin-ec2` to the EC2 origin `http://127.0.0.1:8765`. The Access policy allows the current owner email and `junhao59@163.com`; add future teammate emails in Cloudflare Access before sharing the URL broadly. See `docs/ec2-server-runbook.md` for the deployed instance, cloud permissions, service commands, and Cloudflare route.
 
 ## Current Capabilities
 
