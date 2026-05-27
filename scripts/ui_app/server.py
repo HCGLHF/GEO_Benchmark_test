@@ -607,6 +607,16 @@ HTML = r"""<!doctype html>
     let state = null;
     let lastPlan = null;
 
+    const workspaceTitles = {
+      overview: "Overview",
+      "run-setup": "Run Setup",
+      monitor: "Run Monitor",
+      reports: "Reports",
+      pages: "Owned Pages",
+      cloud: "Cloud Store",
+      commands: "Commands",
+    };
+
     const byId = (id) => document.getElementById(id);
     const monitorStorageKey = "geo.monitorRunRoot";
     const percent = (value) => value === null || value === undefined ? "-" : `${Number(value).toFixed(1)}%`;
@@ -615,6 +625,35 @@ HTML = r"""<!doctype html>
       .replaceAll("<", "&lt;")
       .replaceAll(">", "&gt;")
       .replaceAll('"', "&quot;");
+
+    function setCurrentView(view) {
+      view = workspaceTitles[view] ? view : "overview";
+      document.querySelectorAll("[data-view-target]").forEach((button) => {
+        const active = button.dataset.viewTarget === view;
+        button.classList.toggle("active", active);
+        if (active) {
+          button.setAttribute("aria-current", "page");
+        } else {
+          button.removeAttribute("aria-current");
+        }
+      });
+      document.querySelectorAll(".workspace").forEach((workspace) => {
+        workspace.classList.toggle("active", workspace.dataset.view === view);
+      });
+      byId("activeWorkspaceTitle").textContent = workspaceTitles[view];
+      localStorage.setItem("geo.currentView", view);
+    }
+
+    function setGlobalHealth(status) {
+      const value = String(status || "unknown");
+      let tone = "";
+      if (["ok", "complete", "completed"].includes(value)) tone = "ok";
+      if (["warning", "complete_with_model_warnings", "interrupted"].includes(value)) tone = "warning";
+      if (["error", "failed"].includes(value)) tone = "error";
+      const globalHealthBadge = byId("globalHealthBadge");
+      globalHealthBadge.className = `status-badge ${tone}`;
+      globalHealthBadge.textContent = value.replaceAll("_", " ");
+    }
 
     async function loadState() {
       const response = await fetch("/api/state");
@@ -922,6 +961,7 @@ HTML = r"""<!doctype html>
       byId("monitorModels").textContent = monitor.models.length;
       const health = monitor.health || {status: "unknown", issues: [], recommended_actions: []};
       byId("monitorHealth").textContent = health.status;
+      setGlobalHealth(health.status);
       renderLatestReport(monitor.report);
       if (monitor.report && monitor.report.report_dir) {
         await refreshReportHistory();
@@ -1026,9 +1066,13 @@ HTML = r"""<!doctype html>
     document.addEventListener("change", (event) => {
       if (event.target.closest("main")) buildPlan();
     });
+    document.querySelectorAll("[data-view-target]").forEach((button) => {
+      button.addEventListener("click", () => setCurrentView(button.dataset.viewTarget));
+    });
     setInterval(() => {
       if (byId("monitorAutoRefresh").checked) refreshMonitor();
     }, 3000);
+    setCurrentView(localStorage.getItem("geo.currentView") || "overview");
     loadState().then(refreshMonitor);
   </script>
 </body>

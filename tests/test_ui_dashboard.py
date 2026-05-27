@@ -123,6 +123,22 @@ def test_ui_html_renders_icons_and_workspaces() -> None:
     assert 'id="activeWorkspaceTitle"' in HTML
 
 
+def test_ui_html_switches_command_center_workspaces() -> None:
+    assert "const workspaceTitles" in HTML
+    assert "function setCurrentView" in HTML
+    assert "document.querySelectorAll(\"[data-view-target]\")" in HTML
+    assert "button.setAttribute(\"aria-current\", \"page\")" in HTML
+    assert "workspace.classList.toggle(\"active\", workspace.dataset.view === view)" in HTML
+    assert "localStorage.setItem(\"geo.currentView\", view)" in HTML
+
+
+def test_ui_html_updates_global_health_badge() -> None:
+    assert "function setGlobalHealth" in HTML
+    assert "globalHealthBadge" in HTML
+    assert "globalHealthBadge.className = `status-badge ${tone}`" in HTML
+    assert "setGlobalHealth(health.status)" in HTML
+
+
 def test_ui_html_renders_pipeline_progress_bars() -> None:
     assert ".progress-track" in HTML
     assert ".progress-fill" in HTML
