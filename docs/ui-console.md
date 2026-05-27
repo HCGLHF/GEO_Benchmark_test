@@ -45,9 +45,10 @@ That hostname is the `GEO Admin Console` Access application. It routes through C
 - Shows current competitors from `config/sources.yaml` and `config/client_acquisition_simulator.yaml`.
 - Shows configured evaluation models.
 - Shows latest merged report summary when a merged report exists under `runs/`.
-- Shows historical merged reports from `runs/**/merged*/competitive_gap_report.md`, with AlphaXXXX rank, Top5 share, mention rate, answer count, and an in-UI Markdown preview.
+- Shows historical merged reports from `runs/**/merged*/competitive_gap_report.md`, with AlphaXXXX rank, Top5 share, mention rate, answer count, an in-UI Markdown preview, and a `Download` action for the report Markdown.
 - Shows report-level deep diagnostics for the selected report: URL/domain Top5 winners, persona/stage loss rows, money-page weakness groups, and page-level action items with benchmark competitor URLs, FAQ, internal-link, and schema suggestions. Older reports without these artifacts show empty-state messages.
 - Shows owned-page drilldowns for the selected report: which AlphaXXXX URLs entered retrieval Top5 and which owned pages are weakest or never entered Top5.
+- Shows a global health badge in the header. `Ready` is the user-facing label for the underlying `ok` chain-health status; warnings and errors keep their warning/error labels.
 - Shows non-secret cloud configuration presence from environment variables.
 - Shows deployment status from local Git metadata and the latest `runs/deployments/*.json` log, including current corpus version, cloud verifier result, artifact count, API document/chunk counts, and latest hydrated report path.
 - Shows deployment log details for the latest server update: step name, status, attempts, return code, duration, failed step, completed time, cloud verifier counts, and API state summary. Raw stdout/stderr and environment values are not rendered in the browser.
@@ -95,11 +96,11 @@ python scripts\ops_logs.py doctor --run-root runs\full_api_parallel_ui\<timestam
 - Pre-API stages should use `scripts/run_pipeline_step.py` if they need to appear in Run Monitor.
 - The launch button only starts the generated API benchmark command; it does not execute arbitrary user-provided shell strings.
 - The step launch button only starts commands generated from the current run plan that are wrapped by `scripts/run_pipeline_step.py`.
-- Report preview reads only known completed report directories under `runs/`; it does not expose arbitrary local files.
+- Report preview and report download read only known completed report directories under `runs/`; they do not expose arbitrary local files.
 - Page drilldown reads only known completed report directories under `runs/`; it uses `owned_top5_pages.csv` and `owned_weak_pages.csv` when present, or computes them from `retrieval_evidence_by_model.jsonl` plus `data/processed/documents.jsonl`.
 
 ## Next UI Work
 
 1. Add launch history and richer log streaming.
 2. Add retry/backoff tuning for 429-heavy model workers before they require manual stop/resume.
-3. Add deeper persona/stage weak-page grouping and URL-level content optimization suggestions.
+3. Add downloadable CSV/JSON artifact bundles for report diagnostics, not only the Markdown report.

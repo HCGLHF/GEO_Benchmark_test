@@ -165,6 +165,22 @@ The wrapper performs:
 
 If the server checkout predates this wrapper, first run the manual Git fetch/pull once to get the script, then run the wrapper.
 
+After a UI change, verify the deployed checkout and service from SSH:
+
+```bash
+cd /opt/resourcepool/Resourcepool_Gen
+git rev-parse --short HEAD
+systemctl is-active resourcepool-ui.service
+curl -fsS http://127.0.0.1:8765/api/state >/tmp/resourcepool-state.json
+```
+
+Report downloads are normal `GET` responses, not `HEAD` responses, because the UI server only implements `GET`. To verify the Markdown download endpoint without saving the file:
+
+```bash
+curl -fsS -D - -o /dev/null "http://127.0.0.1:8765/api/report-download?report_dir=/opt/resourcepool/Resourcepool_Gen/runs/full_api_parallel_ui/20260526_002837/merged" \
+  | grep -E "HTTP/|Content-Type|Content-Disposition"
+```
+
 `git pull` updates code only. It does not bring back ignored local data directories such as `data/` and `runs/`. The wrapper includes hydration before restart so the UI can show corpus counts, latest reports, report history, Top5/Mention trend charts, and run artifacts after a fresh deploy.
 
 Hydration skips files that already exist by default, which protects Phase 1 copied data or newer server-local artifacts. Use `--overwrite` only when intentionally replacing server files with the S3/RDS artifact copy.
@@ -200,6 +216,7 @@ python scripts/cloud/verify_cloud_import.py --industry geo-agency --corpus-versi
 - `systemctl is-active resourcepool-ui.service`: `active`.
 - `systemctl is-active cloudflared`: `active`.
 - `curl http://127.0.0.1:8765/`: HTTP `200`, HTML returned.
+- `curl http://127.0.0.1:8765/api/report-download?...`: HTTP `200`, `Content-Type: text/markdown; charset=utf-8`, and `Content-Disposition: attachment`.
 - `curl -I https://admin.alphaxxxx.com/`: HTTP `302` to Cloudflare Access login, with `Www-Authenticate: Cloudflare-Access`.
 - Chrome visit to `https://admin.alphaxxxx.com/`: Cloudflare Access login page for `GEO Admin Console`.
 - Cloudflare Access policy `Allow owner admin access`: owner email and `junhao59@163.com` are allowed.

@@ -47,7 +47,7 @@
 - `scripts/ui_app/config_summary.py`: reads project source, competitor, target-brand, and model options for the local UI.
 - `scripts/ui_app/page_drilldown_summary.py`: reads existing owned-page drilldown CSVs or computes them from a selected completed report and the processed owned-site corpus.
 - `scripts/ui_app/report_summary.py`: finds the latest merged run report and summarizes target ranking, top competitors, and model-level slices.
-- `scripts/ui_app/report_history.py`: discovers completed merged reports under `runs/`, summarizes historical AlphaXXXX performance, and safely previews known `competitive_gap_report.md` files.
+- `scripts/ui_app/report_history.py`: discovers completed merged reports under `runs/`, summarizes historical AlphaXXXX performance, and safely previews or downloads known `competitive_gap_report.md` files.
 - `scripts/ui_app/deployment_status.py`: reads local Git state plus the latest ignored deployment log so the UI can show current code version, corpus version, cloud verification result, and latest hydrated report status without exposing secrets.
 - `scripts/ui_app/run_plan.py`: builds explicit dry-run command plans for owned-site refresh, corpus rebuild, optional cloud sync, and API benchmark execution.
 - `scripts/ui_app/run_monitor.py`: reads parallel run directories, per-model worker logs, pipeline log tails, `watch_full_api_run.py` summaries, chain-health diagnostics, API issue guidance, and merged reports to power the UI Run Monitor.
@@ -72,7 +72,7 @@
 13. Optional cloud import of clean inventory/documents/chunks into PostgreSQL, with source snapshots registered in S3 as artifacts
 14. Default cloud sync of completed quick/standard run reports and run-state artifacts into S3/RDS, unless explicitly disabled for a local-only run
 15. Optional pipeline state tracking through `run_manifest.json` and `pipeline_state.jsonl`
-16. Optional local UI review of corpus status, configured models, competitors, latest reports, historical reports, report previews, and dry-run command plans
+16. Optional local UI review of corpus status, configured models, competitors, latest reports, historical reports, report previews/downloads, and dry-run command plans
 17. Optional server or developer checkout hydration from S3/RDS when ignored `data/` and `runs/` artifacts are missing
 18. Optional EC2 deployment update that combines code fast-forward, hydration, verifier, service restart, API state check, and a local deployment log
 
@@ -109,7 +109,7 @@ The cloud store follows the project split documented in `docs/cloud-database.md`
 - The local UI depends on existing configs, processed artifacts, reports, and cloud environment presence only; it must call orchestration scripts explicitly rather than reimplementing crawler, evaluator, or cloud import logic.
 - Deployment status in the UI depends on local Git metadata and `runs/deployments/*.json`; it must remain a read-only visibility surface and must not render secrets.
 - Run Monitor depends on run-output files as facts for status, but it can call guarded execution controls for stop/resume when the target run root maps to a known UI launch manifest.
-- Report history depends on completed `runs/**/merged*/competitive_gap_report.md` artifacts as facts; it must remain a read-only view over existing report outputs.
+- Report history depends on completed `runs/**/merged*/competitive_gap_report.md` artifacts as facts; preview and download must resolve only known completed report directories under `runs/` and remain read-only over existing report outputs.
 - Owned-page drilldown depends on `retrieval_evidence_by_model.jsonl` and `data/processed/documents.jsonl`; it must summarize retrieval outcomes rather than changing index scores.
 - Report diagnostics depend on completed `retrieval_by_model.csv`, `retrieval_evidence_by_model.jsonl`, `model_answer_evaluations.csv`, and owned-page drilldown rows; they must explain outcomes and write derived CSVs, not alter benchmark metrics.
 - Pipeline state is an append-only integration contract. Stage runners write it; monitors read it; business logic should not branch on monitor UI state.

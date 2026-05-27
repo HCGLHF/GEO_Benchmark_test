@@ -17,6 +17,8 @@
 - Added guarded server data refresh in the Cloud Store workspace: a confirmed `Run Server Update` action starts only the fixed deployment runner when a safe detached launcher is available, otherwise returns `manual_required` with the fixed server command; it uses a lock to prevent concurrent launches and shows latest deployment step details without exposing stdout/stderr or credentials.
 - Deepened merged report diagnostics from brand-level metrics into URL/domain Top5 winners, persona/stage loss analysis, money-page intent groups, and page-level content actions with internal-link, FAQ, schema, and competitor benchmark guidance.
 - Added report UI drilldowns for URL/domain winners, persona/stage losses, and money-page actions, while keeping older reports compatible when the new CSV/JSON artifacts are absent.
+- Clarified the header health badge so underlying `ok` chain health displays as `Ready`, and added a `Download` action beside each Report History `Open` button for known `competitive_gap_report.md` files.
+- Deployed the report-diagnostics and report-download updates to EC2 on branch `codex/local-ops-logging`; the server checkout verified at commit `234a9eb`, `resourcepool-ui.service` stayed `active`, `/api/state` returned successfully, and `/api/report-download` returned a Markdown attachment.
 - Provisioned the first internal EC2 server for the project: `resourcepool-gen-internal-01` in `ap-northeast-1`, running Ubuntu 24.04 on `t3.xlarge` with a 100 GB encrypted root volume.
 - Published the current local project version to GitHub branch `codex/local-ops-logging` at commit `a78ce41`, then checked out the same branch and commit on the EC2 server under `/opt/resourcepool/Resourcepool_Gen`.
 - Copied the local `.env` to the EC2 server with `600` permissions, created `.venv`, installed project dependencies plus Playwright Chromium, and started the UI as `resourcepool-ui.service` bound to `127.0.0.1:8765`.
@@ -317,6 +319,7 @@
 - Hydrated reports live under `runs/cloud_synced/{run_mode}/{run_id}/merged`, so local modification-time ordering can differ from the original workstation's `runs/` tree.
 - Hydration skips existing files by default to avoid replacing newer Phase 1 copied corpus files with older cloud artifacts; use `--overwrite` only for an intentional cloud restore.
 - Report UI ordering must continue to use the run id timestamp, not file modification time, because S3 hydration gives old reports fresh download mtimes.
+- Report preview/download endpoints must continue resolving only known completed report directories under `runs/`; do not generalize them into arbitrary file download endpoints.
 - The `2026-05-27-alpha-refresh` import still required `--allow-quality-issues` for four known replacement-character rows from HornTech Chinese blog list content and SEOIndia homepage content; these are competitor/source rows and should be cleaned in a separate corpus-quality pass.
 - Default quick/standard run artifact sync depends on S3/RDS credentials; missing cloud access should leave the local report intact while marking `AWS sync` failed in the manifest, monitor, and ops summary.
 - Icon-only navigation must keep accessible labels and visible active state, otherwise the simpler layout becomes harder to operate for keyboard and screen-reader users.
