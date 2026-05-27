@@ -99,6 +99,7 @@ def test_ui_html_constrains_code_blocks_inside_grid() -> None:
 def test_ui_html_renders_command_center_shell() -> None:
     assert 'class="app-shell"' in HTML
     assert 'class="nav-rail"' in HTML
+    assert 'class="rail-brand" title="AlphaXXXX">AX</div>' in HTML
     assert 'data-view-target="overview"' in HTML
     assert 'data-view-target="run-setup"' in HTML
     assert 'data-view-target="monitor"' in HTML
@@ -182,6 +183,13 @@ def test_ui_html_restores_latest_monitor_after_refresh() -> None:
 
 def test_ui_html_renders_report_history_and_preview() -> None:
     assert "Report History" in HTML
+    assert "Performance Trend" in HTML
+    assert "Latest Top 5 Overview" in HTML
+    assert "reportTrendChart" in HTML
+    assert "latestTopBrands" in HTML
+    assert "function renderReportTrendChart" in HTML
+    assert "function renderLatestTopBrands" in HTML
+    assert "target_model_mention_rate" in HTML
     assert "reportHistoryTable" in HTML
     assert "reportPreview" in HTML
     assert "/api/report-history" in HTML

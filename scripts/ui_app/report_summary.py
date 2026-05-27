@@ -34,6 +34,7 @@ class LatestReportSummary:
     target_model_mention_rate: float | None
     target_rank_by_top5: int | None
     brands_above_target: list[BrandMetric]
+    top_brands: list[BrandMetric]
     model_breakdowns: list[ModelBreakdown]
 
     def to_dict(self) -> dict[str, Any]:
@@ -147,7 +148,7 @@ def summarize_latest_report(project_root: Path | str = Path("."), target_brand: 
     root = Path(project_root)
     report_dir = _latest_merged_dir(root)
     if report_dir is None:
-        return LatestReportSummary(None, 0, 0, None, None, None, [], [])
+        return LatestReportSummary(None, 0, 0, None, None, None, [], [], [])
 
     return summarize_report_dir(report_dir, target_brand=target_brand)
 
@@ -173,5 +174,6 @@ def summarize_report_dir(report_dir: Path | str, target_brand: str = "AlphaXXXX"
         target_model_mention_rate=target.model_mention_rate if target else None,
         target_rank_by_top5=target_rank,
         brands_above_target=brands_above,
+        top_brands=brands[:5],
         model_breakdowns=_model_breakdowns(report_dir),
     )

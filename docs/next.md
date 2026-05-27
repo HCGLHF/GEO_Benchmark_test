@@ -3,6 +3,7 @@
 ## Done
 
 - Redesigned the local UI console into a command-center layout with icon navigation, workspace switching, compact status surfaces, action feedback, and collapsible command/log panels.
+- Updated the Reports workspace with the `AX` rail brand, a lightweight Top5/Mention trend line graph, and the latest report's top-five brand overview.
 - Provisioned the first internal EC2 server for the project: `resourcepool-gen-internal-01` in `ap-northeast-1`, running Ubuntu 24.04 on `t3.xlarge` with a 100 GB encrypted root volume.
 - Published the current local project version to GitHub branch `codex/local-ops-logging` at commit `a78ce41`, then checked out the same branch and commit on the EC2 server under `/opt/resourcepool/Resourcepool_Gen`.
 - Copied the local `.env` to the EC2 server with `600` permissions, created `.venv`, installed project dependencies plus Playwright Chromium, and started the UI as `resourcepool-ui.service` bound to `127.0.0.1:8765`.
@@ -194,6 +195,7 @@
 ## Learned
 
 - The local UI can gain clearer interaction and visual hierarchy without changing the standard-library server or guarded execution endpoints.
+- Existing report history and latest report brand metrics are enough to render useful trend and ranking context without adding a frontend chart dependency.
 - Local operations summaries work best as an additive interpretation layer over existing run facts, not as a replacement for pipeline state, worker logs, or output rows.
 - PowerShell native-command argument passing can strip JSON quotes when a JSON object is passed as a direct CLI argument; file-based JSON is safer for runner-to-Python status contracts.
 - `Set-Content -Encoding UTF8` can include a BOM in Windows PowerShell, so Python readers for PowerShell-produced JSON should use `utf-8-sig`.
@@ -319,6 +321,7 @@
 - Weak-page rankings are sensitive to query sample size and scenario mix; do not overinterpret `test` mode weak-page ordering as a final content roadmap.
 - The current optimization hints are intentionally generic; a stronger next step should explain each weak page by missing persona/stage intent and competitor pages that displaced it.
 - Report history currently sorts by local report file modification time, so copying old runs into `runs/` can reorder history without representing a fresh benchmark.
+- The Reports workspace top-five overview is brand-level from `brand_performance_by_model.csv`; URL-level or domain-level website ranking still needs a separate artifact if required for strategy decisions.
 - The in-UI report preview shows the Markdown report text, but deeper weak-page and URL-level recommendations still need dedicated drilldown aggregation.
 - Historical runs can contain stale failed pipeline events even when worker outputs are complete; Run Monitor now avoids this for recovered stages, but old runs may still need manual merge repair if the parent skipped merge.
 - `test` mode proves wiring only. Its sample size is too small for comparing AlphaXXXX against competitors or judging content changes.
@@ -375,3 +378,4 @@
 8. Add retry/backoff tuning for rate-limited model workers so Qwen-style 429 bursts produce fewer warning rows before manual stop/resume is needed.
 9. Add launch-history detail inside the Monitor workspace so users can see which UI launch or resume attempt produced the current run root.
 10. Add a restore/download helper for S3 artifacts so remote team members can fetch `qdrant.zip` or processed JSONL by industry and corpus version.
+11. Add a URL/domain-level latest top-five overview if future reports need website ranking separate from brand ranking.

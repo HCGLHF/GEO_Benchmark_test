@@ -382,6 +382,99 @@ HTML = r"""<!doctype html>
       overflow-wrap: break-word;
       word-break: normal;
     }
+    .trend-legend {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-bottom: 10px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+    .legend-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .legend-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 999px;
+      display: inline-block;
+    }
+    .legend-dot.top5 { background: var(--accent); }
+    .legend-dot.mention { background: #c2410c; }
+    .trend-chart {
+      min-height: 220px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fbfcfe;
+      overflow: hidden;
+    }
+    .trend-chart svg {
+      display: block;
+      width: 100%;
+      height: 220px;
+    }
+    .trend-axis,
+    .trend-label {
+      fill: var(--muted);
+      font-size: 11px;
+    }
+    .trend-grid {
+      stroke: #e6ebf2;
+      stroke-width: 1;
+    }
+    .top-brands-list {
+      display: grid;
+      gap: 10px;
+    }
+    .top-brand-row {
+      display: grid;
+      grid-template-columns: 38px minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 10px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fbfcfe;
+      padding: 10px;
+      min-width: 0;
+    }
+    .rank-badge {
+      width: 30px;
+      height: 30px;
+      border-radius: 8px;
+      display: grid;
+      place-items: center;
+      background: var(--accent-weak);
+      color: var(--accent);
+      font-weight: 800;
+      font-size: 13px;
+    }
+    .brand-name {
+      font-weight: 700;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .brand-metrics {
+      color: var(--muted);
+      font-size: 12px;
+      text-align: right;
+      white-space: nowrap;
+    }
+    .share-bar {
+      height: 6px;
+      border-radius: 999px;
+      background: #e5e7eb;
+      overflow: hidden;
+      margin-top: 7px;
+    }
+    .share-fill {
+      height: 100%;
+      border-radius: inherit;
+      background: var(--accent);
+    }
     @media (max-width: 1080px) {
       .panel.half, .panel.third, .panel.two-third { grid-column: span 12; }
       .metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -400,6 +493,13 @@ HTML = r"""<!doctype html>
         overflow-x: auto;
         margin: 0 0 0 12px;
       }
+      .top-brand-row {
+        grid-template-columns: 34px minmax(0, 1fr);
+      }
+      .brand-metrics {
+        grid-column: 2;
+        text-align: left;
+      }
       .metrics, .row, .checks { grid-template-columns: 1fr; }
       .topbar { align-items: flex-start; flex-direction: column; }
     }
@@ -408,7 +508,7 @@ HTML = r"""<!doctype html>
 <body>
   <div class="app-shell">
     <aside class="nav-rail" aria-label="Primary">
-      <div class="rail-brand" title="GEO Benchmark Console">G</div>
+      <div class="rail-brand" title="AlphaXXXX">AX</div>
       <nav class="rail-nav" aria-label="Workspaces">
         <button class="rail-button active" data-view-target="overview" aria-label="Overview" aria-current="page" title="Overview" type="button"><svg class="icon icon-overview" viewBox="0 0 24 24"><path d="M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z"/></svg></button>
         <button class="rail-button" data-view-target="run-setup" aria-label="Run setup" title="Run setup" type="button"><svg class="icon icon-run" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg></button>
@@ -580,6 +680,18 @@ HTML = r"""<!doctype html>
         <section class="workspace" data-view="reports">
           <div class="panel-grid">
             <div class="panel half">
+              <h2>Performance Trend</h2>
+              <div class="trend-legend" aria-label="Report trend legend">
+                <span class="legend-item"><span class="legend-dot top5"></span>Top5</span>
+                <span class="legend-item"><span class="legend-dot mention"></span>Mention</span>
+              </div>
+              <div id="reportTrendChart" class="trend-chart muted">No report trend loaded</div>
+            </div>
+            <div class="panel half">
+              <h2>Latest Top 5 Overview</h2>
+              <div id="latestTopBrands" class="top-brands-list muted">No latest report loaded</div>
+            </div>
+            <div class="panel half">
               <h2>Report History</h2>
               <div id="reportHistoryTable" class="muted">No report history loaded</div>
             </div>
@@ -720,6 +832,8 @@ HTML = r"""<!doctype html>
       renderCompetitors(state.options.competitors, report.brands_above_target);
       renderCloud(state.cloud);
       renderReportHistory(state.report_history || []);
+      renderReportTrendChart(state.report_history || []);
+      renderLatestTopBrands(report.top_brands || []);
       if (report.report_dir) await loadPageDrilldown(report.report_dir);
       const restoredMonitorRoot = state.latest_monitor_run_root || localStorage.getItem(monitorStorageKey) || "";
       if (restoredMonitorRoot) setMonitorRunRoot(restoredMonitorRoot, true);
@@ -740,6 +854,7 @@ HTML = r"""<!doctype html>
       byId("targetMention").textContent = percent(report.target_model_mention_rate);
       byId("answerCount").textContent = report.answer_count || "-";
       byId("reportPath").textContent = report.report_dir;
+      renderLatestTopBrands(report.top_brands || []);
     }
 
     function renderReportHistory(items) {
@@ -765,6 +880,83 @@ HTML = r"""<!doctype html>
       });
     }
 
+    function renderReportTrendChart(items) {
+      const node = byId("reportTrendChart");
+      const series = (items || [])
+        .filter((item) => item && (
+          item.target_top5_share !== null && item.target_top5_share !== undefined ||
+          item.target_model_mention_rate !== null && item.target_model_mention_rate !== undefined
+        ))
+        .sort((a, b) => String(a.updated_at || "").localeCompare(String(b.updated_at || "")))
+        .slice(-8);
+      if (!series.length) {
+        node.className = "trend-chart muted";
+        node.textContent = "No report trend loaded";
+        return;
+      }
+
+      const width = 640;
+      const height = 220;
+      const pad = {left: 42, right: 18, top: 18, bottom: 34};
+      const plotWidth = width - pad.left - pad.right;
+      const plotHeight = height - pad.top - pad.bottom;
+      const xFor = (index) => pad.left + (series.length === 1 ? plotWidth / 2 : (plotWidth * index) / (series.length - 1));
+      const yFor = (value) => pad.top + plotHeight - (Math.max(0, Math.min(100, Number(value || 0))) / 100) * plotHeight;
+      const pathFor = (key) => series.map((item, index) => `${index === 0 ? "M" : "L"} ${xFor(index).toFixed(1)} ${yFor(item[key]).toFixed(1)}`).join(" ");
+      const circlesFor = (key, className) => series.map((item, index) => (
+        `<circle class="${className}" cx="${xFor(index).toFixed(1)}" cy="${yFor(item[key]).toFixed(1)}" r="3.8"><title>${escapeHtml(percent(item[key]))}</title></circle>`
+      )).join("");
+      const labels = series.map((item, index) => {
+        const label = String(item.updated_at || item.run_root || `#${index + 1}`).slice(0, 10);
+        return `<text class="trend-label" x="${xFor(index).toFixed(1)}" y="208" text-anchor="middle">${escapeHtml(label)}</text>`;
+      }).join("");
+
+      node.className = "trend-chart";
+      node.innerHTML = `
+        <svg viewBox="0 0 ${width} ${height}" role="img" aria-label="Top5 and mention trend line graph">
+          <line class="trend-grid" x1="${pad.left}" y1="${yFor(100)}" x2="${width - pad.right}" y2="${yFor(100)}"></line>
+          <line class="trend-grid" x1="${pad.left}" y1="${yFor(50)}" x2="${width - pad.right}" y2="${yFor(50)}"></line>
+          <line class="trend-grid" x1="${pad.left}" y1="${yFor(0)}" x2="${width - pad.right}" y2="${yFor(0)}"></line>
+          <text class="trend-axis" x="8" y="${yFor(100) + 4}">100%</text>
+          <text class="trend-axis" x="14" y="${yFor(50) + 4}">50%</text>
+          <text class="trend-axis" x="20" y="${yFor(0) + 4}">0%</text>
+          <path d="${pathFor("target_top5_share")}" fill="none" stroke="var(--accent)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"></path>
+          <path d="${pathFor("target_model_mention_rate")}" fill="none" stroke="#c2410c" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"></path>
+          <g fill="var(--accent)">${circlesFor("target_top5_share", "trend-top5-point")}</g>
+          <g fill="#c2410c">${circlesFor("target_model_mention_rate", "trend-mention-point")}</g>
+          ${labels}
+        </svg>`;
+    }
+
+    function renderLatestTopBrands(brands) {
+      const node = byId("latestTopBrands");
+      const rows = (brands || []).slice(0, 5);
+      if (!rows.length) {
+        node.className = "top-brands-list muted";
+        node.textContent = "No latest report loaded";
+        return;
+      }
+      node.className = "top-brands-list";
+      node.innerHTML = rows.map((brand, index) => {
+        const top5 = Math.max(0, Math.min(100, Number(brand.top5_share || 0)));
+        return `
+          <div class="top-brand-row">
+            <div class="rank-badge">${index + 1}</div>
+            <div>
+              <div class="brand-name">${escapeHtml(brand.brand)}</div>
+              <div class="share-bar" aria-label="${escapeHtml(brand.brand)} Top5 share">
+                <div class="share-fill" style="width:${top5}%"></div>
+              </div>
+            </div>
+            <div class="brand-metrics">
+              <strong>${percent(brand.top5_share)}</strong> Top5<br>
+              ${percent(brand.model_mention_rate)} Mention<br>
+              ${escapeHtml(brand.top5_count || 0)}/${escapeHtml(brand.query_count || 0)} hits
+            </div>
+          </div>`;
+      }).join("");
+    }
+
     async function refreshReportHistory() {
       const response = await fetch("/api/report-history?limit=20");
       const data = await response.json();
@@ -773,6 +965,7 @@ HTML = r"""<!doctype html>
         return;
       }
       renderReportHistory(data.items || []);
+      renderReportTrendChart(data.items || []);
     }
 
     async function loadReportPreview(reportDir, runRoot) {
