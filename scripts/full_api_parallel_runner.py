@@ -31,6 +31,7 @@ DEFAULT_MODELS = [
 ]
 DOUBAO_MODEL = "bytedance-seed/seed-2.0-pro"
 QUERY_DEFAULTS = {"test": 2, "quick": 50, "standard": 200}
+DEFAULT_CORPUS_VERSION = "2026-05-27-alpha-refresh"
 PIPELINE_STAGES = [
     "crawl",
     "clean",
@@ -99,7 +100,7 @@ def parse_args(argv: list[str] | None = None) -> RunnerOptions:
     parser.add_argument("--include-doubao", action="store_true")
     parser.add_argument("--skip-merge", action="store_true")
     parser.add_argument("--sync-artifacts", action="store_true")
-    parser.add_argument("--corpus-version", default="2026-05-22-initial")
+    parser.add_argument("--corpus-version", default=DEFAULT_CORPUS_VERSION)
     parser.add_argument("--industry", default="geo-agency")
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--platform", choices=["auto", "windows", "linux", "wsl"], default="auto")

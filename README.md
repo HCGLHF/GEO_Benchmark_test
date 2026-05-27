@@ -31,7 +31,7 @@ Team members can clone the repository, configure their own `.env`, and verify ac
 The setup script creates `.venv`, installs project dependencies, installs Playwright Chromium, and creates `.env` from `.env.example` only when `.env` does not already exist.
 
 ```powershell
-python scripts\cloud\verify_cloud_import.py --industry geo-agency --corpus-version 2026-05-22-initial
+python scripts\cloud\verify_cloud_import.py --industry geo-agency --corpus-version 2026-05-27-alpha-refresh
 ```
 
 For a new vertical, create the industry registry row before import:

@@ -22,7 +22,7 @@ This lets a team member in another location clone the repo, configure credential
 - PostgreSQL database used so far: `postgres`
 - PostgreSQL admin user used so far: `geo_admin`
 - Default industry id: `geo-agency`
-- Current corpus version: `2026-05-22-initial`
+- Current corpus version: `2026-05-27-alpha-refresh`
 
 These identifiers are not passwords. Do not commit the real `DATABASE_URL` password, AWS access key, or AWS secret access key.
 
@@ -62,19 +62,23 @@ Use an IAM user key for project operations. Do not use a root user access key in
 
 ## Current Imported Corpus
 
-Corpus version `2026-05-22-initial` has been imported and verified:
+Corpus version `2026-05-27-alpha-refresh` has been imported and verified:
 
 - `url_inventory`: 1,683 rows
-- `documents`: 1,683 rows
-- `chunks`: 6,225 rows
-- `artifact_objects`: 8 rows after the industry-prefix migration
+- `documents`: 1,705 rows
+- `chunks`: 6,283 rows
+- `AlphaXXXX documents`: 59 rows
+- `AlphaXXXX chunks`: 111 rows
+- `artifact_objects`: 51 rows, including 4 corpus/vector artifacts and 47 current UI quick/standard report artifacts
 
 Registered S3 artifacts:
 
-- `industries/geo-agency/raw/2026-05-22-initial/url_inventory.csv`
-- `industries/geo-agency/processed/2026-05-22-initial/documents.jsonl`
-- `industries/geo-agency/processed/2026-05-22-initial/chunks.jsonl`
-- `industries/geo-agency/vector-index/2026-05-22-initial/qdrant.zip`
+- `industries/geo-agency/raw/2026-05-27-alpha-refresh/url_inventory.csv`
+- `industries/geo-agency/processed/2026-05-27-alpha-refresh/documents.jsonl`
+- `industries/geo-agency/processed/2026-05-27-alpha-refresh/chunks.jsonl`
+- `industries/geo-agency/vector-index/2026-05-27-alpha-refresh/qdrant.zip`
+
+The import used `--allow-quality-issues` for the same four known replacement-character rows already documented in the previous import: HornTech Chinese blog list content and SEOIndia homepage content. These rows are competitor/source data, not AlphaXXXX owned-site content, and should be refreshed in a later corpus cleanup.
 
 Legacy pre-industry S3 artifacts are still registered for compatibility:
 
@@ -177,25 +181,25 @@ Completed quick and standard run artifacts can be planned locally before upload:
 ```powershell
 python scripts\cloud\sync_run_artifacts.py --industry geo-agency --corpus-version 2026-05-22-initial --run-root runs\full_api_parallel --run-mode quick --run-mode standard --dry-run
 python scripts\cloud\sync_run_artifacts.py --industry geo-agency --corpus-version 2026-05-22-initial --run-root runs\full_api_parallel_alpha_refresh_quick_final --run-mode quick --dry-run
-python scripts\cloud\sync_run_artifacts.py --industry geo-agency --corpus-version 2026-05-22-initial --run-root runs\full_api_parallel_ui --run-mode quick --run-mode standard --dry-run
+python scripts\cloud\sync_run_artifacts.py --industry geo-agency --corpus-version 2026-05-27-alpha-refresh --run-root runs\full_api_parallel_ui --run-mode quick --run-mode standard --dry-run
 ```
 
 When the dry run looks correct, add `--execute` to upload artifacts to S3 and register them in PostgreSQL:
 
 ```powershell
-python scripts\cloud\sync_run_artifacts.py --industry geo-agency --corpus-version 2026-05-22-initial --run-root runs\full_api_parallel_ui --run-mode quick --run-mode standard --execute
+python scripts\cloud\sync_run_artifacts.py --industry geo-agency --corpus-version 2026-05-27-alpha-refresh --run-root runs\full_api_parallel_ui --run-mode quick --run-mode standard --execute
 ```
 
 The full API parallel runner can sync the current run automatically after a successful merge:
 
 ```powershell
-python scripts\full_api_parallel_runner.py --run-mode quick --sync-artifacts --industry geo-agency --corpus-version 2026-05-22-initial
+python scripts\full_api_parallel_runner.py --run-mode quick --sync-artifacts --industry geo-agency --corpus-version 2026-05-27-alpha-refresh
 ```
 
 To rebuild a server or a new developer checkout from the shared artifact store:
 
 ```powershell
-python scripts\cloud\hydrate_artifacts.py --industry geo-agency --corpus-version 2026-05-22-initial --run-mode quick --run-mode standard --project-root .
+python scripts\cloud\hydrate_artifacts.py --industry geo-agency --corpus-version 2026-05-27-alpha-refresh --run-mode quick --run-mode standard --project-root .
 ```
 
 Hydration is non-destructive by default: existing local files are skipped, so a server that already has newer Phase 1 copied data will not be overwritten by older cloud corpus artifacts. Use `--overwrite` only when deliberately replacing local artifacts with cloud copies.
@@ -218,7 +222,7 @@ The source of truth is:
 
 Current Qdrant snapshot:
 
-- S3 key: `industries/geo-agency/vector-index/2026-05-22-initial/qdrant.zip`
+- S3 key: `industries/geo-agency/vector-index/2026-05-27-alpha-refresh/qdrant.zip`
 - Size: 18,150,632 bytes
 - SHA-256: `e840f1ab05f44e7f11cc3118788237f2a4b991a17bc03ebb00219993ac6b9e87`
 
@@ -231,7 +235,7 @@ Current Qdrant snapshot:
 5. Run the cloud verifier:
 
 ```powershell
-python scripts\cloud\verify_cloud_import.py --industry geo-agency --corpus-version 2026-05-22-initial
+python scripts\cloud\verify_cloud_import.py --industry geo-agency --corpus-version 2026-05-27-alpha-refresh
 ```
 
 If using the project-local cloud dependency directory on the original workstation, set:
@@ -248,6 +252,7 @@ Use a new `corpus_version` when the resource library changes:
 
 ```text
 2026-05-22-initial
+2026-05-27-alpha-refresh
 2026-06-01-refresh
 2026-06-15-alpha-content-update
 ```

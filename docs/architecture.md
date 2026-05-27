@@ -78,7 +78,7 @@
 - Current S3 bucket: `geo-resource-library-prod-940329548423-ap-northeast-1-an`.
 - Current RDS identifier: `geo-postgres-prod`.
 - Current RDS endpoint: `geo-postgres-prod.cbkgwuwamngl.ap-northeast-1.rds.amazonaws.com`.
-- Current imported corpus version: `2026-05-22-initial`.
+- Current imported corpus version: `2026-05-27-alpha-refresh`.
 - Current default industry: `geo-agency`.
 
 The cloud store follows the project split documented in `docs/cloud-database.md`: PostgreSQL is the queryable corpus and benchmark ledger, S3 is the artifact store, and Qdrant is rebuildable from versioned chunks. Cloud rows are isolated by `industry_id` first, then by `corpus_version` or `query_set_version`.

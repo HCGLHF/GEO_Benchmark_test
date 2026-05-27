@@ -149,7 +149,7 @@ def fake_options(
         include_doubao=False,
         skip_merge=skip_merge,
         sync_artifacts=False,
-        corpus_version="2026-05-22-initial",
+        corpus_version="2026-05-27-alpha-refresh",
         industry="geo-agency",
         dry_run=False,
         platform="wsl",
@@ -264,6 +264,21 @@ def test_full_api_parallel_runner_parses_sync_artifact_options(tmp_path: Path) -
     assert options.sync_artifacts is True
     assert options.industry == "geo-agency"
     assert options.corpus_version == "2026-05-22-initial"
+
+
+def test_full_api_parallel_runner_defaults_to_current_cloud_corpus_version(tmp_path: Path) -> None:
+    options = parse_args(
+        [
+            "--run-root",
+            str(tmp_path / "full_api_parallel"),
+            "--models",
+            "openai/gpt-4.1-mini",
+            "--sync-artifacts",
+            "--dry-run",
+        ]
+    )
+
+    assert options.corpus_version == "2026-05-27-alpha-refresh"
 
 
 def test_full_api_parallel_runner_rejects_empty_model_list(tmp_path: Path) -> None:
@@ -498,7 +513,6 @@ def test_full_api_parallel_runner_syncs_artifacts_after_successful_merge(tmp_pat
             "run_mode": "quick",
             "sync_artifacts": True,
             "industry": "geo-agency",
-            "corpus_version": "2026-05-22-initial",
         }
     )
     monkeypatch.setattr("scripts.full_api_parallel_runner.subprocess.run", fake_run)
@@ -510,7 +524,7 @@ def test_full_api_parallel_runner_syncs_artifacts_after_successful_merge(tmp_pat
     assert result == 0
     assert len(sync_calls) == 1
     assert sync_calls[0]["industry_id"] == "geo-agency"
-    assert sync_calls[0]["corpus_version"] == "2026-05-22-initial"
+    assert sync_calls[0]["corpus_version"] == "2026-05-27-alpha-refresh"
     assert sync_calls[0]["run_roots"] == [tmp_path / "full_api_parallel" / options.run_stamp]
     assert sync_calls[0]["run_modes"] == {"quick"}
     assert sync_calls[0]["execute"] is True

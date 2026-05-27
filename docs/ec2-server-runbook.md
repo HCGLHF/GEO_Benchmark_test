@@ -78,11 +78,11 @@ Verified from EC2:
 EC2 -> RDS TCP 5432: ok
 S3 head_bucket: ok
 cloud verifier: ok
-geo-agency / 2026-05-22-initial:
+geo-agency / 2026-05-27-alpha-refresh:
   inventory rows: 1683
-  documents: 1683
-  chunks: 6225
-  artifacts: 8
+  documents: 1705
+  chunks: 6283
+  artifacts: 51
 ```
 
 ## UI Service
@@ -154,7 +154,7 @@ git checkout <branch>
 git pull --ff-only
 source .venv/bin/activate
 python -m pip install -e ".[dev]"
-python scripts/cloud/hydrate_artifacts.py --industry geo-agency --corpus-version 2026-05-22-initial --run-mode quick --run-mode standard --project-root .
+python scripts/cloud/hydrate_artifacts.py --industry geo-agency --corpus-version 2026-05-27-alpha-refresh --run-mode quick --run-mode standard --project-root .
 sudo systemctl restart resourcepool-ui.service
 ```
 
@@ -170,7 +170,7 @@ set -a
 . ./.env
 set +a
 source .venv/bin/activate
-python scripts/cloud/verify_cloud_import.py --industry geo-agency --corpus-version 2026-05-22-initial
+python scripts/cloud/verify_cloud_import.py --industry geo-agency --corpus-version 2026-05-27-alpha-refresh
 ```
 
 ## Setup Verification Performed
@@ -181,7 +181,7 @@ python scripts/cloud/verify_cloud_import.py --industry geo-agency --corpus-versi
 - `curl -I https://admin.alphaxxxx.com/`: HTTP `302` to Cloudflare Access login, with `Www-Authenticate: Cloudflare-Access`.
 - Chrome visit to `https://admin.alphaxxxx.com/`: Cloudflare Access login page for `GEO Admin Console`.
 - Cloudflare Access policy `Allow owner admin access`: owner email and `junhao59@163.com` are allowed.
-- `python scripts/cloud/verify_cloud_import.py --industry geo-agency --corpus-version 2026-05-22-initial`: `ok: true`.
+- `python scripts/cloud/verify_cloud_import.py --industry geo-agency --corpus-version 2026-05-27-alpha-refresh`: `ok: true`.
 - UI/cloud test subset on EC2: `17 passed`.
 - Root disk after setup: about 84 GB free.
 

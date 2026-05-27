@@ -9,6 +9,9 @@
 - Added `--sync-artifacts`, `--industry`, and `--corpus-version` to the full API parallel runner so successful quick/standard merges can promote their artifacts automatically.
 - Updated cloud and EC2 runbook documentation to make the deployment split explicit: Git updates code, while hydrate restores ignored `data/` and `runs/` artifacts for the UI.
 - Fixed report discovery after hydration so Latest Report and Report History sort by run id timestamp and deduplicate `cloud_synced` copies behind original local run paths.
+- Imported the refreshed AlphaXXXX corpus as cloud corpus version `2026-05-27-alpha-refresh`, verified RDS/S3 counts at 1,683 inventory rows, 1,705 documents, 6,283 chunks, and 51 artifacts.
+- Uploaded the `2026-05-27-alpha-refresh` Qdrant snapshot and registered current UI quick/standard report artifacts under the same corpus version.
+- Updated the full API parallel runner's default artifact-sync corpus version to `2026-05-27-alpha-refresh`.
 - Provisioned the first internal EC2 server for the project: `resourcepool-gen-internal-01` in `ap-northeast-1`, running Ubuntu 24.04 on `t3.xlarge` with a 100 GB encrypted root volume.
 - Published the current local project version to GitHub branch `codex/local-ops-logging` at commit `a78ce41`, then checked out the same branch and commit on the EC2 server under `/opt/resourcepool/Resourcepool_Gen`.
 - Copied the local `.env` to the EC2 server with `600` permissions, created `.venv`, installed project dependencies plus Playwright Chromium, and started the UI as `resourcepool-ui.service` bound to `127.0.0.1:8765`.
@@ -309,6 +312,7 @@
 - Hydrated reports live under `runs/cloud_synced/{run_mode}/{run_id}/merged`, so local modification-time ordering can differ from the original workstation's `runs/` tree.
 - Hydration skips existing files by default to avoid replacing newer Phase 1 copied corpus files with older cloud artifacts; use `--overwrite` only for an intentional cloud restore.
 - Report UI ordering must continue to use the run id timestamp, not file modification time, because S3 hydration gives old reports fresh download mtimes.
+- The `2026-05-27-alpha-refresh` import still required `--allow-quality-issues` for four known replacement-character rows from HornTech Chinese blog list content and SEOIndia homepage content; these are competitor/source rows and should be cleaned in a separate corpus-quality pass.
 - Automatic `--sync-artifacts` depends on S3/RDS credentials and should fail visibly if cloud access is missing after a successful merge.
 - Icon-only navigation must keep accessible labels and visible active state, otherwise the simpler layout becomes harder to operate for keyboard and screen-reader users.
 - The Cloudflare Access allow policy contains the current owner email and `junhao59@163.com`. Additional team use needs explicit teammate emails or identity-provider groups added before sharing the admin entry.
@@ -378,7 +382,7 @@
 
 ## Next
 
-1. Execute historical quick/standard run-artifact backfill to S3/RDS, then hydrate EC2 from the shared artifact registry after the code update.
+1. Update the EC2 checkout to the default `2026-05-27-alpha-refresh` corpus-version code and run hydration/verification from the new cloud version.
 2. Add any remaining approved teammate emails or identity-provider groups to Cloudflare Access for `GEO Admin Console`.
 3. Create role-specific PostgreSQL users and IAM policies for admin, writer, and reader team access, with industry-level access expectations.
 4. Decide whether the EC2 instance needs an Elastic IP; browser access no longer depends on the public IP, but SSH operations still do unless another admin path is added.

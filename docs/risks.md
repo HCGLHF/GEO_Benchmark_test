@@ -42,6 +42,7 @@
 - Quick seeded runs currently cap the existing query file by row order. If the original seed file is grouped by persona or journey stage, a quick run can overrepresent one scenario slice; use the result directionally until stratified seed sampling is added.
 - `test` mode is only a chain diagnostic. Its two seeded queries per model are intentionally too small for ranking, recall, mention-rate, or content-strategy conclusions.
 - The initial cloud-import dry run now blocks on 4 replacement-character rows after removing false positives from valid French accents. Importing with `--allow-quality-issues` is possible, but those rows should be reviewed or refreshed before treating the cloud corpus as clean.
+- The current `2026-05-27-alpha-refresh` cloud corpus was imported with the same 4 known replacement-character rows from HornTech Chinese blog list content and SEOIndia homepage content. AlphaXXXX owned-site rows are not part of that quality exception, but the competitor/source rows should still be refreshed later.
 - RDS is currently reachable from the user's local machine for setup. Keep the security group restricted to the user's current `/32` IP or move future imports behind EC2/SSM/VPN.
 - Cloud import scripts require `boto3` and `psycopg[binary]` only when executing S3/RDS writes; these are installed project-locally under `.deps/cloud`, while local tests intentionally avoid live AWS dependencies.
 - The first RDS import and S3 artifact upload succeeded, and the locally configured AWS credentials now use an IAM user key. The old root access key has been deactivated and should be deleted after one more successful IAM-key project run.
@@ -62,7 +63,7 @@
 - Worker exit-code files can briefly exist empty at process shutdown on Windows. The parallel runner now waits for non-empty exit-code content before deciding whether a worker failed.
 - `ops_summary.json` is interpretation, not benchmark truth; if it conflicts with underlying files, inspect `pipeline_state.jsonl`, worker exits, API attempts/events, and output artifacts.
 - Local operations logs are stored inside run roots; deleting a run root deletes troubleshooting history, so archive important reports/logs before cleanup.
-- Report history is file-mtime based and local-only. If old run artifacts are copied or edited manually, their order can change without implying a new benchmark was actually executed.
+- Report history now prefers the run id timestamp and deduplicates `cloud_synced` copies, but manually renamed run roots can still make old reports appear newer than they are.
 - Report preview is intentionally restricted to known completed report directories under `runs/`; adding broader file browsing would risk exposing local secrets or raw corpus files in the browser.
 - Owned-page weak lists are retrieval-outcome signals, not absolute SEO/page-quality scores. A page can be marked weak because the sampled questions did not match its intent, especially in `test` mode.
 - Report diagnostics now group query losses, competitor displacement URLs, and owned-page prescriptions, but their "why it won" signals are keyword-derived from retrieved titles/previews. Treat them as strong debugging clues, not causal proof.
