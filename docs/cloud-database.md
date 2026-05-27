@@ -141,6 +141,71 @@ Current artifact types:
 - `processed_chunks`
 - `qdrant_snapshot`
 
+Run and report artifact types are also stored in S3 after a completed quick or standard benchmark:
+
+- `run_manifest`
+- `pipeline_state`
+- `progress_html`
+- `merge_manifest`
+- `competitive_gap_report`
+- `brand_performance_by_model`
+- `dimension_breakdown`
+- `retrieval_by_model`
+- `model_answer_evaluations`
+- `api_call_summary`
+- `query_loss_analysis`
+- `competitor_displacements`
+- `page_optimization_plan`
+- `owned_top5_pages`
+- `owned_weak_pages`
+- `retrieval_evidence_by_model`
+
+Run artifact keys use:
+
+```text
+industries/{industry_id}/runs/{corpus_version}/{run_mode}/{run_id}/{section}/{filename}
+```
+
+Only `quick` and `standard` runs should be promoted to this shared run-artifact store. `test` runs are wiring checks and should stay local unless there is a specific debugging reason.
+
+## Run Artifact Sync And Hydration
+
+Git updates code only. Local data directories such as `data/` and `runs/` are intentionally ignored, so server updates must also hydrate artifacts from S3/RDS when the UI needs existing corpus files and report history.
+
+Completed quick and standard run artifacts can be planned locally before upload:
+
+```powershell
+python scripts\cloud\sync_run_artifacts.py --industry geo-agency --corpus-version 2026-05-22-initial --run-root runs\full_api_parallel --run-mode quick --run-mode standard --dry-run
+python scripts\cloud\sync_run_artifacts.py --industry geo-agency --corpus-version 2026-05-22-initial --run-root runs\full_api_parallel_alpha_refresh_quick_final --run-mode quick --dry-run
+python scripts\cloud\sync_run_artifacts.py --industry geo-agency --corpus-version 2026-05-22-initial --run-root runs\full_api_parallel_ui --run-mode quick --run-mode standard --dry-run
+```
+
+When the dry run looks correct, add `--execute` to upload artifacts to S3 and register them in PostgreSQL:
+
+```powershell
+python scripts\cloud\sync_run_artifacts.py --industry geo-agency --corpus-version 2026-05-22-initial --run-root runs\full_api_parallel_ui --run-mode quick --run-mode standard --execute
+```
+
+The full API parallel runner can sync the current run automatically after a successful merge:
+
+```powershell
+python scripts\full_api_parallel_runner.py --run-mode quick --sync-artifacts --industry geo-agency --corpus-version 2026-05-22-initial
+```
+
+To rebuild a server or a new developer checkout from the shared artifact store:
+
+```powershell
+python scripts\cloud\hydrate_artifacts.py --industry geo-agency --corpus-version 2026-05-22-initial --run-mode quick --run-mode standard --project-root .
+```
+
+Hydration is non-destructive by default: existing local files are skipped, so a server that already has newer Phase 1 copied data will not be overwritten by older cloud corpus artifacts. Use `--overwrite` only when deliberately replacing local artifacts with cloud copies.
+
+Hydrated run reports are restored under:
+
+```text
+runs/cloud_synced/{run_mode}/{run_id}/merged/
+```
+
 ## Qdrant Responsibilities
 
 Qdrant remains a rebuildable retrieval index. It should not go into Git and should not be treated as the source of truth.

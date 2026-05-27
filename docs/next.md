@@ -4,6 +4,10 @@
 
 - Redesigned the local UI console into a command-center layout with icon navigation, workspace switching, compact status surfaces, action feedback, and collapsible command/log panels.
 - Updated the Reports workspace with the `AX` rail brand, a lightweight Top5/Mention trend line graph, and the latest report's top-five brand overview.
+- Added `scripts/cloud/sync_run_artifacts.py` so completed quick/standard merged benchmark reports and run-state artifacts can be uploaded to S3 and registered in PostgreSQL.
+- Added `scripts/cloud/hydrate_artifacts.py` so EC2 or a fresh checkout can restore corpus files and quick/standard report history from S3/RDS without overwriting existing files by default.
+- Added `--sync-artifacts`, `--industry`, and `--corpus-version` to the full API parallel runner so successful quick/standard merges can promote their artifacts automatically.
+- Updated cloud and EC2 runbook documentation to make the deployment split explicit: Git updates code, while hydrate restores ignored `data/` and `runs/` artifacts for the UI.
 - Provisioned the first internal EC2 server for the project: `resourcepool-gen-internal-01` in `ap-northeast-1`, running Ubuntu 24.04 on `t3.xlarge` with a 100 GB encrypted root volume.
 - Published the current local project version to GitHub branch `codex/local-ops-logging` at commit `a78ce41`, then checked out the same branch and commit on the EC2 server under `/opt/resourcepool/Resourcepool_Gen`.
 - Copied the local `.env` to the EC2 server with `600` permissions, created `.venv`, installed project dependencies plus Playwright Chromium, and started the UI as `resourcepool-ui.service` bound to `127.0.0.1:8765`.
@@ -300,6 +304,10 @@
 ## Risks
 
 - The EC2 UI service is reachable through Cloudflare Access at `admin.alphaxxxx.com`; do not bypass this by opening public AWS ingress to `8765`.
+- A server `git pull` still cannot restore ignored local data or run output directories by itself; run artifact hydration is required after deploy when the UI needs corpus counts or report history.
+- Hydrated reports live under `runs/cloud_synced/{run_mode}/{run_id}/merged`, so local modification-time ordering can differ from the original workstation's `runs/` tree.
+- Hydration skips existing files by default to avoid replacing newer Phase 1 copied corpus files with older cloud artifacts; use `--overwrite` only for an intentional cloud restore.
+- Automatic `--sync-artifacts` depends on S3/RDS credentials and should fail visibly if cloud access is missing after a successful merge.
 - Icon-only navigation must keep accessible labels and visible active state, otherwise the simpler layout becomes harder to operate for keyboard and screen-reader users.
 - The Cloudflare Access allow policy contains the current owner email and `junhao59@163.com`. Additional team use needs explicit teammate emails or identity-provider groups added before sharing the admin entry.
 - The EC2 instance public IP is not durable unless an Elastic IP is attached, so documentation should keep using the instance name/id and Cloudflare hostname as durable references.
@@ -368,14 +376,14 @@
 
 ## Next
 
-1. Add any remaining approved teammate emails or identity-provider groups to Cloudflare Access for `GEO Admin Console`.
-2. Create role-specific PostgreSQL users and IAM policies for admin, writer, and reader team access, with industry-level access expectations.
-3. Decide whether the EC2 instance needs an Elastic IP; browser access no longer depends on the public IP, but SSH operations still do unless another admin path is added.
-4. Execute final WSL2 validation from the user's Ubuntu distro and push branch `codex/wsl2-primary-runtime`.
-5. Add dry-run cleanup reporting for old run roots once summaries are stable across real runs.
-6. Add page-intent drilldowns to the report so money-page weakness can be separated from `llms.txt` and blog routing wins.
-7. Audit remaining PowerShell-to-Python JSON argument paths and move any nontrivial payloads to files.
-8. Add retry/backoff tuning for rate-limited model workers so Qwen-style 429 bursts produce fewer warning rows before manual stop/resume is needed.
-9. Add launch-history detail inside the Monitor workspace so users can see which UI launch or resume attempt produced the current run root.
-10. Add a restore/download helper for S3 artifacts so remote team members can fetch `qdrant.zip` or processed JSONL by industry and corpus version.
-11. Add a URL/domain-level latest top-five overview if future reports need website ranking separate from brand ranking.
+1. Execute historical quick/standard run-artifact backfill to S3/RDS, then hydrate EC2 from the shared artifact registry after the code update.
+2. Add any remaining approved teammate emails or identity-provider groups to Cloudflare Access for `GEO Admin Console`.
+3. Create role-specific PostgreSQL users and IAM policies for admin, writer, and reader team access, with industry-level access expectations.
+4. Decide whether the EC2 instance needs an Elastic IP; browser access no longer depends on the public IP, but SSH operations still do unless another admin path is added.
+5. Execute final WSL2 validation from the user's Ubuntu distro and push branch `codex/wsl2-primary-runtime`.
+6. Add dry-run cleanup reporting for old run roots once summaries are stable across real runs.
+7. Add page-intent drilldowns to the report so money-page weakness can be separated from `llms.txt` and blog routing wins.
+8. Audit remaining PowerShell-to-Python JSON argument paths and move any nontrivial payloads to files.
+9. Add retry/backoff tuning for rate-limited model workers so Qwen-style 429 bursts produce fewer warning rows before manual stop/resume is needed.
+10. Add launch-history detail inside the Monitor workspace so users can see which UI launch or resume attempt produced the current run root.
+11. Add URL/domain-level latest top-five overview if future reports need website ranking separate from brand ranking.

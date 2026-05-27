@@ -36,6 +36,8 @@
 - `scripts/cloud/import_corpus.py`: plans and executes the first cloud import path for URL inventory, processed documents, processed chunks, S3 artifact records, and PostgreSQL core corpus rows.
 - `scripts/cloud/create_industry.py`: creates or updates explicit industry registry rows before a new industry corpus is imported.
 - `scripts/cloud/qdrant_snapshot.py`: packages the local Qdrant directory as a rebuildable S3 artifact and registers it in PostgreSQL.
+- `scripts/cloud/sync_run_artifacts.py`: discovers completed quick/standard merged reports, uploads stable run/report artifacts to S3, and registers them in PostgreSQL.
+- `scripts/cloud/hydrate_artifacts.py`: restores corpus and quick/standard run artifacts from the S3/RDS registry into a local or EC2 project checkout without overwriting existing files by default.
 - `scripts/cloud/verify_cloud_import.py`: verifies an imported cloud corpus version by comparing PostgreSQL corpus counts with S3 artifact object sizes.
 - `scripts/cloud/s3_artifacts.py`: computes stable S3 object keys, hashes local artifacts, and uploads snapshots when an import is executed.
 - `scripts/cloud/postgres.py`: applies the PostgreSQL schema and upserts the core corpus into RDS using lazy `psycopg` imports so normal local tests do not require cloud dependencies.
@@ -65,8 +67,10 @@
 11. Brand and gap reports, including query-level loss analysis, competitor displacement, owned-page Top5, weak-page drilldowns, and prioritized page optimization plans
 12. Optional corpus-variant comparison for with/without `llms.txt` experiments
 13. Optional cloud import of clean inventory/documents/chunks into PostgreSQL, with source snapshots registered in S3 as artifacts
-14. Optional pipeline state tracking through `run_manifest.json` and `pipeline_state.jsonl`
-15. Optional local UI review of corpus status, configured models, competitors, latest reports, historical reports, report previews, and dry-run command plans
+14. Optional cloud sync of completed quick/standard run reports and run-state artifacts into S3/RDS
+15. Optional pipeline state tracking through `run_manifest.json` and `pipeline_state.jsonl`
+16. Optional local UI review of corpus status, configured models, competitors, latest reports, historical reports, report previews, and dry-run command plans
+17. Optional server or developer checkout hydration from S3/RDS when ignored `data/` and `runs/` artifacts are missing
 
 ## Cloud Store
 
@@ -93,6 +97,8 @@ The cloud store follows the project split documented in `docs/cloud-database.md`
 - Run-mode selection belongs in the Python full API runner: `quick` maps to 50 queries per model, while `standard` maps to 200 queries per model unless `--queries-per-model` or the wrapper equivalent explicitly overrides it.
 - `test` run mode belongs to link-checking, not ranking analysis; it maps to 2 seeded queries per model so rerank plus answer normally stays in the five-call class.
 - Cloud import depends on existing processed contracts; it must not become a hidden crawler or evaluator path.
+- Run artifact sync depends on completed quick/standard merged report outputs; it must not promote test runs or invent report data.
+- Hydration depends on the S3/RDS artifact registry and should restore missing files without replacing existing local artifacts unless explicitly requested.
 - PostgreSQL is the queryable corpus and benchmark ledger, S3 is the artifact store, and Qdrant remains a rebuildable retrieval index.
 - Industry isolation belongs in the cloud operation layer: industry registry creation, cloud imports, verification, S3 artifact keys, and Qdrant snapshots must require an explicit `industry_id`.
 - The local UI depends on existing configs, processed artifacts, reports, and cloud environment presence only; it must call orchestration scripts explicitly rather than reimplementing crawler, evaluator, or cloud import logic.

@@ -148,6 +148,9 @@ def fake_options(
         models=models or ["openai/gpt-4.1-mini"],
         include_doubao=False,
         skip_merge=skip_merge,
+        sync_artifacts=False,
+        corpus_version="2026-05-22-initial",
+        industry="geo-agency",
         dry_run=False,
         platform="wsl",
     )
@@ -240,6 +243,27 @@ def test_full_api_parallel_runner_quick_and_standard_query_defaults(tmp_path: Pa
     assert standard.returncode == 0, standard.stderr
     assert "Queries per model: 50" in quick.stdout
     assert "Queries per model: 200" in standard.stdout
+
+
+def test_full_api_parallel_runner_parses_sync_artifact_options(tmp_path: Path) -> None:
+    options = parse_args(
+        [
+            "--run-root",
+            str(tmp_path / "full_api_parallel"),
+            "--models",
+            "openai/gpt-4.1-mini",
+            "--sync-artifacts",
+            "--industry",
+            "geo-agency",
+            "--corpus-version",
+            "2026-05-22-initial",
+            "--dry-run",
+        ]
+    )
+
+    assert options.sync_artifacts is True
+    assert options.industry == "geo-agency"
+    assert options.corpus_version == "2026-05-22-initial"
 
 
 def test_full_api_parallel_runner_rejects_empty_model_list(tmp_path: Path) -> None:
@@ -438,6 +462,58 @@ def test_full_api_parallel_runner_fake_execution_writes_run_contracts(tmp_path: 
     assert status["stages"]["answer"]["status"] == "completed"
     assert status["stages"]["merge"]["status"] == "completed"
     assert status["stages"]["report"]["status"] == "completed"
+
+
+def test_full_api_parallel_runner_syncs_artifacts_after_successful_merge(tmp_path: Path, monkeypatch) -> None:
+    runtime = FakeRuntime()
+    sync_calls: list[dict] = []
+
+    def fake_run(args, check=False, text=True, capture_output=False):
+        class Result:
+            returncode = 0
+            stdout = json.dumps(
+                {"status": "complete", "fatal_count": 0, "warning_count": 0, "fatals": [], "warnings": []}
+            )
+            stderr = ""
+
+        joined = " ".join(str(arg) for arg in args)
+        if "merge_full_api_runs.py" in joined:
+            output_dir = Path(args[args.index("--output-dir") + 1])
+            output_dir.mkdir(parents=True, exist_ok=True)
+            (output_dir / "competitive_gap_report.md").write_text("# Report\n", encoding="utf-8")
+            (output_dir / "brand_performance_by_model.csv").write_text("brand,query_count\nAlphaXXXX,1\n", encoding="utf-8")
+            (output_dir / "merge_manifest.json").write_text(
+                json.dumps({"result": {"query_rows": 1, "source_run_count": 1}}),
+                encoding="utf-8",
+            )
+        return Result()
+
+    def fake_sync(**kwargs):
+        sync_calls.append(kwargs)
+        return {"status": "synced", "summary": {"run_count": 1, "artifact_count": 3, "size_bytes": 100}}
+
+    options = RunnerOptions(
+        **{
+            **fake_options(tmp_path).__dict__,
+            "run_mode": "quick",
+            "sync_artifacts": True,
+            "industry": "geo-agency",
+            "corpus_version": "2026-05-22-initial",
+        }
+    )
+    monkeypatch.setattr("scripts.full_api_parallel_runner.subprocess.run", fake_run)
+    monkeypatch.setattr("scripts.full_api_parallel_runner.time.sleep", lambda seconds: None)
+    monkeypatch.setattr("scripts.full_api_parallel_runner.run_sync", fake_sync)
+
+    result = run(options, runtime=runtime)
+
+    assert result == 0
+    assert len(sync_calls) == 1
+    assert sync_calls[0]["industry_id"] == "geo-agency"
+    assert sync_calls[0]["corpus_version"] == "2026-05-22-initial"
+    assert sync_calls[0]["run_roots"] == [tmp_path / "full_api_parallel" / options.run_stamp]
+    assert sync_calls[0]["run_modes"] == {"quick"}
+    assert sync_calls[0]["execute"] is True
 
 
 def test_full_api_parallel_runner_creates_worker_and_cache_dirs_before_no_seed_launch(

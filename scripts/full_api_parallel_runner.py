@@ -18,6 +18,7 @@ if __package__ is None or __package__ == "":
 from scripts.ops_logging import write_event, write_summary
 from scripts.pipeline_state import append_event, initialize_manifest, update_manifest
 from scripts.platform_runtime import PlatformRuntime, detect_platform
+from scripts.cloud.sync_run_artifacts import run_sync
 
 
 DEFAULT_MODELS = [
@@ -58,6 +59,9 @@ class RunnerOptions:
     models: list[str]
     include_doubao: bool
     skip_merge: bool
+    sync_artifacts: bool
+    corpus_version: str
+    industry: str
     dry_run: bool
     platform: str
 
@@ -94,6 +98,9 @@ def parse_args(argv: list[str] | None = None) -> RunnerOptions:
     parser.add_argument("--models", action="append", default=[])
     parser.add_argument("--include-doubao", action="store_true")
     parser.add_argument("--skip-merge", action="store_true")
+    parser.add_argument("--sync-artifacts", action="store_true")
+    parser.add_argument("--corpus-version", default="2026-05-22-initial")
+    parser.add_argument("--industry", default="geo-agency")
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--platform", choices=["auto", "windows", "linux", "wsl"], default="auto")
     args = parser.parse_args(argv)
@@ -114,6 +121,9 @@ def parse_args(argv: list[str] | None = None) -> RunnerOptions:
         models=args.models,
         include_doubao=args.include_doubao,
         skip_merge=args.skip_merge,
+        sync_artifacts=args.sync_artifacts,
+        corpus_version=args.corpus_version,
+        industry=args.industry,
         dry_run=args.dry_run,
         platform=args.platform,
     )
@@ -521,6 +531,8 @@ def print_dry_run(
     if options.seed_queries_run_dir:
         print(f"Seed queries run: {runtime.path(options.seed_queries_run_dir)}")
         print("Scenario generation will resume from seeded api_queries.csv")
+    if options.sync_artifacts:
+        print(f"Run artifact sync: enabled for {options.industry}/{options.corpus_version}")
     print()
 
     for worker in workers:
@@ -697,8 +709,25 @@ def run(options: RunnerOptions, runtime: PlatformRuntime | None = None) -> int:
         details={"merged_report": str(run_root / "merged" / "competitive_gap_report.md")},
         source=OPS_SOURCE,
     )
-    _render_progress_html(runtime, workers, progress_html_path)
     update_manifest(run_root, status="completed")
+    _render_progress_html(runtime, workers, progress_html_path)
+    if options.sync_artifacts and options.run_mode in {"quick", "standard"}:
+        sync_result = run_sync(
+            industry_id=options.industry,
+            corpus_version=options.corpus_version,
+            run_roots=[run_root],
+            run_modes={options.run_mode},
+            execute=True,
+        )
+        write_event(
+            run_root,
+            level="info",
+            event_type="stage_completed",
+            stage="AWS sync",
+            message="Run artifacts synced to cloud store.",
+            details=sync_result.get("summary", {}),
+            source=OPS_SOURCE,
+        )
     write_summary(run_root)
     print(f"Merged report: {runtime.path(run_root / 'merged' / 'competitive_gap_report.md')}")
     return 0
