@@ -7,9 +7,10 @@ Use this file as the entry point for understanding how the project documents rel
 1. `README.md`: short project overview and the top-level collaboration model.
 2. `CONTEXT.md`: domain vocabulary, project goals, non-goals, and constraints.
 3. `docs/cloud-database.md`: AWS RDS/S3 data ownership, team setup, environment variables, and database responsibilities.
-4. `docs/architecture.md`: module responsibilities, data flow, and implementation boundaries.
-5. `docs/risks.md`: current technical, operational, and cloud risks.
-6. `docs/next.md`: completed work, learned facts, risks, and next actions.
+4. `docs/ec2-server-runbook.md`: internal EC2 server setup, service management, SSH tunnel access, and deployment checks.
+5. `docs/architecture.md`: module responsibilities, data flow, and implementation boundaries.
+6. `docs/risks.md`: current technical, operational, and cloud risks.
+7. `docs/next.md`: completed work, learned facts, risks, and next actions.
 
 ## Document Roles
 
@@ -18,6 +19,8 @@ Use this file as the entry point for understanding how the project documents rel
 `CONTEXT.md` defines the project language. When a new durable concept appears, add it there before scattering the term across scripts and docs.
 
 `docs/cloud-database.md` is the cloud operations source of truth. It explains what lives in Git, what lives in RDS, what lives in S3, how industry registry rows are created, and how remote team members connect.
+
+`docs/ec2-server-runbook.md` records the internal EC2 application host, how the UI service runs, how to reach it through an SSH tunnel, and how to verify cloud access from the server.
 
 `docs/architecture.md` explains how code modules fit together. It should name scripts, data flow, and boundaries, but should not become a runbook.
 

@@ -26,6 +26,22 @@ This lets a team member in another location clone the repo, configure credential
 
 These identifiers are not passwords. Do not commit the real `DATABASE_URL` password, AWS access key, or AWS secret access key.
 
+## Internal EC2 Server
+
+An internal EC2 application host now runs the local UI console for server-side operations:
+
+- Instance name: `resourcepool-gen-internal-01`
+- Instance id: `i-0d947bb2cd6285cd2`
+- Region: `ap-northeast-1`
+- Instance type: `t3.xlarge`
+- Project path: `/opt/resourcepool/Resourcepool_Gen`
+- UI service: `resourcepool-ui.service`
+- UI bind address: `127.0.0.1:8765`
+
+The UI is intentionally not exposed directly to the public internet. See `docs/ec2-server-runbook.md` for the SSH tunnel command, service management, and verification steps.
+
+The RDS security group allows PostgreSQL `5432` from the EC2 application security group `sg-09c1d2510694af21f`. This is a security-group source allow rule, not a broad CIDR rule.
+
 ## Environment Variables
 
 Copy `.env.example` to `.env` and fill in local-only secrets:

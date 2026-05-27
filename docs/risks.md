@@ -25,6 +25,9 @@
 
 ## Operational Risks
 
+- The EC2 UI service currently has no team access layer beyond SSH tunneling. Do not open port `8765` publicly; add Tailscale, VPN, Cloudflare Access, or another authenticated internal access path before giving the team browser access.
+- The EC2 instance does not have an Elastic IP. Its public IP can change after stop/start, so use the EC2 instance name or id as the durable reference.
+- The RDS security group now allows PostgreSQL access from the EC2 application security group. Keep this as a security-group source rule instead of replacing it with a broad public CIDR rule.
 - Large raw page files are expensive to copy and should not be used as the primary downstream input when `documents.jsonl` or `chunks.jsonl` is enough.
 - Paid fallback usage should remain traceable by URL, reason, provider, and quality score.
 - API concurrency can increase rate limits, timeout, and partial-output risks; streaming writes reduce data loss but do not replace retry/backoff controls.

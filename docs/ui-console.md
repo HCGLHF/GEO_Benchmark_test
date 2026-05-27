@@ -14,6 +14,22 @@ Then open:
 http://127.0.0.1:8765
 ```
 
+## EC2 Service
+
+The first internal EC2 deployment runs this same local console as a systemd service on `resourcepool-gen-internal-01`:
+
+```text
+resourcepool-ui.service
+```
+
+The service binds to `127.0.0.1:8765` on the server. It is reachable through an SSH tunnel, not through a public UI security-group rule:
+
+```powershell
+ssh -i "$env:USERPROFILE\.ssh\resourcepool-gen-ec2-20260527.pem" -L 8765:127.0.0.1:8765 ubuntu@<ec2-public-ip>
+```
+
+Then open `http://127.0.0.1:8765` locally. See `docs/ec2-server-runbook.md` for the deployed instance, cloud permissions, and service commands.
+
 ## Current Capabilities
 
 - Shows local resource-library counts for companies, URLs, documents, chunks, and AlphaXXXX rows.
