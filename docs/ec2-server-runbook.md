@@ -160,7 +160,7 @@ The wrapper performs:
 - quick/standard artifact hydration for `geo-agency/2026-05-27-alpha-refresh`
 - cloud verification
 - `resourcepool-ui.service` restart
-- service and `/api/state` health checks
+- service and retried `/api/state` health checks
 - a non-secret deployment log in `runs/deployments/`
 
 If the server checkout predates this wrapper, first run the manual Git fetch/pull once to get the script, then run the wrapper.

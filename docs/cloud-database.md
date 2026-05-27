@@ -217,7 +217,7 @@ cd /opt/resourcepool/Resourcepool_Gen
 python scripts/cloud/deploy_ec2_update.py --execute
 ```
 
-That wrapper runs Git fetch/checkout/pull, installs dependencies, hydrates current quick/standard artifacts for `geo-agency/2026-05-27-alpha-refresh`, runs the cloud verifier, restarts `resourcepool-ui.service`, checks `/api/state`, and writes a non-secret JSON log under `runs/deployments/`.
+That wrapper runs Git fetch/checkout/pull, installs dependencies, hydrates current quick/standard artifacts for `geo-agency/2026-05-27-alpha-refresh`, runs the cloud verifier, restarts `resourcepool-ui.service`, retries `/api/state` until the service is listening, and writes a non-secret JSON log under `runs/deployments/`.
 
 ## Qdrant Responsibilities
 

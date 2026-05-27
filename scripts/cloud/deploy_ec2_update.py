@@ -40,6 +40,8 @@ class DeploymentOptions:
     execute: bool = False
     log_dir: Path | str | None = None
     timeout_seconds: int = 900
+    api_retry_attempts: int = 8
+    api_retry_delay_seconds: float = 2.0
 
     def resolved_root(self) -> Path:
         return Path(self.project_root).resolve()
@@ -200,28 +202,36 @@ def run_deployment(options: DeploymentOptions, *, runner: Runner = subprocess.ru
             "description": step.description,
             "command": step.command,
             "status": "running",
+            "attempts": 0,
             "returncode": None,
             "stdout": "",
             "stderr": "",
             "duration_seconds": None,
         }
-        try:
-            completed = runner(
-                step.command,
-                cwd=root,
-                text=True,
-                capture_output=True,
-                timeout=options.timeout_seconds,
-                env=env,
-            )
-            record["returncode"] = completed.returncode
-            record["stdout"] = completed.stdout or ""
-            record["stderr"] = completed.stderr or ""
-            record["status"] = "completed" if completed.returncode == 0 else "failed"
-        except Exception as exc:  # pragma: no cover - subprocess edge path
-            record["status"] = "failed"
-            record["stderr"] = str(exc)
-            record["returncode"] = -1
+        max_attempts = max(1, options.api_retry_attempts) if step.name == "api_state" else 1
+        for attempt in range(1, max_attempts + 1):
+            record["attempts"] = attempt
+            try:
+                completed = runner(
+                    step.command,
+                    cwd=root,
+                    text=True,
+                    capture_output=True,
+                    timeout=options.timeout_seconds,
+                    env=env,
+                )
+                record["returncode"] = completed.returncode
+                record["stdout"] = completed.stdout or ""
+                record["stderr"] = completed.stderr or ""
+                record["status"] = "completed" if completed.returncode == 0 else "failed"
+            except Exception as exc:  # pragma: no cover - subprocess edge path
+                record["status"] = "failed"
+                record["stderr"] = str(exc)
+                record["returncode"] = -1
+            if record["status"] == "completed":
+                break
+            if step.name == "api_state" and attempt < max_attempts and options.api_retry_delay_seconds > 0:
+                time.sleep(options.api_retry_delay_seconds)
 
         record["duration_seconds"] = round(time.monotonic() - step_started, 3)
         result["steps"].append(record)
@@ -256,6 +266,8 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("--python-executable", default="")
     parser.add_argument("--log-dir", default="")
     parser.add_argument("--timeout-seconds", type=int, default=900)
+    parser.add_argument("--api-retry-attempts", type=int, default=8)
+    parser.add_argument("--api-retry-delay-seconds", type=float, default=2.0)
     parser.add_argument("--execute", action="store_true", help="Run the update. Without this flag, only print the plan.")
     args = parser.parse_args(argv)
 
@@ -271,6 +283,8 @@ def main(argv: list[str] | None = None) -> None:
         execute=args.execute,
         log_dir=Path(args.log_dir) if args.log_dir else None,
         timeout_seconds=args.timeout_seconds,
+        api_retry_attempts=args.api_retry_attempts,
+        api_retry_delay_seconds=args.api_retry_delay_seconds,
     )
     result = run_deployment(options)
     print(json.dumps(result, ensure_ascii=False, indent=2))

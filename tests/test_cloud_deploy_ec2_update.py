@@ -126,3 +126,35 @@ def test_run_deployment_records_verifier_and_api_state_summary(tmp_path: Path) -
     assert result["verification_summary"]["expected_counts"]["artifacts"] == 51
     assert result["api_state_summary"]["document_count"] == 1705
     assert result["api_state_summary"]["latest_report_dir"].endswith("20260526_002837/merged")
+
+
+def test_run_deployment_retries_api_state_until_service_listens(tmp_path: Path) -> None:
+    curl_calls = 0
+
+    def fake_runner(command: list[str], **_: object) -> subprocess.CompletedProcess:
+        nonlocal curl_calls
+        if any(part.endswith("verify_cloud_import.py") for part in command):
+            return _completed(command, stdout=json.dumps({"ok": True, "expected_counts": {}, "failures": []}))
+        if command and command[0] == "curl":
+            curl_calls += 1
+            if curl_calls == 1:
+                return _completed(command, returncode=7, stdout="", stderr="connection refused")
+            return _completed(command, stdout=json.dumps({"corpus": {"document_count": 1705}, "report": {}}))
+        return _completed(command)
+
+    result = run_deployment(
+        DeploymentOptions(
+            project_root=tmp_path,
+            execute=True,
+            log_dir=tmp_path / "runs" / "deployments",
+            python_executable="python",
+            api_retry_attempts=2,
+            api_retry_delay_seconds=0,
+        ),
+        runner=fake_runner,
+    )
+
+    assert result["status"] == "completed"
+    assert curl_calls == 2
+    api_step = next(step for step in result["steps"] if step["name"] == "api_state")
+    assert api_step["attempts"] == 2
