@@ -96,7 +96,8 @@ def test_powershell_wrapper_dry_run_uses_python_runner_contract(tmp_path: Path) 
     assert "Model: openai/gpt-4.1-mini" in stdout
     assert "Model: deepseek/deepseek-chat" in stdout
     assert "scripts/run_full_api_client_acquisition.py" in stdout
-    assert "Watch: python scripts/watch_full_api_run.py --run-dir" in stdout
+    assert "Watch:" in stdout
+    assert "scripts/watch_full_api_run.py --run-dir" in stdout
     assert "Merge:" in stdout
     assert "scripts/merge_full_api_runs.py" in stdout
 

@@ -7,7 +7,7 @@ import subprocess
 import sys
 import time
 from collections import Counter
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime
 from pathlib import Path
 
@@ -279,6 +279,15 @@ def build_merge_args(
 
 def display_command(runtime: PlatformRuntime, args: list[str]) -> str:
     return runtime.format_command(args)
+
+
+def _runtime_for_current_process(runtime: PlatformRuntime) -> PlatformRuntime:
+    current_python = sys.executable
+    if not current_python:
+        return runtime
+    if runtime.path_style == "windows":
+        return replace(runtime, python_executable=current_python) if sys.platform.startswith("win") else runtime
+    return replace(runtime, python_executable=current_python) if not sys.platform.startswith("win") else runtime
 
 
 def _render_progress_html(
@@ -655,7 +664,7 @@ def print_dry_run(
 
 
 def run(options: RunnerOptions, runtime: PlatformRuntime | None = None) -> int:
-    runtime = runtime or detect_platform(options.platform)
+    runtime = runtime if runtime is not None else _runtime_for_current_process(detect_platform(options.platform))
     models = selected_models(options)
     run_root = build_run_root(options)
     progress_html_path = Path(options.progress_html_path) if options.progress_html_path else run_root / "progress.html"

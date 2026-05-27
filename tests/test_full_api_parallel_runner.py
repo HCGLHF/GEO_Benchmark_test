@@ -7,6 +7,7 @@ from pathlib import Path
 
 from scripts.full_api_parallel_runner import (
     RunnerOptions,
+    _runtime_for_current_process,
     build_merge_args,
     build_run_root,
     build_worker_plans,
@@ -196,7 +197,9 @@ def test_full_api_parallel_runner_dry_run_prints_expected_contract(tmp_path: Pat
     assert "Model: openai/gpt-4.1-mini" in result.stdout
     assert "scripts/run_full_api_client_acquisition.py" in result.stdout.replace("\\", "/")
     assert "--cache-path" in result.stdout
-    assert "Watch: python scripts/watch_full_api_run.py --run-dir" in result.stdout.replace("\\", "/")
+    normalized_stdout = result.stdout.replace("\\", "/")
+    assert f"Watch: {sys.executable.replace('\\', '/')}" in normalized_stdout
+    assert "scripts/watch_full_api_run.py --run-dir" in normalized_stdout
     assert "Merge:" in result.stdout
     assert "scripts/merge_full_api_runs.py" in result.stdout.replace("\\", "/")
 
@@ -454,6 +457,26 @@ def test_full_api_parallel_runner_wsl_dry_run_prints_posix_paths_and_python3(tmp
     assert f"Run root: {str(tmp_path / 'full_api_parallel' / 'fixed_stamp').replace('\\', '/')}" in result.stdout
     assert "Watch: python3 scripts/watch_full_api_run.py --run-dir" in result.stdout
     assert "python3 scripts/merge_full_api_runs.py" in result.stdout
+
+
+def test_full_api_parallel_runner_uses_current_posix_python_for_linux_workers(monkeypatch) -> None:
+    runtime = detect_platform("linux")
+    monkeypatch.setattr(sys, "platform", "linux")
+    monkeypatch.setattr(sys, "executable", "/opt/resourcepool/Resourcepool_Gen/.venv/bin/python")
+
+    resolved = _runtime_for_current_process(runtime)
+
+    assert resolved.python_executable == "/opt/resourcepool/Resourcepool_Gen/.venv/bin/python"
+
+
+def test_full_api_parallel_runner_keeps_python3_for_wsl_from_windows(monkeypatch) -> None:
+    runtime = detect_platform("wsl")
+    monkeypatch.setattr(sys, "platform", "win32")
+    monkeypatch.setattr(sys, "executable", r"C:\Python313\python.exe")
+
+    resolved = _runtime_for_current_process(runtime)
+
+    assert resolved.python_executable == "python3"
 
 
 def test_full_api_parallel_runner_seeded_dry_run_prints_seed_command(tmp_path: Path) -> None:
