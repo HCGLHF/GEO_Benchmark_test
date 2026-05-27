@@ -1,0 +1,17 @@
+competitors:
+  - brand: "HornTech"
+    source_type: "competitor_site"
+    crawl_mode: "site"
+    seed_urls:
+      - "https://horntech.com.au/"
+    include_patterns:
+      - "/"
+    exclude_patterns:
+      - "/wp-admin"
+      - "/wp-login"
+      - "/cart"
+      - "/checkout"
+      - "/tag/"
+      - "/category/"
+    max_pages: 500
+    max_depth: 0

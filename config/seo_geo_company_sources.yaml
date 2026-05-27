@@ -1,0 +1,3001 @@
+own_site:
+  brand: AlphaXXXX
+  source_type: official_site
+  crawl_mode: site
+  seed_urls:
+  - https://alphaxxxx.com/
+  include_patterns:
+  - /
+  exclude_patterns:
+  - /login
+  - /sign-in
+  - /privacy
+  - /terms
+  - /wp-admin
+  - /wp-login
+  max_pages: 50
+  max_depth: 2
+competitors:
+- brand: HornTech
+  source_type: competitor_site
+  crawl_mode: site
+  seed_urls:
+  - https://horntech.com.au/
+  include_patterns:
+  - /
+  exclude_patterns: &id001
+  - /login
+  - /sign-in
+  - /signup
+  - /privacy
+  - /terms
+  - /careers
+  - /wp-admin
+  - /wp-login
+  - /cart
+  - /checkout
+  - /tag/
+  - /category/
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Australia
+    rank: '1'
+    category: GEO and AI SEO agency
+    market_note: Australia
+- brand: GEO Digital
+  source_type: competitor_site
+  crawl_mode: site
+  seed_urls:
+  - https://geodigital.com.au/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Australia
+    rank: '2'
+    category: GEO and digital marketing agency
+    market_note: Australia
+- brand: Evolving Digital
+  source_type: competitor_site
+  crawl_mode: site
+  seed_urls:
+  - https://evolvingdigital.com.au/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Australia
+    rank: '3'
+    category: GEO and SEO agency
+    market_note: Australia
+- brand: Juicebox
+  source_type: competitor_site
+  crawl_mode: site
+  seed_urls:
+  - https://www.juicebox.com.au/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Australia
+    rank: '4'
+    category: GEO and digital agency
+    market_note: Australia
+- brand: One Orange Cow
+  source_type: competitor_site
+  crawl_mode: site
+  seed_urls:
+  - https://www.oneorangecow.com/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Australia
+    rank: '5'
+    category: GEO and SEO agency
+    market_note: Australia
+- brand: MaturEdge
+  source_type: competitor_site
+  crawl_mode: site
+  seed_urls:
+  - https://maturedge.com.au/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Australia
+    rank: '6'
+    category: GEO and SEO agency
+    market_note: Australia
+- brand: Titan Blue
+  source_type: competitor_site
+  crawl_mode: site
+  seed_urls:
+  - https://titanblue.com.au/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Australia
+    rank: '7'
+    category: GEO and SEO agency
+    market_note: Australia
+- brand: Integral Media
+  source_type: competitor_site
+  crawl_mode: site
+  seed_urls:
+  - https://www.integralmedia.com.au/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Australia
+    rank: '8'
+    category: GEO and SEO agency
+    market_note: Australia
+- brand: SkyScale
+  source_type: competitor_site
+  crawl_mode: site
+  seed_urls:
+  - https://skyscale.com.au/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Australia
+    rank: '9'
+    category: GEO and SEO agency
+    market_note: Australia
+- brand: Elephant in the Boardroom
+  source_type: competitor_site
+  crawl_mode: site
+  seed_urls:
+  - https://www.elephantintheboardroom.com.au/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Australia
+    rank: '10'
+    category: GEO and digital marketing agency
+    market_note: Australia
+- brand: Dotsquares
+  source_type: competitor_site
+  crawl_mode: site
+  seed_urls:
+  - https://www.dotsquares.com/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Australia
+    rank: '11'
+    category: SEO and technology agency
+    market_note: Serves Australia
+- brand: Brafton
+  source_type: competitor_site
+  crawl_mode: site
+  seed_urls:
+  - https://www.brafton.com/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Australia
+    rank: '12'
+    category: Content SEO agency
+    market_note: Serves Australia
+- brand: Megaphone Marketing
+  source_type: competitor_site
+  crawl_mode: site
+  seed_urls:
+  - https://megaphone.com.au/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Australia
+    rank: '13'
+    category: SEO and digital marketing agency
+    market_note: Australia
+- brand: Online Marketing Gurus
+  source_type: competitor_site
+  crawl_mode: site
+  seed_urls:
+  - https://www.onlinemarketinggurus.com.au/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Australia
+    rank: '14'
+    category: SEO agency
+    market_note: Australia
+- brand: Task Virtual
+  source_type: competitor_site
+  crawl_mode: site
+  seed_urls:
+  - https://www.taskvirtual.com/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Australia
+    rank: '15'
+    category: SEO and digital support
+    market_note: Serves Australia
+- brand: Quantum IT Innovation
+  source_type: competitor_site
+  crawl_mode: site
+  seed_urls:
+  - https://www.quantumitinnovation.com/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Australia
+    rank: '16'
+    category: SEO and technology agency
+    market_note: Serves Australia
+- brand: High Voltage SEO
+  source_type: competitor_site
+  crawl_mode: site
+  seed_urls:
+  - https://hvseo.co/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Australia
+    rank: '17'
+    category: SEO agency
+    market_note: Serves Australia
+- brand: JRR Marketing
+  source_type: competitor_site
+  crawl_mode: site
+  seed_urls:
+  - https://josiahroche.co/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Australia
+    rank: '18'
+    category: SEO and digital marketing
+    market_note: Serves Australia
+- brand: Webential
+  source_type: competitor_site
+  crawl_mode: site
+  seed_urls:
+  - https://www.webential.com/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Australia
+    rank: '19'
+    category: SEO and web agency
+    market_note: Serves Australia
+- brand: First Page Digital Singapore
+  source_type: competitor_site
+  crawl_mode: site
+  seed_urls:
+  - https://www.firstpagedigital.sg/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Australia
+    rank: '20'
+    category: SEO agency
+    market_note: APAC serves Australia
+- brand: Navicosoft
+  source_type: competitor_site
+  crawl_mode: site
+  seed_urls:
+  - https://www.navicosoft.com/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Australia
+    rank: '21'
+    category: SEO and hosting agency
+    market_note: Serves Australia
+- brand: AIS Technolabs
+  source_type: competitor_site
+  crawl_mode: site
+  seed_urls:
+  - https://www.aistechnolabs.com/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Australia
+    rank: '22'
+    category: SEO and technology agency
+    market_note: Serves Australia
+- brand: e intelligence
+  source_type: competitor_site
+  crawl_mode: site
+  seed_urls:
+  - https://www.eintelligenceweb.com/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Australia
+    rank: '23'
+    category: SEO agency
+    market_note: Serves Australia
+- brand: SEO.my
+  source_type: competitor_site
+  crawl_mode: site
+  seed_urls:
+  - https://www.seo.my/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Australia
+    rank: '24'
+    category: SEO agency
+    market_note: APAC serves Australia
+- brand: Soup Agency
+  source_type: competitor_site
+  crawl_mode: site
+  seed_urls:
+  - https://soupagency.com.au/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Australia
+    rank: '25'
+    category: SEO and digital marketing agency
+    market_note: Australia
+- brand: eMarket Experts
+  source_type: competitor_site
+  crawl_mode: site
+  seed_urls:
+  - https://www.emarketexperts.com.au/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Australia
+    rank: '26'
+    category: SEO agency
+    market_note: Australia
+- brand: Digital Nomads HQ
+  source_type: competitor_site
+  crawl_mode: site
+  seed_urls:
+  - https://www.digitalnomadshq.com.au/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Australia
+    rank: '27'
+    category: SEO and digital marketing agency
+    market_note: Australia
+- brand: Insil
+  source_type: competitor_site
+  crawl_mode: site
+  seed_urls:
+  - https://www.insil.com.au/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Australia
+    rank: '28'
+    category: SEO and digital marketing agency
+    market_note: Australia
+- brand: Supple Digital
+  source_type: competitor_site
+  crawl_mode: site
+  seed_urls:
+  - https://supple.com.au/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Australia
+    rank: '29'
+    category: SEO agency
+    market_note: Australia
+- brand: Paradox Marketing
+  source_type: competitor_site
+  crawl_mode: site
+  seed_urls:
+  - https://paradoxmarketing.io/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Australia
+    rank: '30'
+    category: SEO and marketing agency
+    market_note: Serves Australia
+- brand: Intesols
+  source_type: competitor_site
+  crawl_mode: site
+  seed_urls:
+  - https://www.intesols.com.au/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Australia
+    rank: '31'
+    category: SEO and web agency
+    market_note: Australia
+- brand: SIXGUN
+  source_type: competitor_site
+  crawl_mode: site
+  seed_urls:
+  - https://sixgun.com.au/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Australia
+    rank: '32'
+    category: SEO agency
+    market_note: Australia
+- brand: Webzilla Digital Marketing
+  source_type: competitor_site
+  crawl_mode: site
+  seed_urls:
+  - https://webzilla.global/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Australia
+    rank: '33'
+    category: SEO and digital marketing agency
+    market_note: Serves Australia
+- brand: Emote Digital
+  source_type: competitor_site
+  crawl_mode: site
+  seed_urls:
+  - https://www.emotedigital.com.au/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Australia
+    rank: '34'
+    category: SEO and digital marketing agency
+    market_note: Australia
+- brand: Four Dots
+  source_type: competitor_site
+  crawl_mode: site
+  seed_urls:
+  - https://fourdots.com/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Australia
+    rank: '35'
+    category: SEO agency
+    market_note: Serves Australia
+- brand: Digiwhiz
+  source_type: competitor_site
+  crawl_mode: site
+  seed_urls:
+  - https://www.digiwhiz.com.au/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Australia
+    rank: '36'
+    category: SEO and digital marketing agency
+    market_note: Australia
+- brand: GRG
+  source_type: competitor_site
+  crawl_mode: site
+  seed_urls:
+  - https://grg.co/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Australia
+    rank: '37'
+    category: SEO and growth agency
+    market_note: Serves Australia
+- brand: Local Digital
+  source_type: competitor_site
+  crawl_mode: site
+  seed_urls:
+  - https://www.localdigital.com.au/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Australia
+    rank: '38'
+    category: SEO and digital marketing agency
+    market_note: Australia
+- brand: Mamba
+  source_type: competitor_site
+  crawl_mode: site
+  seed_urls:
+  - https://mamba.agency/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Australia
+    rank: '39'
+    category: SEO and digital agency
+    market_note: Serves Australia
+- brand: Shout Digital
+  source_type: competitor_site
+  crawl_mode: site
+  seed_urls:
+  - https://www.shoutdigital.com.au/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Australia
+    rank: '40'
+    category: SEO agency
+    market_note: Australia
+- brand: Reform Digital
+  source_type: competitor_site
+  crawl_mode: site
+  seed_urls:
+  - https://reformdigital.com.au/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Australia
+    rank: '41'
+    category: SEO agency
+    market_note: Australia
+- brand: Red Sparrow Digital
+  source_type: competitor_site
+  crawl_mode: site
+  seed_urls:
+  - https://redsparrowdigital.com/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Australia
+    rank: '42'
+    category: SEO agency
+    market_note: Serves Australia
+- brand: Digital Next AUS
+  source_type: competitor_site
+  crawl_mode: site
+  seed_urls:
+  - https://www.digitalnext.com.au/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Australia
+    rank: '43'
+    category: SEO agency
+    market_note: Australia
+- brand: MLK Marketing
+  source_type: competitor_site
+  crawl_mode: site
+  seed_urls:
+  - https://mlkmarketing.com.au/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Australia
+    rank: '44'
+    category: SEO and digital marketing agency
+    market_note: Australia
+- brand: Clearwater Agency
+  source_type: competitor_site
+  crawl_mode: site
+  seed_urls:
+  - https://clearwateragency.com.au/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Australia
+    rank: '45'
+    category: SEO and digital marketing agency
+    market_note: Australia
+- brand: Neon Treehouse
+  source_type: competitor_site
+  crawl_mode: site
+  seed_urls:
+  - https://neontreehouse.com/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Australia
+    rank: '46'
+    category: SEO and digital marketing agency
+    market_note: Australia
+- brand: Opollo Marketing Agency
+  source_type: competitor_site
+  crawl_mode: site
+  seed_urls:
+  - https://opollo.com/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Australia
+    rank: '47'
+    category: SEO and marketing agency
+    market_note: Serves Australia
+- brand: StudioHawk SEO Agency
+  source_type: competitor_site
+  crawl_mode: site
+  seed_urls:
+  - https://studiohawk.com.au/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Australia
+    rank: '48'
+    category: SEO agency
+    market_note: Australia
+- brand: Due North
+  source_type: competitor_site
+  crawl_mode: site
+  seed_urls:
+  - https://duenorth.com.au/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Australia
+    rank: '49'
+    category: SEO and digital marketing agency
+    market_note: Australia
+- brand: Luminary
+  source_type: competitor_site
+  crawl_mode: site
+  seed_urls:
+  - https://www.luminary.com/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Australia
+    rank: '50'
+    category: SEO and digital experience agency
+    market_note: Australia
+- brand: Rocket Agency
+  source_type: competitor_site
+  crawl_mode: site
+  seed_urls:
+  - https://rocketagency.com.au/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Australia
+    rank: '51'
+    category: SEO and digital marketing agency
+    market_note: Australia
+- brand: DigiTroopers
+  source_type: competitor_site
+  crawl_mode: site
+  seed_urls:
+  - https://digitroopers.com/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Australia
+    rank: '52'
+    category: SEO and digital agency
+    market_note: Serves Australia
+- brand: AEK Media
+  source_type: competitor_site
+  crawl_mode: site
+  seed_urls:
+  - https://aekmedia.com.au/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Australia
+    rank: '53'
+    category: SEO and digital agency
+    market_note: Australia
+- brand: Salt and Fuessel
+  source_type: competitor_site
+  crawl_mode: site
+  seed_urls:
+  - https://saltandfuessel.com.au/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Australia
+    rank: '54'
+    category: SEO and digital marketing agency
+    market_note: Australia
+- brand: Pixelstorm
+  source_type: competitor_site
+  crawl_mode: site
+  seed_urls:
+  - https://www.pixelstorm.com.au/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Australia
+    rank: '55'
+    category: SEO and digital agency
+    market_note: Australia
+- brand: SEO Book Lab
+  source_type: competitor_site
+  crawl_mode: site
+  seed_urls:
+  - https://seobooklab.com/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Australia
+    rank: '56'
+    category: SEO agency
+    market_note: Serves Australia
+- brand: Bodhi Tech
+  source_type: competitor_site
+  crawl_mode: site
+  seed_urls:
+  - https://bodhitech.com.au/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Australia
+    rank: '57'
+    category: SEO and technology agency
+    market_note: Australia
+- brand: One Egg Digital
+  source_type: competitor_site
+  crawl_mode: site
+  seed_urls:
+  - https://www.oneegg.com.au/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Australia
+    rank: '58'
+    category: SEO agency
+    market_note: Australia
+- brand: Itomic
+  source_type: competitor_site
+  crawl_mode: site
+  seed_urls:
+  - https://www.itomic.com.au/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Australia
+    rank: '59'
+    category: SEO and web agency
+    market_note: Australia
+- brand: Searcht
+  source_type: competitor_site
+  crawl_mode: site
+  seed_urls:
+  - https://searcht.au/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Australia
+    rank: '60'
+    category: SEO AEO and GEO agency
+    market_note: Australia
+- brand: WebFX
+  source_type: competitor_site
+  crawl_mode: site
+  seed_urls:
+  - https://www.webfx.com/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Australia
+    rank: '61'
+    category: SEO and GEO agency
+    market_note: Serves Australia
+- brand: Searchbloom
+  source_type: competitor_site
+  crawl_mode: site
+  seed_urls:
+  - https://www.searchbloom.com/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Australia
+    rank: '62'
+    category: SEO agency
+    market_note: Serves Australia
+- brand: Funnel Boost Media
+  source_type: competitor_site
+  crawl_mode: site
+  seed_urls:
+  - https://www.funnelboostmedia.net/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Australia
+    rank: '64'
+    category: SEO agency
+    market_note: Serves Australia
+- brand: PageTraffic
+  source_type: competitor_site
+  crawl_mode: site
+  seed_urls:
+  - https://www.pagetraffic.com/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Australia
+    rank: '66'
+    category: SEO agency
+    market_note: Serves Australia
+- brand: SDLC Corp
+  source_type: competitor_site
+  crawl_mode: site
+  seed_urls:
+  - https://sdlccorp.com/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Australia
+    rank: '67'
+    category: SEO and technology agency
+    market_note: Serves Australia
+- brand: Actuate Media
+  source_type: competitor_site
+  crawl_mode: site
+  seed_urls:
+  - https://www.actuatemedia.com/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Australia
+    rank: '68'
+    category: SEO and digital agency
+    market_note: Serves Australia
+- brand: Probey Services
+  source_type: competitor_site
+  crawl_mode: site
+  seed_urls:
+  - https://probeyservices.com/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Australia
+    rank: '69'
+    category: SEO and digital services
+    market_note: Serves Australia
+- brand: Blue Monkfish
+  source_type: competitor_site
+  crawl_mode: site
+  seed_urls:
+  - https://bluemonkfish.com/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Australia
+    rank: '70'
+    category: SEO and web agency
+    market_note: Serves Australia
+- brand: Vserve Ebusiness Solutions
+  source_type: competitor_site
+  crawl_mode: site
+  seed_urls:
+  - https://vservesolution.com/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Australia
+    rank: '71'
+    category: SEO and ecommerce services
+    market_note: Serves Australia
+- brand: Quinn Marketing
+  source_type: competitor_site
+  crawl_mode: site
+  seed_urls:
+  - https://www.quinnmarketing.com.au/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Australia
+    rank: '72'
+    category: SEO and marketing agency
+    market_note: Australia
+- brand: SEOVerve
+  source_type: competitor_site
+  crawl_mode: site
+  seed_urls:
+  - https://www.seoverve.com.au/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Australia
+    rank: '73'
+    category: SEO agency
+    market_note: Australia
+- brand: Action Digital Marketing
+  source_type: competitor_site
+  crawl_mode: site
+  seed_urls:
+  - https://actiondigital.com.au/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Australia
+    rank: '74'
+    category: SEO and digital marketing agency
+    market_note: Australia
+- brand: Digimark Australia
+  source_type: competitor_site
+  crawl_mode: site
+  seed_urls:
+  - https://www.digimark.com.au/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Australia
+    rank: '75'
+    category: SEO AI automation and marketing
+    market_note: Australia
+- brand: Folio Manager
+  source_type: competitor_site
+  crawl_mode: site
+  seed_urls:
+  - https://www.foliomanager.com.au/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Australia
+    rank: '76'
+    category: SEO and digital marketing agency
+    market_note: Australia
+- brand: Axis Global Co Agency
+  source_type: competitor_site
+  crawl_mode: site
+  seed_urls:
+  - https://www.axisglobal.co/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Australia
+    rank: '77'
+    category: SEO and growth agency
+    market_note: Australia
+- brand: In Motion Marketing
+  source_type: competitor_site
+  crawl_mode: site
+  seed_urls:
+  - https://inmotionmktg.com/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Australia
+    rank: '78'
+    category: SEO and marketing agency
+    market_note: Australia
+- brand: Onmove Digital Agency
+  source_type: competitor_site
+  crawl_mode: site
+  seed_urls:
+  - https://onmoveagency.com/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Australia
+    rank: '79'
+    category: SEO and digital agency
+    market_note: Australia
+- brand: BFJ Digital
+  source_type: competitor_site
+  crawl_mode: site
+  seed_urls:
+  - https://bfj.digital/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Australia
+    rank: '80'
+    category: SEO and digital marketing agency
+    market_note: Australia
+- brand: Shtudio
+  source_type: competitor_site
+  crawl_mode: site
+  seed_urls:
+  - https://www.shtudio.com.au/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Australia
+    rank: '81'
+    category: SEO and web agency
+    market_note: Australia
+- brand: Endless Digital
+  source_type: competitor_site
+  crawl_mode: site
+  seed_urls:
+  - https://endlessdigitalagency.com/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Australia
+    rank: '82'
+    category: SEO and ecommerce marketing
+    market_note: AU NZ
+- brand: Innovatix Hub Australia
+  source_type: competitor_site
+  crawl_mode: site
+  seed_urls:
+  - https://innovatixhub.com.au/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Australia
+    rank: '83'
+    category: SEO and digital agency
+    market_note: Australia
+- brand: Growth Ganik
+  source_type: competitor_site
+  crawl_mode: site
+  seed_urls:
+  - https://www.growthganik.com/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Australia
+    rank: '84'
+    category: SEO and marketing agency
+    market_note: Australia
+- brand: Illicium
+  source_type: competitor_site
+  crawl_mode: site
+  seed_urls:
+  - https://illicium.com.au/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Australia
+    rank: '85'
+    category: SEO and digital marketing agency
+    market_note: Australia
+- brand: Linksult
+  source_type: competitor_site
+  crawl_mode: site
+  seed_urls:
+  - https://linksult.com/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Australia
+    rank: '86'
+    category: SEO agency
+    market_note: Serves Australia
+- brand: AdVisible
+  source_type: competitor_site
+  crawl_mode: site
+  seed_urls:
+  - https://www.advisible.com.au/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Australia
+    rank: '87'
+    category: SEO and digital agency
+    market_note: Australia
+- brand: Soto Group
+  source_type: competitor_site
+  crawl_mode: site
+  seed_urls:
+  - https://sotogroup.co/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Australia
+    rank: '88'
+    category: SEO branding and web agency
+    market_note: Australia
+- brand: RW INFOTECH
+  source_type: competitor_site
+  crawl_mode: site
+  seed_urls:
+  - https://www.rwit.io/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Australia
+    rank: '89'
+    category: SEO and technology agency
+    market_note: Australia
+- brand: Elevate SEO Perth
+  source_type: competitor_site
+  crawl_mode: site
+  seed_urls:
+  - https://www.elevateseoperth.com.au/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Australia
+    rank: '90'
+    category: SEO agency
+    market_note: Australia
+- brand: Marketing Advancer
+  source_type: competitor_site
+  crawl_mode: site
+  seed_urls:
+  - https://marketingadvancer.com/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Australia
+    rank: '91'
+    category: SEO and digital agency
+    market_note: Australia
+- brand: Red Ant
+  source_type: competitor_site
+  crawl_mode: site
+  seed_urls:
+  - https://redant.com.au/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Australia
+    rank: '92'
+    category: SEO and web agency
+    market_note: Australia
+- brand: PLANET MEDIA
+  source_type: competitor_site
+  crawl_mode: site
+  seed_urls:
+  - https://planetmedia.com.au/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Australia
+    rank: '93'
+    category: SEO and digital marketing agency
+    market_note: Australia
+- brand: OTTO MEDIA
+  source_type: competitor_site
+  crawl_mode: site
+  seed_urls:
+  - https://www.ottomedia.com.au/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Australia
+    rank: '94'
+    category: SEO agency
+    market_note: Australia
+- brand: AB Digital
+  source_type: competitor_site
+  crawl_mode: site
+  seed_urls:
+  - https://abdigital.com.au/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Australia
+    rank: '95'
+    category: SEO and digital marketing agency
+    market_note: Australia
+- brand: Rocketships
+  source_type: competitor_site
+  crawl_mode: site
+  seed_urls:
+  - https://rocketships.com.au/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Australia
+    rank: '96'
+    category: SEO and growth agency
+    market_note: Australia
+- brand: Melbourne Web Digital
+  source_type: competitor_site
+  crawl_mode: site
+  seed_urls:
+  - https://melbournewebdigital.com.au/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Australia
+    rank: '97'
+    category: SEO and digital agency
+    market_note: Australia
+- brand: CMTech Pty Ltd
+  source_type: competitor_site
+  crawl_mode: site
+  seed_urls:
+  - https://www.cmtech.com.au/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Australia
+    rank: '98'
+    category: SEO and technology agency
+    market_note: Australia
+- brand: The Horixon Group
+  source_type: competitor_site
+  crawl_mode: site
+  seed_urls:
+  - https://www.horixon.com.au/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Australia
+    rank: '99'
+    category: SEO and digital marketing agency
+    market_note: Australia
+- brand: Maxlence Consulting
+  source_type: competitor_site
+  crawl_mode: site
+  seed_urls:
+  - https://maxlence.com.au/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Australia
+    rank: '100'
+    category: SEO and digital marketing agency
+    market_note: Australia
+industry_sources:
+- brand: Profound
+  source_type: industry_platform
+  crawl_mode: site
+  seed_urls:
+  - https://www.tryprofound.com/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Global
+    rank: '1'
+    category: GEO AI search platform
+    market_note: Global platform
+- brand: Evertune
+  source_type: industry_platform
+  crawl_mode: site
+  seed_urls:
+  - https://www.evertune.ai/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Global
+    rank: '2'
+    category: GEO AI visibility platform
+    market_note: Global platform
+- brand: AthenaHQ
+  source_type: industry_platform
+  crawl_mode: site
+  seed_urls:
+  - https://athenahq.ai/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Global
+    rank: '3'
+    category: GEO AI search platform
+    market_note: Global platform
+- brand: Scrunch AI
+  source_type: industry_platform
+  crawl_mode: site
+  seed_urls:
+  - https://scrunch.com/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Global
+    rank: '4'
+    category: GEO AI visibility platform
+    market_note: Global platform
+- brand: Writesonic
+  source_type: industry_platform
+  crawl_mode: site
+  seed_urls:
+  - https://writesonic.com/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Global
+    rank: '5'
+    category: GEO AI SEO platform
+    market_note: Global platform
+- brand: Peec AI
+  source_type: industry_platform
+  crawl_mode: site
+  seed_urls:
+  - https://peec.ai/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Global
+    rank: '6'
+    category: GEO AI visibility platform
+    market_note: Global platform
+- brand: OtterlyAI
+  source_type: industry_source
+  crawl_mode: site
+  seed_urls:
+  - https://otterly.ai/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Global
+    rank: '7'
+    category: GEO AI search monitoring
+    market_note: Global platform
+- brand: Semrush
+  source_type: industry_platform
+  crawl_mode: site
+  seed_urls:
+  - https://www.semrush.com/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Global
+    rank: '8'
+    category: SEO and AI visibility platform
+    market_note: Global platform
+- brand: Ahrefs
+  source_type: industry_platform
+  crawl_mode: site
+  seed_urls:
+  - https://ahrefs.com/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Global
+    rank: '9'
+    category: SEO and brand visibility platform
+    market_note: Global platform
+- brand: Conductor
+  source_type: industry_platform
+  crawl_mode: site
+  seed_urls:
+  - https://www.conductor.com/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Global
+    rank: '10'
+    category: Enterprise SEO and AEO platform
+    market_note: Global platform
+- brand: Disruptive Advertising
+  source_type: industry_source
+  crawl_mode: site
+  seed_urls:
+  - https://disruptiveadvertising.com/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Global
+    rank: '11'
+    category: SEO agency
+    market_note: Global
+- brand: Ignite Visibility
+  source_type: industry_source
+  crawl_mode: site
+  seed_urls:
+  - https://ignitevisibility.com/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Global
+    rank: '12'
+    category: SEO agency
+    market_note: Global
+- brand: OuterBox
+  source_type: industry_source
+  crawl_mode: site
+  seed_urls:
+  - https://www.outerboxdesign.com/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Global
+    rank: '13'
+    category: SEO agency
+    market_note: Global
+- brand: KlientBoost
+  source_type: industry_source
+  crawl_mode: site
+  seed_urls:
+  - https://klientboost.com/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Global
+    rank: '14'
+    category: SEO and performance agency
+    market_note: Global
+- brand: Thrive Internet Marketing Agency
+  source_type: industry_source
+  crawl_mode: site
+  seed_urls:
+  - https://thriveagency.com/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Global
+    rank: '15'
+    category: SEO agency
+    market_note: Global
+- brand: Linchpin
+  source_type: industry_source
+  crawl_mode: site
+  seed_urls:
+  - https://linchpinseo.com/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Global
+    rank: '16'
+    category: SEO agency
+    market_note: Global
+- brand: Victorious
+  source_type: industry_source
+  crawl_mode: site
+  seed_urls:
+  - https://victoriousseo.com/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Global
+    rank: '17'
+    category: SEO agency
+    market_note: Global
+- brand: Uplers
+  source_type: industry_source
+  crawl_mode: site
+  seed_urls:
+  - https://www.uplers.com/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Global
+    rank: '18'
+    category: Digital marketing and SEO
+    market_note: Global
+- brand: Digital Authority Partners
+  source_type: industry_source
+  crawl_mode: site
+  seed_urls:
+  - https://www.digitalauthority.me/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Global
+    rank: '19'
+    category: SEO and digital strategy
+    market_note: Global
+- brand: SmartSites
+  source_type: industry_source
+  crawl_mode: site
+  seed_urls:
+  - https://www.smartsites.com/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Global
+    rank: '20'
+    category: SEO agency
+    market_note: Global
+- brand: Lounge Lizard
+  source_type: industry_source
+  crawl_mode: site
+  seed_urls:
+  - https://www.loungelizard.com/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Global
+    rank: '21'
+    category: SEO and web agency
+    market_note: Global
+- brand: FATbit Technologies
+  source_type: industry_source
+  crawl_mode: site
+  seed_urls:
+  - https://www.fatbit.com/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Global
+    rank: '22'
+    category: SEO and technology agency
+    market_note: Global
+- brand: Directive Consulting
+  source_type: industry_source
+  crawl_mode: site
+  seed_urls:
+  - https://directiveconsulting.com/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Global
+    rank: '23'
+    category: B2B SEO agency
+    market_note: Global
+- brand: Bop Design
+  source_type: industry_source
+  crawl_mode: site
+  seed_urls:
+  - https://www.bopdesign.com/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Global
+    rank: '24'
+    category: B2B SEO and web agency
+    market_note: Global
+- brand: Stellar SEO
+  source_type: industry_source
+  crawl_mode: site
+  seed_urls:
+  - https://stellarseo.com/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Global
+    rank: '25'
+    category: SEO agency
+    market_note: Global
+- brand: Itransition
+  source_type: industry_source
+  crawl_mode: site
+  seed_urls:
+  - https://www.itransition.com/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Global
+    rank: '26'
+    category: SEO and technology agency
+    market_note: Global
+- brand: SAG IPL
+  source_type: industry_source
+  crawl_mode: site
+  seed_urls:
+  - https://www.sagipl.com/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Global
+    rank: '27'
+    category: SEO agency
+    market_note: Global
+- brand: LSEO
+  source_type: industry_source
+  crawl_mode: site
+  seed_urls:
+  - https://lseo.com/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Global
+    rank: '28'
+    category: SEO agency
+    market_note: Global
+- brand: Sure Oak
+  source_type: industry_source
+  crawl_mode: site
+  seed_urls:
+  - https://sureoak.com/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Global
+    rank: '29'
+    category: SEO agency
+    market_note: Global
+- brand: Intero Digital
+  source_type: industry_source
+  crawl_mode: site
+  seed_urls:
+  - https://interodigital.com/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Global
+    rank: '30'
+    category: SEO and digital marketing
+    market_note: Global
+- brand: MAXBURST
+  source_type: industry_source
+  crawl_mode: site
+  seed_urls:
+  - https://www.maxburst.com/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Global
+    rank: '31'
+    category: SEO and web agency
+    market_note: Global
+- brand: uSERP
+  source_type: industry_source
+  crawl_mode: site
+  seed_urls:
+  - https://userp.io/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Global
+    rank: '32'
+    category: SEO and digital PR
+    market_note: Global
+- brand: Anvil Media
+  source_type: industry_source
+  crawl_mode: site
+  seed_urls:
+  - https://www.anvilmediainc.com/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Global
+    rank: '33'
+    category: SEO agency
+    market_note: Global
+- brand: Robben Media
+  source_type: industry_source
+  crawl_mode: site
+  seed_urls:
+  - https://robbenmedia.com/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Global
+    rank: '34'
+    category: SEO agency
+    market_note: Global
+- brand: Datadial
+  source_type: industry_source
+  crawl_mode: site
+  seed_urls:
+  - https://www.datadial.net/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Global
+    rank: '35'
+    category: SEO agency
+    market_note: Global
+- brand: Webdew
+  source_type: industry_source
+  crawl_mode: site
+  seed_urls:
+  - https://www.webdew.com/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Global
+    rank: '36'
+    category: SEO and digital agency
+    market_note: Global
+- brand: Sagapixel
+  source_type: industry_source
+  crawl_mode: site
+  seed_urls:
+  - https://sagapixel.com/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Global
+    rank: '37'
+    category: SEO agency
+    market_note: Global
+- brand: IIH Global
+  source_type: industry_source
+  crawl_mode: site
+  seed_urls:
+  - https://www.iihglobal.com/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Global
+    rank: '38'
+    category: SEO and technology agency
+    market_note: Global
+- brand: Promodo
+  source_type: industry_source
+  crawl_mode: site
+  seed_urls:
+  - https://www.promodo.com/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Global
+    rank: '39'
+    category: SEO agency
+    market_note: Global
+- brand: Brandastic
+  source_type: industry_source
+  crawl_mode: site
+  seed_urls:
+  - https://brandastic.com/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Global
+    rank: '40'
+    category: SEO and digital agency
+    market_note: Global
+- brand: Titan Growth
+  source_type: industry_source
+  crawl_mode: site
+  seed_urls:
+  - https://www.titangrowth.com/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Global
+    rank: '41'
+    category: SEO agency
+    market_note: Global
+- brand: Red Spot Design
+  source_type: industry_source
+  crawl_mode: site
+  seed_urls:
+  - https://www.redspotdesign.com/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Global
+    rank: '42'
+    category: SEO and web agency
+    market_note: Global
+- brand: Paragraphs
+  source_type: industry_source
+  crawl_mode: site
+  seed_urls:
+  - https://www.paragraphs.com/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Global
+    rank: '43'
+    category: SEO and branding agency
+    market_note: Global
+- brand: Attrock
+  source_type: industry_source
+  crawl_mode: site
+  seed_urls:
+  - https://attrock.com/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Global
+    rank: '44'
+    category: SEO and digital marketing
+    market_note: Global
+- brand: Idea Grove
+  source_type: industry_source
+  crawl_mode: site
+  seed_urls:
+  - https://www.ideagrove.com/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Global
+    rank: '45'
+    category: B2B SEO and PR agency
+    market_note: Global
+- brand: The SEO Works
+  source_type: industry_source
+  crawl_mode: site
+  seed_urls:
+  - https://www.seoworks.co.uk/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Global
+    rank: '46'
+    category: SEO agency
+    market_note: Global
+- brand: Lead to Conversion
+  source_type: industry_source
+  crawl_mode: site
+  seed_urls:
+  - https://www.leadtoconversion.com/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Global
+    rank: '47'
+    category: SEO agency
+    market_note: Global
+- brand: UPQODE
+  source_type: industry_source
+  crawl_mode: site
+  seed_urls:
+  - https://upqode.com/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Global
+    rank: '48'
+    category: SEO and web agency
+    market_note: Global
+- brand: Social Driver
+  source_type: industry_source
+  crawl_mode: site
+  seed_urls:
+  - https://www.socialdriver.com/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Global
+    rank: '49'
+    category: SEO and digital agency
+    market_note: Global
+- brand: Online Optimism
+  source_type: industry_source
+  crawl_mode: site
+  seed_urls:
+  - https://www.onlineoptimism.com/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Global
+    rank: '50'
+    category: SEO and digital agency
+    market_note: Global
+- brand: Indus Net Technologies
+  source_type: industry_source
+  crawl_mode: site
+  seed_urls:
+  - https://www.indusnet.co.in/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Global
+    rank: '51'
+    category: SEO and technology agency
+    market_note: Global
+- brand: GeeksChip
+  source_type: industry_source
+  crawl_mode: site
+  seed_urls:
+  - https://www.geekschip.com/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Global
+    rank: '52'
+    category: SEO agency
+    market_note: Global
+- brand: SemiDot Infotech
+  source_type: industry_source
+  crawl_mode: site
+  seed_urls:
+  - https://www.semidotinfotech.com/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Global
+    rank: '53'
+    category: SEO and technology agency
+    market_note: Global
+- brand: Digitech
+  source_type: industry_source
+  crawl_mode: site
+  seed_urls:
+  - https://www.digitechwebdesignaustin.com/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Global
+    rank: '54'
+    category: SEO and web agency
+    market_note: Global
+- brand: BrandLume
+  source_type: industry_source
+  crawl_mode: site
+  seed_urls:
+  - https://www.brandlume.com/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Global
+    rank: '55'
+    category: SEO agency
+    market_note: Global
+- brand: Revenue River
+  source_type: industry_source
+  crawl_mode: site
+  seed_urls:
+  - https://www.revenueriver.co/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Global
+    rank: '56'
+    category: SEO and digital agency
+    market_note: Global
+- brand: Global Reach
+  source_type: industry_source
+  crawl_mode: site
+  seed_urls:
+  - https://www.globalreach.com/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Global
+    rank: '57'
+    category: SEO and web agency
+    market_note: Global
+- brand: Direction
+  source_type: industry_source
+  crawl_mode: site
+  seed_urls:
+  - https://direction.com/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Global
+    rank: '58'
+    category: SEO agency
+    market_note: Global
+- brand: Designzillas
+  source_type: industry_source
+  crawl_mode: site
+  seed_urls:
+  - https://www.designzillas.com/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Global
+    rank: '59'
+    category: SEO and web agency
+    market_note: Global
+- brand: Alconost
+  source_type: industry_source
+  crawl_mode: site
+  seed_urls:
+  - https://alconost.com/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Global
+    rank: '60'
+    category: International SEO and localization
+    market_note: Global
+- brand: Lform
+  source_type: industry_source
+  crawl_mode: site
+  seed_urls:
+  - https://www.lform.com/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Global
+    rank: '61'
+    category: B2B SEO and web agency
+    market_note: Global
+- brand: Incrementors
+  source_type: industry_source
+  crawl_mode: site
+  seed_urls:
+  - https://www.incrementors.com/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Global
+    rank: '62'
+    category: SEO agency
+    market_note: Global
+- brand: CreativeWeb
+  source_type: industry_source
+  crawl_mode: site
+  seed_urls:
+  - https://www.creativeweb.com/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Global
+    rank: '63'
+    category: SEO and web agency
+    market_note: Global
+- brand: EnVeritas Group
+  source_type: industry_source
+  crawl_mode: site
+  seed_urls:
+  - https://www.enveritasgroup.com/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Global
+    rank: '64'
+    category: SEO and content agency
+    market_note: Global
+- brand: Beanstalk Web Solutions
+  source_type: industry_source
+  crawl_mode: site
+  seed_urls:
+  - https://www.beanstalkwebsolutions.com/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Global
+    rank: '65'
+    category: SEO and web agency
+    market_note: Global
+- brand: Split Reef
+  source_type: industry_source
+  crawl_mode: site
+  seed_urls:
+  - https://www.splitreef.com/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Global
+    rank: '66'
+    category: SEO and web agency
+    market_note: Global
+- brand: Wegacha
+  source_type: industry_source
+  crawl_mode: site
+  seed_urls:
+  - https://wegacha.com/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Global
+    rank: '67'
+    category: SEO and ecommerce agency
+    market_note: Global
+- brand: SEOValley
+  source_type: industry_source
+  crawl_mode: site
+  seed_urls:
+  - https://www.seovalley.com/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Global
+    rank: '68'
+    category: SEO agency
+    market_note: Global
+- brand: Matchbox Design Group
+  source_type: industry_source
+  crawl_mode: site
+  seed_urls:
+  - https://matchboxdesigngroup.com/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Global
+    rank: '69'
+    category: SEO and web agency
+    market_note: Global
+- brand: SociallyIn
+  source_type: industry_source
+  crawl_mode: site
+  seed_urls:
+  - https://sociallyin.com/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Global
+    rank: '70'
+    category: Digital marketing and SEO
+    market_note: Global
+- brand: GoingClear
+  source_type: industry_source
+  crawl_mode: site
+  seed_urls:
+  - https://www.goingclear.com/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Global
+    rank: '71'
+    category: SEO and web agency
+    market_note: Global
+- brand: SEO India
+  source_type: industry_source
+  crawl_mode: site
+  seed_urls:
+  - https://www.seoindia.com/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Global
+    rank: '72'
+    category: SEO agency
+    market_note: Global
+- brand: SEO Brand
+  source_type: industry_source
+  crawl_mode: site
+  seed_urls:
+  - https://www.seobrand.com/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Global
+    rank: '73'
+    category: SEO agency
+    market_note: Global
+- brand: OpenMoves
+  source_type: industry_source
+  crawl_mode: site
+  seed_urls:
+  - https://openmoves.com/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Global
+    rank: '74'
+    category: SEO and performance agency
+    market_note: Global
+- brand: NetReputation
+  source_type: industry_source
+  crawl_mode: site
+  seed_urls:
+  - https://www.netreputation.com/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Global
+    rank: '75'
+    category: SEO and reputation agency
+    market_note: Global
+- brand: Dotlogics
+  source_type: industry_source
+  crawl_mode: site
+  seed_urls:
+  - https://www.dotlogics.com/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Global
+    rank: '76'
+    category: SEO and web agency
+    market_note: Global
+- brand: Baunfire
+  source_type: industry_source
+  crawl_mode: site
+  seed_urls:
+  - https://www.baunfire.com/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Global
+    rank: '77'
+    category: SEO and web agency
+    market_note: Global
+- brand: REQ
+  source_type: industry_source
+  crawl_mode: site
+  seed_urls:
+  - https://req.co/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Global
+    rank: '78'
+    category: SEO and digital agency
+    market_note: Global
+- brand: ioVista
+  source_type: industry_source
+  crawl_mode: site
+  seed_urls:
+  - https://www.iovista.com/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Global
+    rank: '79'
+    category: SEO and ecommerce agency
+    market_note: Global
+- brand: Auxesis Infotech
+  source_type: industry_source
+  crawl_mode: site
+  seed_urls:
+  - https://auxesisinfotech.com/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Global
+    rank: '80'
+    category: SEO and technology agency
+    market_note: Global
+- brand: Imarc
+  source_type: industry_source
+  crawl_mode: site
+  seed_urls:
+  - https://www.imarc.com/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Global
+    rank: '81'
+    category: SEO and web agency
+    market_note: Global
+- brand: TopSpot
+  source_type: industry_source
+  crawl_mode: site
+  seed_urls:
+  - https://www.topspot.com/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Global
+    rank: '82'
+    category: SEO agency
+    market_note: Global
+- brand: Operation Technology
+  source_type: industry_source
+  crawl_mode: site
+  seed_urls:
+  - https://operationtechnology.com/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Global
+    rank: '83'
+    category: SEO and web agency
+    market_note: Global
+- brand: Webby Central
+  source_type: industry_source
+  crawl_mode: site
+  seed_urls:
+  - https://www.webbycentral.com/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Global
+    rank: '84'
+    category: SEO and web agency
+    market_note: Global
+- brand: Volume Nine
+  source_type: industry_source
+  crawl_mode: site
+  seed_urls:
+  - https://www.v9digital.com/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Global
+    rank: '85'
+    category: SEO agency
+    market_note: Global
+- brand: Top Notch Dezigns
+  source_type: industry_source
+  crawl_mode: site
+  seed_urls:
+  - https://www.topnotchdezigns.com/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Global
+    rank: '86'
+    category: SEO and web agency
+    market_note: Global
+- brand: Rule29
+  source_type: industry_source
+  crawl_mode: site
+  seed_urls:
+  - https://rule29.com/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Global
+    rank: '87'
+    category: SEO and design agency
+    market_note: Global
+- brand: KrishaWeb
+  source_type: industry_source
+  crawl_mode: site
+  seed_urls:
+  - https://www.krishaweb.com/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Global
+    rank: '88'
+    category: SEO and web agency
+    market_note: Global
+- brand: Artimization
+  source_type: industry_source
+  crawl_mode: site
+  seed_urls:
+  - https://www.artimization.com/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Global
+    rank: '89'
+    category: SEO agency
+    market_note: Global
+- brand: AddWeb Solution
+  source_type: industry_source
+  crawl_mode: site
+  seed_urls:
+  - https://www.addwebsolution.com/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Global
+    rank: '90'
+    category: SEO and technology agency
+    market_note: Global
+- brand: Beacon Media and Marketing
+  source_type: industry_source
+  crawl_mode: site
+  seed_urls:
+  - https://www.beaconmm.com/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Global
+    rank: '91'
+    category: SEO and digital agency
+    market_note: Global
+- brand: Figmints
+  source_type: industry_source
+  crawl_mode: site
+  seed_urls:
+  - https://www.figmints.com/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Global
+    rank: '92'
+    category: SEO and digital agency
+    market_note: Global
+- brand: LinkDoctor
+  source_type: industry_source
+  crawl_mode: site
+  seed_urls:
+  - https://linkdoctor.io/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Global
+    rank: '93'
+    category: Link building and SEO
+    market_note: Global
+- brand: WeDoWebApps
+  source_type: industry_source
+  crawl_mode: site
+  seed_urls:
+  - https://www.wedowebapps.com/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Global
+    rank: '94'
+    category: SEO and technology agency
+    market_note: Global
+- brand: MaxAudience
+  source_type: industry_source
+  crawl_mode: site
+  seed_urls:
+  - https://www.maxaudience.com/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Global
+    rank: '95'
+    category: SEO and digital agency
+    market_note: Global
+- brand: Gatorworks
+  source_type: industry_source
+  crawl_mode: site
+  seed_urls:
+  - https://www.gatorworks.net/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Global
+    rank: '96'
+    category: SEO and web agency
+    market_note: Global
+- brand: Integrio
+  source_type: industry_source
+  crawl_mode: site
+  seed_urls:
+  - https://integrio.net/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Global
+    rank: '97'
+    category: SEO and technology agency
+    market_note: Global
+- brand: ClickSlice
+  source_type: industry_source
+  crawl_mode: site
+  seed_urls:
+  - https://www.clickslice.co.uk/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Global
+    rank: '98'
+    category: SEO agency
+    market_note: Global
+- brand: Techno Infonet
+  source_type: industry_source
+  crawl_mode: site
+  seed_urls:
+  - https://www.technoinfonet.com/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Global
+    rank: '99'
+    category: SEO and technology agency
+    market_note: Global
+- brand: MAD Group
+  source_type: industry_source
+  crawl_mode: site
+  seed_urls:
+  - https://www.madgroup.co/
+  include_patterns:
+  - /
+  exclude_patterns: *id001
+  max_pages: 50
+  max_depth: 2
+  metadata:
+    scope: Global
+    rank: '100'
+    category: SEO and digital agency
+    market_note: Global

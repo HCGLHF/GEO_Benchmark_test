@@ -1,0 +1,69 @@
+campaign:
+  name: "example_ai_recommendations_noclaude"
+  market: "Australia"
+  language: "en"
+  category: "Generative Engine Optimization companies and AI search visibility services"
+  target_brand: "AlphaXXXX"
+  target_domain: "alphaxxxx.com"
+  competitors:
+    - "HornTech"
+    - "GEO Digital"
+    - "Evolving Digital"
+    - "Juicebox"
+    - "One Orange Cow"
+    - "MaturEdge"
+    - "Titan Blue"
+    - "Integral Media"
+    - "SkyScale"
+    - "Elephant in the Boardroom"
+
+run:
+  scenarios_per_profile: 1
+  temperature: 0
+  top_k: 10
+  output_dir: "runs/example_ai_recommendations_noclaude"
+
+retrieval:
+  keyword_index: "data/processed/bm25_index.pkl"
+  sqlite: "data/geo_benchmark.sqlite"
+
+model_run:
+  temperature: 0.2
+  direct:
+    enabled: true
+    recall_gate: "allow"
+    min_recall_at_5: 0.0
+    max_queries: 1
+    repeats_per_query: 1
+
+models:
+  - provider: "openrouter"
+    model: "openai/gpt-4.1-mini"
+    api_key_env: "OPENROUTER_API_KEY"
+    http_referer: "https://alphaxxxx.com"
+    app_title: "AlphaXXXX GEO Evaluator"
+  - provider: "openrouter"
+    model: "google/gemini-3.5-flash"
+    api_key_env: "OPENROUTER_API_KEY"
+    http_referer: "https://alphaxxxx.com"
+    app_title: "AlphaXXXX GEO Evaluator"
+  - provider: "openrouter"
+    model: "perplexity/sonar-pro"
+    api_key_env: "OPENROUTER_API_KEY"
+    http_referer: "https://alphaxxxx.com"
+    app_title: "AlphaXXXX GEO Evaluator"
+  - provider: "openrouter"
+    model: "deepseek/deepseek-v4-flash"
+    api_key_env: "OPENROUTER_API_KEY"
+    http_referer: "https://alphaxxxx.com"
+    app_title: "AlphaXXXX GEO Evaluator"
+  - provider: "openrouter"
+    model: "qwen/qwen3.7-max"
+    api_key_env: "OPENROUTER_API_KEY"
+    http_referer: "https://alphaxxxx.com"
+    app_title: "AlphaXXXX GEO Evaluator"
+  - provider: "openrouter"
+    model: "x-ai/grok-build-0.1"
+    api_key_env: "OPENROUTER_API_KEY"
+    http_referer: "https://alphaxxxx.com"
+    app_title: "AlphaXXXX GEO Evaluator"

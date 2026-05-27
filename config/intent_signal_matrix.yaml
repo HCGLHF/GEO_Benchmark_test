@@ -1,0 +1,55 @@
+version: "2026-05-16"
+
+intents:
+  ai_recommendation_visibility:
+    user_phrases:
+      - "get AI recommendations"
+      - "get recommended by ChatGPT"
+      - "appear in AI answers"
+      - "show up in Perplexity recommendations"
+    preferred_page_types:
+      - "service_page"
+      - "audit_page"
+      - "case_study"
+      - "pricing_page"
+    required_signals:
+      - "platform_coverage"
+      - "trust_proof"
+      - "conversion_path"
+      - "local_relevance"
+    reformulation_templates:
+      - "{platform} recommendation visibility agency {market}"
+      - "how to get my company mentioned by {platform}"
+      - "{service_term} consultant {market}"
+
+platforms:
+  chatgpt:
+    terms: ["ChatGPT", "OpenAI", "AI assistant"]
+  perplexity:
+    terms: ["Perplexity", "answer engine"]
+  google_ai_overviews:
+    terms: ["Google AI Overviews", "AI Overviews"]
+
+signals:
+  trust_proof:
+    terms: ["case study", "client results", "testimonials", "methodology"]
+  conversion_path:
+    terms: ["free audit", "consultation", "quote", "pricing"]
+  local_relevance:
+    terms: ["Australia", "Sydney", "Melbourne", "Brisbane"]
+  platform_coverage:
+    terms: ["ChatGPT", "Perplexity", "Gemini", "AI Overviews", "Copilot"]
+
+page_types:
+  service_page:
+    url_patterns: ["/services", "/geo", "/ai-search", "/generative-engine-optimization"]
+    title_terms: ["service", "agency", "optimization", "consulting"]
+  audit_page:
+    url_patterns: ["/audit", "/free-audit"]
+    title_terms: ["audit", "assessment", "checker"]
+  pricing_page:
+    url_patterns: ["/pricing", "/cost", "/packages"]
+    title_terms: ["pricing", "cost", "packages"]
+  case_study:
+    url_patterns: ["/case-study", "/results"]
+    title_terms: ["case study", "results", "client"]

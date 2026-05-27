@@ -1,0 +1,17 @@
+.env
+.env.*
+!.env.example
+.venv/
+.deps/
+__pycache__/
+.pytest_cache/
+*.pyc
+data/
+runs/
+output/
+reports/
+vector_db/
+_publish/
+*.sqlite
+*.duckdb
+*.pkl

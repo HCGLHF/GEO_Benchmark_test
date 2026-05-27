@@ -1,0 +1,99 @@
+campaign:
+  name: "client_acquisition_simulator"
+  market: "Australia"
+  language: "en"
+  category: "Generative Engine Optimization services and AI search visibility consulting"
+  target_brand: "AlphaXXXX"
+  target_domain: "alphaxxxx.com"
+  competitors:
+    - "HornTech"
+    - "GEO Digital"
+    - "Evolving Digital"
+    - "Juicebox"
+    - "One Orange Cow"
+    - "MaturEdge"
+    - "Titan Blue"
+    - "Integral Media"
+    - "SkyScale"
+    - "Elephant in the Boardroom"
+    - "Semrush AI Visibility Toolkit"
+    - "OtterlyAI"
+
+run:
+  output_dir: "runs/client_acquisition_simulator"
+  top_k: 10
+  candidate_pool_size: 30
+
+performance:
+  llm_cache:
+    enabled: true
+    sqlite: "data/cache/llm_calls.sqlite"
+  run_state:
+    enabled: true
+    sqlite: "runs/client_acquisition_simulator/run_state.sqlite"
+
+retrieval:
+  keyword_index: "data/processed/bm25_index.pkl"
+  matrix: "config/intent_signal_matrix.yaml"
+  evidence_cards: "data/processed/evidence_cards.jsonl"
+  page_signals: "data/processed/page_signals.jsonl"
+  hybrid:
+    enabled: true
+    fusion_top_n: 60
+    rerank_top_n: 40
+    max_per_brand: 6
+
+model_run:
+  temperature: 0.2
+
+client_acquisition:
+  queries_per_model: 200
+  queries_per_stage: 1
+  personas:
+    - "B2B SaaS founder"
+    - "SEO agency owner"
+    - "local service business owner"
+  journey_stages:
+    - "problem_aware"
+    - "solution_aware"
+    - "vendor_discovery"
+    - "trust_validation"
+    - "objection_handling"
+
+models:
+  - provider: "openrouter"
+    model: "openai/gpt-4.1-mini"
+    api_key_env: "OPENROUTER_API_KEY"
+    http_referer: "https://alphaxxxx.com"
+    app_title: "AlphaXXXX GEO Client Acquisition Simulator"
+  - provider: "openrouter"
+    model: "google/gemini-3.5-flash"
+    api_key_env: "OPENROUTER_API_KEY"
+    http_referer: "https://alphaxxxx.com"
+    app_title: "AlphaXXXX GEO Client Acquisition Simulator"
+  - provider: "openrouter"
+    model: "perplexity/sonar-pro"
+    api_key_env: "OPENROUTER_API_KEY"
+    http_referer: "https://alphaxxxx.com"
+    app_title: "AlphaXXXX GEO Client Acquisition Simulator"
+  - provider: "openrouter"
+    model: "deepseek/deepseek-v4-flash"
+    api_key_env: "OPENROUTER_API_KEY"
+    http_referer: "https://alphaxxxx.com"
+    app_title: "AlphaXXXX GEO Client Acquisition Simulator"
+  - provider: "openrouter"
+    model: "qwen/qwen3.7-max"
+    api_key_env: "OPENROUTER_API_KEY"
+    http_referer: "https://alphaxxxx.com"
+    app_title: "AlphaXXXX GEO Client Acquisition Simulator"
+  - provider: "openrouter"
+    model: "x-ai/grok-build-0.1"
+    api_key_env: "OPENROUTER_API_KEY"
+    http_referer: "https://alphaxxxx.com"
+    app_title: "AlphaXXXX GEO Client Acquisition Simulator"
+  - provider: "openrouter"
+    model: "bytedance-seed/seed-2.0-pro"
+    api_key_env: "OPENROUTER_API_KEY"
+    http_referer: "https://alphaxxxx.com"
+    app_title: "AlphaXXXX GEO Client Acquisition Simulator"
+    note: "Requested Doubao-Seed-2.0 Pro. If OpenRouter has not exposed Pro, this model may return 404; current public OpenRouter list exposes bytedance-seed/seed-2.0-lite and bytedance-seed/seed-2.0-mini."
