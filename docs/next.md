@@ -15,6 +15,8 @@
 - Added `scripts/cloud/deploy_ec2_update.py` as the repeatable EC2 update path: Git fast-forward, dependency install, quick/standard artifact hydration, cloud verifier, service restart, `/api/state` check, and a non-secret deployment log under ignored `runs/deployments/`.
 - Added UI deployment status visibility so the Cloud Store workspace shows current Git commit/branch, active default corpus version, latest deployment status, cloud verifier counts, API corpus counts, and latest hydrated report path without rendering secrets.
 - Added guarded server data refresh in the Cloud Store workspace: a confirmed `Run Server Update` action starts only the fixed deployment runner when a safe detached launcher is available, otherwise returns `manual_required` with the fixed server command; it uses a lock to prevent concurrent launches and shows latest deployment step details without exposing stdout/stderr or credentials.
+- Deepened merged report diagnostics from brand-level metrics into URL/domain Top5 winners, persona/stage loss analysis, money-page intent groups, and page-level content actions with internal-link, FAQ, schema, and competitor benchmark guidance.
+- Added report UI drilldowns for URL/domain winners, persona/stage losses, and money-page actions, while keeping older reports compatible when the new CSV/JSON artifacts are absent.
 - Provisioned the first internal EC2 server for the project: `resourcepool-gen-internal-01` in `ap-northeast-1`, running Ubuntu 24.04 on `t3.xlarge` with a 100 GB encrypted root volume.
 - Published the current local project version to GitHub branch `codex/local-ops-logging` at commit `a78ce41`, then checked out the same branch and commit on the EC2 server under `/opt/resourcepool/Resourcepool_Gen`.
 - Copied the local `.env` to the EC2 server with `600` permissions, created `.venv`, installed project dependencies plus Playwright Chromium, and started the UI as `resourcepool-ui.service` bound to `127.0.0.1:8765`.
@@ -336,7 +338,7 @@
 - If a user wants to inspect an older historical run, the latest launched run may become the default after a hard refresh; manually selecting a history item still updates the monitor root.
 - New drilldown tables can still become visually dense on very narrow viewports; keep future page-level dimensions behind table-specific scroll containers.
 - Weak-page rankings are sensitive to query sample size and scenario mix; do not overinterpret `test` mode weak-page ordering as a final content roadmap.
-- The current optimization hints are intentionally generic; a stronger next step should explain each weak page by missing persona/stage intent and competitor pages that displaced it.
+- The current optimization hints now include page intent, persona/stage, internal-link, FAQ, schema, and competitor benchmark guidance; they still remain deterministic diagnostics rather than a human editorial brief.
 - Report history currently sorts by local report file modification time, so copying old runs into `runs/` can reorder history without representing a fresh benchmark.
 - The Reports workspace top-five overview is brand-level from `brand_performance_by_model.csv`; URL-level or domain-level website ranking still needs a separate artifact if required for strategy decisions.
 - The in-UI report preview shows the Markdown report text, but deeper weak-page and URL-level recommendations still need dedicated drilldown aggregation.
@@ -395,4 +397,4 @@
 8. Add retry/backoff tuning for rate-limited model workers so Qwen-style 429 bursts produce fewer warning rows before manual stop/resume is needed.
 9. Add launch-history detail inside the Monitor workspace so users can see which UI launch or resume attempt produced the current run root.
 10. Provision a dedicated systemd helper or policy-limited service for one-click server updates, restricted to the fixed deployment workflow and service restart only.
-11. Add URL/domain-level latest top-five overview if future reports need website ranking separate from brand ranking, including money-page grouping, internal-link/FAQ/schema suggestions, and weak-page content priorities.
+11. Add trend charts for URL/domain and persona/stage diagnostics so report history shows whether specific competitors are losing ground after content updates.

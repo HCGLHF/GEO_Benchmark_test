@@ -227,8 +227,25 @@ def test_merge_full_api_runs_writes_diagnostic_report_sections(tmp_path: Path):
     assert (output / "query_loss_analysis.csv").exists()
     assert (output / "competitor_displacements.csv").exists()
     assert (output / "page_optimization_plan.csv").exists()
+    assert (output / "url_top5_rankings.csv").exists()
+    assert (output / "domain_top5_rankings.csv").exists()
+    assert (output / "persona_stage_losses.csv").exists()
+    assert (output / "page_intent_weakness.csv").exists()
+    assert (output / "content_optimization_actions.csv").exists()
+    assert (output / "report_deep_diagnostics.json").exists()
+    with (output / "report_deep_diagnostics.json").open("r", encoding="utf-8") as handle:
+        payload = json.load(handle)
+    assert payload["url_top5_rankings"]
+    assert payload["domain_top5_rankings"]
+    assert payload["persona_stage_losses"]
+    assert payload["content_optimization_actions"]
     report = (output / "competitive_gap_report.md").read_text(encoding="utf-8")
     assert "Executive Diagnosis" in report
+    assert "URL-Level Top5 Winners" in report
+    assert "Domain-Level Top5 Winners" in report
+    assert "Persona/Stage Loss Matrix" in report
+    assert "Money Page Weakness Groups" in report
+    assert "Page-Level Action Plan" in report
     assert "Query-Level Loss Analysis" in report
     assert "Competitor Pages Displacing AlphaXXXX" in report
     assert "Priority Optimization Plan" in report

@@ -33,11 +33,21 @@ from scripts.page_drilldown import (
 )
 from scripts.report_diagnostics import (
     COMPETITOR_DISPLACEMENT_FIELDS,
+    CONTENT_OPTIMIZATION_ACTION_FIELDS,
+    DOMAIN_TOP5_FIELDS,
     PAGE_OPTIMIZATION_FIELDS,
+    PAGE_INTENT_WEAKNESS_FIELDS,
+    PERSONA_STAGE_LOSS_FIELDS,
     QUERY_LOSS_FIELDS,
+    URL_TOP5_FIELDS,
+    build_content_optimization_actions,
     build_competitor_displacements,
+    build_domain_top5_rankings,
     build_page_optimization_plan,
+    build_page_intent_weakness_groups,
+    build_persona_stage_losses,
     build_query_loss_rows,
+    build_url_top5_rankings,
     render_diagnostic_sections,
 )
 
@@ -148,9 +158,42 @@ def merge_full_api_runs(
     query_losses = build_query_loss_rows(target_brand, retrieval_rows, evidence_rows)
     displacements = build_competitor_displacements(target_brand, evidence_rows)
     page_plan = build_page_optimization_plan(page_drilldown.weak_pages)
+    url_rankings = build_url_top5_rankings(target_brand, evidence_rows)
+    domain_rankings = build_domain_top5_rankings(target_brand, evidence_rows)
+    persona_stage_losses = build_persona_stage_losses(target_brand, retrieval_rows, evidence_rows)
+    page_intent_groups = build_page_intent_weakness_groups(page_drilldown.top_pages, page_drilldown.weak_pages)
+    content_actions = build_content_optimization_actions(
+        target_brand=target_brand,
+        weak_pages=page_drilldown.weak_pages,
+        displacements=displacements,
+        persona_stage_losses=persona_stage_losses,
+    )
     write_csv(output_dir / "query_loss_analysis.csv", query_losses, QUERY_LOSS_FIELDS)
     write_csv(output_dir / "competitor_displacements.csv", displacements, COMPETITOR_DISPLACEMENT_FIELDS)
     write_csv(output_dir / "page_optimization_plan.csv", page_plan, PAGE_OPTIMIZATION_FIELDS)
+    write_csv(output_dir / "url_top5_rankings.csv", url_rankings, URL_TOP5_FIELDS)
+    write_csv(output_dir / "domain_top5_rankings.csv", domain_rankings, DOMAIN_TOP5_FIELDS)
+    write_csv(output_dir / "persona_stage_losses.csv", persona_stage_losses, PERSONA_STAGE_LOSS_FIELDS)
+    write_csv(output_dir / "page_intent_weakness.csv", page_intent_groups, PAGE_INTENT_WEAKNESS_FIELDS)
+    write_csv(
+        output_dir / "content_optimization_actions.csv",
+        content_actions,
+        CONTENT_OPTIMIZATION_ACTION_FIELDS,
+    )
+    (output_dir / "report_deep_diagnostics.json").write_text(
+        json.dumps(
+            {
+                "url_top5_rankings": url_rankings,
+                "domain_top5_rankings": domain_rankings,
+                "persona_stage_losses": persona_stage_losses,
+                "page_intent_groups": page_intent_groups,
+                "content_optimization_actions": content_actions,
+            },
+            ensure_ascii=False,
+            indent=2,
+        ),
+        encoding="utf-8",
+    )
     run_status = summarize_run_dirs(run_dirs)
     warning_section = render_model_warning_section(run_status.get("warnings") or [])
     report = (
@@ -164,6 +207,11 @@ def merge_full_api_runs(
             page_plan=page_plan,
             source_run_count=len(run_dirs),
             answer_count=len([row for row in answer_rows if not row.get("error")]),
+            url_rankings=url_rankings,
+            domain_rankings=domain_rankings,
+            persona_stage_losses=persona_stage_losses,
+            page_intent_groups=page_intent_groups,
+            content_actions=content_actions,
         )
         + "\n"
         + render_owned_page_sections(target_brand, page_drilldown)

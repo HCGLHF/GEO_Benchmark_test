@@ -11,16 +11,27 @@ Generated run artifacts such as `data/`, `runs/`, vector databases, local caches
 
 ## New Report Diagnostics
 
-The merged report pipeline now writes three additional CSV files alongside `competitive_gap_report.md`:
+The merged report pipeline now writes the diagnostic CSV/JSON files alongside `competitive_gap_report.md`:
 
 - `query_loss_analysis.csv`
 - `competitor_displacements.csv`
 - `page_optimization_plan.csv`
+- `url_top5_rankings.csv`
+- `domain_top5_rankings.csv`
+- `persona_stage_losses.csv`
+- `page_intent_weakness.csv`
+- `content_optimization_actions.csv`
+- `report_deep_diagnostics.json`
 
 The Markdown report now also includes these sections:
 
 - `Executive Diagnosis`
 - `Query-Level Loss Analysis`
+- `URL-Level Top5 Winners`
+- `Domain-Level Top5 Winners`
+- `Persona/Stage Loss Matrix`
+- `Money Page Weakness Groups`
+- `Page-Level Action Plan`
 - `Competitor Pages Displacing AlphaXXXX`
 - `Priority Optimization Plan`
 - `Validation Plan For Next Run`
@@ -33,6 +44,10 @@ These diagnostics are generated from existing local benchmark artifacts:
 - owned-page drilldown rows
 
 They do not call external model APIs and do not alter benchmark metrics.
+
+`url_top5_rankings.csv` and `domain_top5_rankings.csv` answer which exact URLs/domains are occupying Top5 retrieval slots. `persona_stage_losses.csv` shows where AlphaXXXX loses by persona and funnel stage. `page_intent_weakness.csv` groups owned pages into pricing, services, case studies, blog, about, audit/checklist, platform-specific, guide, location, and `llms.txt` router buckets. `content_optimization_actions.csv` turns weak pages into an action backlog with competitor benchmark page, content gaps, internal links, FAQ questions, schema recommendation, and validation metric.
+
+The Reports workspace renders these artifacts as UI drilldowns, not only as Markdown preview text. Older reports that do not contain the new files still load; the UI shows the existing owned-page drilldown and an empty-state message for deep diagnostics.
 
 ## How To Regenerate A Diagnostic Report
 
@@ -114,5 +129,5 @@ pytest -q
 Expected result:
 
 ```text
-208 passed
+332 passed
 ```

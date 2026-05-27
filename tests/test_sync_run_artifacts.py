@@ -80,6 +80,8 @@ def test_build_run_artifact_plan_uses_stable_server_keys(tmp_path: Path) -> None
     run_root = tmp_path / "runs" / "full_api_parallel_ui" / "20260526_002837"
     merged = write_report_run(run_root, run_mode="quick", query_rows=250, source_run_count=5)
     (run_root / "pipeline_state.jsonl").write_text('{"stage":"report","status":"completed"}\n', encoding="utf-8")
+    (merged / "url_top5_rankings.csv").write_text("rank,url\n1,https://horntech.com.au/pricing\n", encoding="utf-8")
+    (merged / "report_deep_diagnostics.json").write_text('{"url_top5_rankings":[]}', encoding="utf-8")
 
     plan = build_run_artifact_plan(
         industry_id="geo-agency",
@@ -105,6 +107,14 @@ def test_build_run_artifact_plan_uses_stable_server_keys(tmp_path: Path) -> None
     assert keys["pipeline_state"] == (
         "industries/geo-agency/runs/2026-05-22-initial/quick/20260526_002837/logs/"
         "pipeline_state.jsonl"
+    )
+    assert keys["url_top5_rankings"] == (
+        "industries/geo-agency/runs/2026-05-22-initial/quick/20260526_002837/tables/"
+        "url_top5_rankings.csv"
+    )
+    assert keys["report_deep_diagnostics"] == (
+        "industries/geo-agency/runs/2026-05-22-initial/quick/20260526_002837/json/"
+        "report_deep_diagnostics.json"
     )
 
 

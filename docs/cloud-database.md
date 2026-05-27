@@ -160,6 +160,12 @@ Run and report artifact types are also stored in S3 after a completed quick or s
 - `query_loss_analysis`
 - `competitor_displacements`
 - `page_optimization_plan`
+- `url_top5_rankings`
+- `domain_top5_rankings`
+- `persona_stage_losses`
+- `page_intent_weakness`
+- `content_optimization_actions`
+- `report_deep_diagnostics`
 - `owned_top5_pages`
 - `owned_weak_pages`
 - `retrieval_evidence_by_model`

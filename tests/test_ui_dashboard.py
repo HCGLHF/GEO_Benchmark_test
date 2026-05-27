@@ -194,6 +194,10 @@ def test_ui_html_renders_report_history_and_preview() -> None:
     assert "target_model_mention_rate" in HTML
     assert "reportHistoryTable" in HTML
     assert "reportPreview" in HTML
+    assert "reportUrlDomainDrilldown" in HTML
+    assert "reportPersonaStageDrilldown" in HTML
+    assert "reportMoneyPageActions" in HTML
+    assert "function renderReportDeepDrilldown" in HTML
     assert "/api/report-history" in HTML
     assert "/api/report-preview" in HTML
 

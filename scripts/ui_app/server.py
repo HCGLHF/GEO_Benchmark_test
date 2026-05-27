@@ -703,6 +703,18 @@ HTML = r"""<!doctype html>
               <h2>Report Preview</h2>
               <pre id="reportPreview">(select a report)</pre>
             </div>
+            <div class="panel">
+              <h2>URL / Domain Top5 Winners</h2>
+              <div id="reportUrlDomainDrilldown" class="muted">No report loaded</div>
+            </div>
+            <div class="panel half">
+              <h2>Persona / Stage Losses</h2>
+              <div id="reportPersonaStageDrilldown" class="muted">No report loaded</div>
+            </div>
+            <div class="panel half">
+              <h2>Money Page Actions</h2>
+              <div id="reportMoneyPageActions" class="muted">No report loaded</div>
+            </div>
           </div>
         </section>
         <section class="workspace" data-view="pages">
@@ -1055,6 +1067,103 @@ HTML = r"""<!doctype html>
         </div>`;
     }
 
+    function renderReportDeepDrilldown(data) {
+      const urls = data.url_rankings || [];
+      const domains = data.domain_rankings || [];
+      const personaStages = data.persona_stage_losses || [];
+      const actions = data.content_actions || [];
+      const intents = data.page_intent_groups || [];
+      byId("reportUrlDomainDrilldown").innerHTML = renderUrlDomainRows(urls, domains);
+      byId("reportPersonaStageDrilldown").innerHTML = renderPersonaStageRows(personaStages);
+      byId("reportMoneyPageActions").innerHTML = renderActionRows(actions, intents);
+    }
+
+    function renderUrlDomainRows(urls, domains) {
+      if (!urls.length && !domains.length) return `<div class="muted">No URL/domain diagnostics available for this report</div>`;
+      const urlRows = urls.slice(0, 8).map((row) => `
+        <tr>
+          <td class="metric-cell">${escapeHtml(row.rank || "-")}</td>
+          <td class="url-cell">${escapeHtml(row.url || "")}</td>
+          <td>${escapeHtml(row.domain || "")}</td>
+          <td>${escapeHtml(row.brand || "")}</td>
+          <td class="metric-cell">${escapeHtml(row.top5_query_count || "0")}</td>
+          <td>${escapeHtml(row.page_intent || "")}</td>
+        </tr>`).join("");
+      const domainRows = domains.slice(0, 6).map((row) => `
+        <tr>
+          <td class="metric-cell">${escapeHtml(row.rank || "-")}</td>
+          <td>${escapeHtml(row.domain || "")}</td>
+          <td>${escapeHtml(row.brand || "")}</td>
+          <td class="metric-cell">${escapeHtml(row.top5_query_count || "0")}</td>
+          <td class="url-cell">${escapeHtml(row.top_urls || "")}</td>
+        </tr>`).join("");
+      return `
+        <div class="table-scroll">
+          <table class="owned-pages-table">
+            <thead><tr><th>#</th><th>URL</th><th>Domain</th><th>Brand</th><th class="metric-cell">Top5 queries</th><th>Intent</th></tr></thead>
+            <tbody>${urlRows}</tbody>
+          </table>
+        </div>
+        <div class="table-scroll" style="margin-top:10px;">
+          <table class="owned-pages-table">
+            <thead><tr><th>#</th><th>Domain</th><th>Brand</th><th class="metric-cell">Top5 queries</th><th>Top URLs</th></tr></thead>
+            <tbody>${domainRows}</tbody>
+          </table>
+        </div>`;
+    }
+
+    function renderPersonaStageRows(rows) {
+      if (!rows.length) return `<div class="muted">No persona/stage diagnostics available for this report</div>`;
+      return `
+        <div class="table-scroll">
+        <table class="owned-pages-table">
+          <thead><tr><th>Persona</th><th>Stage</th><th class="metric-cell">Queries</th><th class="metric-cell">Top5</th><th>Winner</th><th>Why losing</th></tr></thead>
+          <tbody>${rows.slice(0, 10).map((row) => `
+            <tr>
+              <td>${escapeHtml(row.persona || "")}</td>
+              <td>${escapeHtml(row.journey_stage || "")}</td>
+              <td class="metric-cell">${escapeHtml(row.query_count || "0")}</td>
+              <td class="metric-cell">${percent(row.target_top5_share)}</td>
+              <td>${escapeHtml(row.leading_winner || "")}</td>
+              <td class="hint-cell">${escapeHtml(row.primary_loss_reasons || row.recommended_action || "")}</td>
+            </tr>`).join("")}</tbody>
+        </table>
+        </div>`;
+    }
+
+    function renderActionRows(actions, intents) {
+      if (!actions.length && !intents.length) return `<div class="muted">No money-page action plan available for this report</div>`;
+      const actionRows = actions.slice(0, 10).map((row) => `
+        <tr>
+          <td class="metric-cell">${escapeHtml(row.priority || "")}</td>
+          <td class="url-cell">${escapeHtml(row.url || "")}</td>
+          <td>${escapeHtml(row.page_intent || "")}</td>
+          <td class="url-cell">${escapeHtml(row.competitor_benchmark_url || "")}</td>
+          <td class="hint-cell">${escapeHtml(row.content_gaps || "")}</td>
+          <td class="hint-cell">${escapeHtml(row.schema_recommendation || "")}</td>
+        </tr>`).join("");
+      const intentRows = intents.slice(0, 6).map((row) => `
+        <tr>
+          <td>${escapeHtml(row.page_intent || "")}</td>
+          <td class="metric-cell">${escapeHtml(row.weak_page_count || "0")}</td>
+          <td class="metric-cell">${escapeHtml(row.zero_top5_count || "0")}</td>
+          <td class="hint-cell">${escapeHtml(row.recommended_focus || "")}</td>
+        </tr>`).join("");
+      return `
+        <div class="table-scroll">
+        <table class="owned-pages-table">
+          <thead><tr><th>Priority</th><th>URL</th><th>Intent</th><th>Benchmark</th><th>Content gaps</th><th>Schema</th></tr></thead>
+          <tbody>${actionRows}</tbody>
+        </table>
+        </div>
+        <div class="table-scroll" style="margin-top:10px;">
+        <table class="owned-pages-table">
+          <thead><tr><th>Intent</th><th class="metric-cell">Weak</th><th class="metric-cell">Zero Top5</th><th>Focus</th></tr></thead>
+          <tbody>${intentRows}</tbody>
+        </table>
+        </div>`;
+    }
+
     async function loadPageDrilldown(reportDir) {
       const response = await fetch(`/api/page-drilldown?report_dir=${encodeURIComponent(reportDir)}`);
       const data = await response.json();
@@ -1062,11 +1171,15 @@ HTML = r"""<!doctype html>
         byId("ownedPageSource").textContent = data.error;
         byId("ownedTopPagesTable").textContent = "";
         byId("ownedWeakPagesTable").textContent = "";
+        byId("reportUrlDomainDrilldown").textContent = data.error;
+        byId("reportPersonaStageDrilldown").textContent = "";
+        byId("reportMoneyPageActions").textContent = "";
         return;
       }
       byId("ownedPageSource").textContent = `Source: ${data.source} - ${data.report_dir}`;
       byId("ownedTopPagesTable").innerHTML = renderPageRows(data.top_pages || [], "top");
       byId("ownedWeakPagesTable").innerHTML = renderPageRows(data.weak_pages || [], "weak");
+      renderReportDeepDrilldown(data);
     }
 
     function renderModels(models) {

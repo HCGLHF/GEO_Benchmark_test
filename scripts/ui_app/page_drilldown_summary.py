@@ -41,6 +41,11 @@ def summarize_report_page_drilldown(
     resolved = _resolve_known_report_dir(root, report_dir)
     top_pages = _read_csv_rows(resolved / "owned_top5_pages.csv")
     weak_pages = _read_csv_rows(resolved / "owned_weak_pages.csv")
+    url_rankings = _read_csv_rows(resolved / "url_top5_rankings.csv")
+    domain_rankings = _read_csv_rows(resolved / "domain_top5_rankings.csv")
+    persona_stage_losses = _read_csv_rows(resolved / "persona_stage_losses.csv")
+    page_intent_groups = _read_csv_rows(resolved / "page_intent_weakness.csv")
+    content_actions = _read_csv_rows(resolved / "content_optimization_actions.csv")
     source = "csv"
     if not top_pages and not weak_pages:
         owned_pages = load_owned_pages(root / "data" / "processed" / "documents.jsonl", target_brand)
@@ -58,4 +63,9 @@ def summarize_report_page_drilldown(
         "source": source,
         "top_pages": top_pages[:limit],
         "weak_pages": weak_pages[:limit],
+        "url_rankings": url_rankings[:limit],
+        "domain_rankings": domain_rankings[:limit],
+        "persona_stage_losses": persona_stage_losses[:limit],
+        "page_intent_groups": page_intent_groups[:limit],
+        "content_actions": content_actions[:limit],
     }
