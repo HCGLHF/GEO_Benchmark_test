@@ -198,8 +198,12 @@ def test_ui_html_renders_report_history_and_preview() -> None:
     assert "reportPersonaStageDrilldown" in HTML
     assert "reportMoneyPageActions" in HTML
     assert "function renderReportDeepDrilldown" in HTML
+    assert "function downloadReport" in HTML
+    assert "Download" in HTML
     assert "/api/report-history" in HTML
     assert "/api/report-preview" in HTML
+    assert "/api/report-download" in HTML
+    assert 'displayHealthStatus(value)' in HTML
 
 
 def test_ui_html_renders_owned_page_drilldown() -> None:

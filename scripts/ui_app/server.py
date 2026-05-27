@@ -11,7 +11,7 @@ from scripts.ui_app.dashboard import build_dashboard_state
 from scripts.ui_app.deployment_action import handle_server_update_request
 from scripts.ui_app.execution import launch_guarded_run, launch_guarded_stage, resume_guarded_run, stop_guarded_run
 from scripts.ui_app.page_drilldown_summary import summarize_report_page_drilldown
-from scripts.ui_app.report_history import list_report_history, read_report_preview
+from scripts.ui_app.report_history import list_report_history, read_report_download, read_report_preview
 from scripts.ui_app.run_plan import RunPlanRequest, build_run_plan
 from scripts.ui_app.run_monitor import summarize_parallel_run
 
@@ -243,6 +243,12 @@ HTML = r"""<!doctype html>
     .button.inline {
       padding: 6px 9px;
       font-size: 12px;
+    }
+    .action-row {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
     }
     .icon {
       width: 18px;
@@ -821,7 +827,22 @@ HTML = r"""<!doctype html>
       if (["error", "failed"].includes(value)) tone = "error";
       const globalHealthBadge = byId("globalHealthBadge");
       globalHealthBadge.className = `status-badge ${tone}`;
-      globalHealthBadge.textContent = value.replaceAll("_", " ");
+      globalHealthBadge.textContent = displayHealthStatus(value);
+    }
+
+    function displayHealthStatus(value) {
+      const labels = {
+        ok: "Ready",
+        complete: "Complete",
+        completed: "Complete",
+        warning: "Warning",
+        complete_with_model_warnings: "Warnings",
+        interrupted: "Interrupted",
+        error: "Error",
+        failed: "Failed",
+        unknown: "Status unknown",
+      };
+      return labels[value] || value.replaceAll("_", " ");
     }
 
     function setNotice(id, message, tone = "") {
@@ -913,12 +934,24 @@ HTML = r"""<!doctype html>
               <td>${percent(item.target_top5_share)}</td>
               <td>${percent(item.target_model_mention_rate)}</td>
               <td>${item.answer_count || "-"}</td>
-              <td><button class="button secondary inline" data-report-dir="${escapeHtml(item.report_dir)}" data-run-root="${escapeHtml(item.run_root)}">Open</button></td>
+              <td>
+                <span class="action-row">
+                  <button class="button secondary inline" data-report-dir="${escapeHtml(item.report_dir)}" data-run-root="${escapeHtml(item.run_root)}">Open</button>
+                  <button class="button ghost inline" data-report-download-dir="${escapeHtml(item.report_dir)}">Download</button>
+                </span>
+              </td>
             </tr>`).join("")}</tbody>
         </table>`;
       byId("reportHistoryTable").querySelectorAll("button[data-report-dir]").forEach((button) => {
         button.addEventListener("click", () => loadReportPreview(button.dataset.reportDir, button.dataset.runRoot));
       });
+      byId("reportHistoryTable").querySelectorAll("button[data-report-download-dir]").forEach((button) => {
+        button.addEventListener("click", () => downloadReport(button.dataset.reportDownloadDir));
+      });
+    }
+
+    function downloadReport(reportDir) {
+      window.location.href = `/api/report-download?report_dir=${encodeURIComponent(reportDir)}`;
     }
 
     function renderReportTrendChart(items) {
@@ -1569,6 +1602,16 @@ class UIHandler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
+    def _send_download(self, payload: dict) -> None:
+        body = str(payload["content"]).encode("utf-8")
+        filename = str(payload["filename"]).replace('"', "")
+        self.send_response(HTTPStatus.OK)
+        self.send_header("Content-Type", str(payload["content_type"]))
+        self.send_header("Content-Disposition", f'attachment; filename="{filename}"')
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
     def do_GET(self) -> None:  # noqa: N802 - stdlib handler API
         parsed = urlparse(self.path)
         if parsed.path == "/":
@@ -1592,6 +1635,14 @@ class UIHandler(BaseHTTPRequestHandler):
             report_dir = params.get("report_dir", [""])[0]
             try:
                 self._send_json(read_report_preview(PROJECT_ROOT, report_dir=report_dir))
+            except (OSError, ValueError) as exc:
+                self._send_json({"error": str(exc)})
+            return
+        if parsed.path == "/api/report-download":
+            params = parse_qs(parsed.query)
+            report_dir = params.get("report_dir", [""])[0]
+            try:
+                self._send_download(read_report_download(PROJECT_ROOT, report_dir=report_dir))
             except (OSError, ValueError) as exc:
                 self._send_json({"error": str(exc)})
             return

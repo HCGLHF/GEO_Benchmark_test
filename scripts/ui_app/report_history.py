@@ -125,3 +125,20 @@ def read_report_preview(
         "content": content[:max_chars],
         "truncated": len(content) > max_chars,
     }
+
+
+def read_report_download(
+    project_root: Path | str = Path("."),
+    report_dir: str = "",
+) -> dict[str, Any]:
+    root = Path(project_root)
+    resolved = _resolve_known_report_dir(root, report_dir)
+    report_path = resolved / "competitive_gap_report.md"
+    run_id = resolved.parent.name or "report"
+    return {
+        "report_dir": str(resolved),
+        "report_path": str(report_path),
+        "filename": f"{run_id}-competitive_gap_report.md",
+        "content_type": "text/markdown; charset=utf-8",
+        "content": report_path.read_text(encoding="utf-8", errors="replace"),
+    }

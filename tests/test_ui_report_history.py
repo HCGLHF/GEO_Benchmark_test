@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pytest
 
-from scripts.ui_app.report_history import list_report_history, read_report_preview
+from scripts.ui_app.report_history import list_report_history, read_report_download, read_report_preview
 
 
 def _write_report(report_dir: Path, brand_rows: str, manifest: str = '{"result":{"query_rows":10,"answer_rows":8}}') -> None:
@@ -90,3 +90,17 @@ def test_read_report_preview_only_allows_known_report_dirs_under_runs(tmp_path: 
     (outside / "competitive_gap_report.md").write_text("secret", encoding="utf-8")
     with pytest.raises(ValueError):
         read_report_preview(tmp_path, str(outside))
+
+
+def test_read_report_download_returns_known_markdown_report(tmp_path: Path) -> None:
+    report_dir = tmp_path / "runs" / "parallel" / "20260523_010000" / "merged"
+    _write_report(
+        report_dir,
+        "openrouter,openai/gpt-4.1-mini,AlphaXXXX,True,10,3,30.0%,10.0%,2,2.0\n",
+    )
+
+    download = read_report_download(tmp_path, str(report_dir))
+
+    assert download["filename"] == "20260523_010000-competitive_gap_report.md"
+    assert download["content_type"] == "text/markdown; charset=utf-8"
+    assert "Competitive Gap Report" in download["content"]
