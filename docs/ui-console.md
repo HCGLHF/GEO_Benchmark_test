@@ -40,6 +40,7 @@ That hostname is the `GEO Admin Console` Access application. It routes through C
 
 ## Current Capabilities
 
+- Uses a command-center layout with icon navigation for Overview, Run Setup, Run Monitor, Reports, Owned Pages, Cloud Store, and Dry Run Commands.
 - Shows local resource-library counts for companies, URLs, documents, chunks, and AlphaXXXX rows.
 - Shows current competitors from `config/sources.yaml` and `config/client_acquisition_simulator.yaml`.
 - Shows configured evaluation models.
@@ -55,6 +56,7 @@ That hostname is the `GEO Admin Console` Access application. It routes through C
 - Shows local operations summaries from `ops_summary.json` when present, including health status, issues, recommended actions, and key files.
 - Preserves detailed troubleshooting through `ops_events.jsonl`, pipeline log tails, worker log tails, and API attempt files under the selected run root.
 - Can launch the backend-generated parallel API benchmark after an explicit browser confirmation.
+- Shows action feedback for guarded launches, stop/resume requests, and monitor refreshes while preserving the existing confirmation gates.
 - Can stop or resume a UI-launched API benchmark from Run Monitor after explicit browser confirmation.
 - Can launch backend-generated guarded pipeline steps such as owned-site recrawl/fetch, clean, chunk, index, and AWS sync after an explicit browser confirmation.
 

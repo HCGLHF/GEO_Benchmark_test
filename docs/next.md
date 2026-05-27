@@ -2,6 +2,7 @@
 
 ## Done
 
+- Redesigned the local UI console into a command-center layout with icon navigation, workspace switching, compact status surfaces, action feedback, and collapsible command/log panels.
 - Provisioned the first internal EC2 server for the project: `resourcepool-gen-internal-01` in `ap-northeast-1`, running Ubuntu 24.04 on `t3.xlarge` with a 100 GB encrypted root volume.
 - Published the current local project version to GitHub branch `codex/local-ops-logging` at commit `a78ce41`, then checked out the same branch and commit on the EC2 server under `/opt/resourcepool/Resourcepool_Gen`.
 - Copied the local `.env` to the EC2 server with `600` permissions, created `.venv`, installed project dependencies plus Playwright Chromium, and started the UI as `resourcepool-ui.service` bound to `127.0.0.1:8765`.
@@ -192,6 +193,7 @@
 
 ## Learned
 
+- The local UI can gain clearer interaction and visual hierarchy without changing the standard-library server or guarded execution endpoints.
 - Local operations summaries work best as an additive interpretation layer over existing run facts, not as a replacement for pipeline state, worker logs, or output rows.
 - PowerShell native-command argument passing can strip JSON quotes when a JSON object is passed as a direct CLI argument; file-based JSON is safer for runner-to-Python status contracts.
 - `Set-Content -Encoding UTF8` can include a BOM in Windows PowerShell, so Python readers for PowerShell-produced JSON should use `utf-8-sig`.
@@ -296,6 +298,7 @@
 ## Risks
 
 - The EC2 UI service is reachable through Cloudflare Access at `admin.alphaxxxx.com`; do not bypass this by opening public AWS ingress to `8765`.
+- Icon-only navigation must keep accessible labels and visible active state, otherwise the simpler layout becomes harder to operate for keyboard and screen-reader users.
 - The Cloudflare Access allow policy contains the current owner email and `junhao59@163.com`. Additional team use needs explicit teammate emails or identity-provider groups added before sharing the admin entry.
 - The EC2 instance public IP is not durable unless an Elastic IP is attached, so documentation should keep using the instance name/id and Cloudflare hostname as durable references.
 - Codex currently cannot see the user's Ubuntu WSL2 distro from the sandbox Windows user, so final WSL validation must be run by the user inside Ubuntu unless Codex is later attached to that WSL context.
@@ -370,5 +373,5 @@
 6. Add page-intent drilldowns to the report so money-page weakness can be separated from `llms.txt` and blog routing wins.
 7. Audit remaining PowerShell-to-Python JSON argument paths and move any nontrivial payloads to files.
 8. Add retry/backoff tuning for rate-limited model workers so Qwen-style 429 bursts produce fewer warning rows before manual stop/resume is needed.
-9. Add launch history and richer stop/resume state in the UI so users can see which resume attempt produced the final report.
+9. Add launch-history detail inside the Monitor workspace so users can see which UI launch or resume attempt produced the current run root.
 10. Add a restore/download helper for S3 artifacts so remote team members can fetch `qdrant.zip` or processed JSONL by industry and corpus version.
