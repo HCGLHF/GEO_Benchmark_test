@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import shlex
 import subprocess
 from dataclasses import replace
 from datetime import datetime, timezone
@@ -53,6 +54,32 @@ def _read_json(path: Path) -> dict[str, Any]:
 
 def _api_benchmark_command(command: str, platform: str = "auto") -> bool:
     return detect_platform(platform).is_parallel_api_command(command)
+
+
+def _seed_dir_from_command(command: str) -> str:
+    try:
+        tokens = shlex.split(command, posix=True)
+    except ValueError:
+        tokens = command.split()
+    for index, token in enumerate(tokens[:-1]):
+        if token == "--seed-queries-run-dir":
+            return tokens[index + 1]
+    return ""
+
+
+def _seed_queries_error(root: Path, seed_run_dir: str) -> dict[str, Any] | None:
+    if not seed_run_dir:
+        return None
+    seed_path = _resolve_run_root(root, seed_run_dir) / "api_queries.csv"
+    if seed_path.exists():
+        return None
+    normalized_seed_path = _normalize_slashes(str(seed_path))
+    return {
+        "status": "rejected",
+        "error": f"Seed queries file not found: {normalized_seed_path}",
+        "seed_queries_run_dir": _normalize_slashes(seed_run_dir),
+        "missing_path": normalized_seed_path,
+    }
 
 
 def _manifest_platform(manifest: dict[str, Any]) -> str:
@@ -259,6 +286,10 @@ def resume_guarded_run(
     if not confirmed:
         return base_payload
 
+    seed_error = _seed_queries_error(root, _seed_dir_from_command(command))
+    if seed_error is not None:
+        return {**base_payload, **seed_error}
+
     resolved_run_root = _resolve_run_root(root, run_root)
     append_event(
         resolved_run_root,
@@ -314,6 +345,12 @@ def launch_guarded_run(
         "monitor_run_root": _normalize_slashes(str(monitor_run_root)),
         "run_stamp": stamp,
     }
+
+    seed_run_dir = "" if materialized.regenerate_scenarios else materialized.seed_queries_run_dir
+    seed_error = _seed_queries_error(root, seed_run_dir)
+    if seed_error is not None:
+        return {**base_payload, **seed_error}
+
     if not confirmed:
         return base_payload
 

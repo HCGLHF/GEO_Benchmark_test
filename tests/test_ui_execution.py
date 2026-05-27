@@ -16,6 +16,15 @@ class FakeCompletedProcess:
     stderr = ""
 
 
+def write_seed_queries(root: Path, seed_dir: str = "runs/seed") -> None:
+    path = root / seed_dir / "api_queries.csv"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(
+        "query_id,query,scenario_model\nq001,Need GEO,openai/gpt-4.1-mini\n",
+        encoding="utf-8",
+    )
+
+
 def test_launch_guarded_run_requires_confirmation(tmp_path: Path) -> None:
     result = launch_guarded_run(
         project_root=tmp_path,
@@ -33,6 +42,7 @@ def test_launch_guarded_run_requires_confirmation(tmp_path: Path) -> None:
 
 def test_launch_guarded_run_starts_generated_api_command_and_writes_manifest(tmp_path: Path) -> None:
     calls = []
+    write_seed_queries(tmp_path)
 
     def fake_popen(*args, **kwargs):
         calls.append((args, kwargs))
@@ -61,6 +71,7 @@ def test_launch_guarded_run_starts_generated_api_command_and_writes_manifest(tmp
 
 def test_launch_guarded_run_wsl_records_platform_group_and_uses_bash(tmp_path: Path) -> None:
     calls = []
+    write_seed_queries(tmp_path)
 
     def fake_popen(*args, **kwargs):
         calls.append((args, kwargs))
@@ -95,6 +106,7 @@ def test_launch_guarded_run_wsl_records_platform_group_and_uses_bash(tmp_path: P
 
 def test_launch_guarded_run_linux_uses_configured_python(tmp_path: Path) -> None:
     calls = []
+    write_seed_queries(tmp_path)
 
     def fake_popen(*args, **kwargs):
         calls.append((args, kwargs))
@@ -119,6 +131,31 @@ def test_launch_guarded_run_linux_uses_configured_python(tmp_path: Path) -> None
     assert result["command"].startswith("/opt/resourcepool/Resourcepool_Gen/.venv/bin/python ")
     assert " python scripts/full_api_parallel_runner.py" not in result["command"]
     assert calls[0][0][0][:2] == ["bash", "-lc"]
+
+
+def test_launch_guarded_run_rejects_missing_seed_queries_before_start(tmp_path: Path) -> None:
+    calls = []
+
+    def fake_popen(*args, **kwargs):
+        calls.append((args, kwargs))
+        return FakeProcess()
+
+    result = launch_guarded_run(
+        project_root=tmp_path,
+        request=RunPlanRequest(
+            selected_models=["openai/gpt-4.1-mini"],
+            seed_queries_run_dir="runs/missing_seed",
+        ),
+        confirmed=True,
+        popen_factory=fake_popen,
+        stamp_factory=lambda: "20260528_020000",
+    )
+
+    assert result["status"] == "rejected"
+    assert "Seed queries file not found" in result["error"]
+    assert result["missing_path"].endswith("runs/missing_seed/api_queries.csv")
+    assert calls == []
+    assert not (tmp_path / "runs" / "ui_launches" / "20260528_020000" / "launch_manifest.json").exists()
 
 
 def test_launch_guarded_stage_requires_confirmation_and_uses_generated_command(tmp_path: Path) -> None:
@@ -449,3 +486,39 @@ def test_resume_guarded_run_preserves_wsl_platform_and_process_group(tmp_path: P
     assert calls[0][0][0][:2] == ["bash", "-lc"]
     resume_manifest = tmp_path / "runs" / "ui_launches" / "20260525_020000_resume" / "launch_manifest.json"
     assert '"platform": "wsl"' in resume_manifest.read_text(encoding="utf-8")
+
+
+def test_resume_guarded_run_rejects_missing_seed_queries_before_start(tmp_path: Path) -> None:
+    manifest = tmp_path / "runs" / "ui_launches" / "20260525_010000" / "launch_manifest.json"
+    manifest.parent.mkdir(parents=True)
+    manifest.write_text(
+        """
+{
+  "status": "stopped",
+  "platform": "linux",
+  "pid": 1234,
+  "process_group_id": 1234,
+  "command": "python scripts/full_api_parallel_runner.py --run-mode quick --run-root runs/full_api_parallel_ui --platform linux --run-stamp 20260525_010000 --seed-queries-run-dir runs/missing_seed",
+  "monitor_run_root": "runs/full_api_parallel_ui/20260525_010000"
+}
+""".strip(),
+        encoding="utf-8",
+    )
+    calls = []
+
+    def fake_popen(*args, **kwargs):
+        calls.append((args, kwargs))
+        return FakeProcess()
+
+    result = resume_guarded_run(
+        project_root=tmp_path,
+        run_root="runs/full_api_parallel_ui/20260525_010000",
+        confirmed=True,
+        popen_factory=fake_popen,
+        stamp_factory=lambda: "20260525_020000",
+    )
+
+    assert result["status"] == "rejected"
+    assert "Seed queries file not found" in result["error"]
+    assert calls == []
+    assert not (tmp_path / "runs" / "full_api_parallel_ui" / "20260525_010000" / "pipeline_state.jsonl").exists()

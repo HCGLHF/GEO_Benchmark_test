@@ -619,7 +619,7 @@ HTML = r"""<!doctype html>
                   <textarea id="extraSiteUrls"></textarea>
                 </label>
                 <label>Seed query run
-                  <input id="seedQueriesRunDir" type="text" value="runs/client_acquisition_simulator_full_api_20260517_200716">
+                  <input id="seedQueriesRunDir" type="text" value="config/seed_queries/client_acquisition_simulator_full_api_20260517_200716">
                 </label>
               </div>
               <div class="checks">
@@ -1393,8 +1393,10 @@ HTML = r"""<!doctype html>
         body: params.toString(),
       });
       const launch = await response.json();
-      setNotice("launchStatus", `${launch.status}: pid ${launch.pid || "-"} - monitor ${launch.monitor_run_root || ""}`, "ok");
-      if (launch.monitor_run_root) {
+      const tone = launch.status === "launched" ? "ok" : "error";
+      const detail = launch.error ? ` - ${launch.error}` : ` pid ${launch.pid || "-"} - monitor ${launch.monitor_run_root || ""}`;
+      setNotice("launchStatus", `${launch.status}:${detail}`, tone);
+      if (launch.status === "launched" && launch.monitor_run_root) {
         setMonitorRunRoot(launch.monitor_run_root);
         await refreshMonitor();
       }
@@ -1418,8 +1420,10 @@ HTML = r"""<!doctype html>
         body: params.toString(),
       });
       const launch = await response.json();
-      setNotice("launchStatus", `${launch.status}: ${launch.command_label || label} - pid ${launch.pid || "-"} - monitor ${launch.monitor_run_root || ""}`, "ok");
-      if (launch.monitor_run_root) {
+      const tone = launch.status === "launched" ? "ok" : "error";
+      const detail = launch.error ? ` - ${launch.error}` : ` ${launch.command_label || label} - pid ${launch.pid || "-"} - monitor ${launch.monitor_run_root || ""}`;
+      setNotice("launchStatus", `${launch.status}:${detail}`, tone);
+      if (launch.status === "launched" && launch.monitor_run_root) {
         setMonitorRunRoot(launch.monitor_run_root);
         await refreshMonitor();
       }

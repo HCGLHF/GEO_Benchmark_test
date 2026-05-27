@@ -225,6 +225,11 @@ def test_embedded_html_exposes_run_artifact_sync_toggle() -> None:
     assert 'params.set("sync_run_artifacts", checked("syncRunArtifacts"));' in server.HTML
 
 
+def test_embedded_html_uses_repo_seed_queries_default() -> None:
+    assert 'id="seedQueriesRunDir"' in server.HTML
+    assert 'value="config/seed_queries/client_acquisition_simulator_full_api_20260517_200716"' in server.HTML
+
+
 def test_server_injects_venv_python_for_linux_launch_platform(monkeypatch) -> None:
     monkeypatch.setattr(server.sys, "platform", "linux")
     monkeypatch.setattr(server.sys, "executable", "/opt/resourcepool/Resourcepool_Gen/.venv/bin/python")
