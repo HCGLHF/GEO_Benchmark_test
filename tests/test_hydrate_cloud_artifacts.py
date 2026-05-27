@@ -58,6 +58,19 @@ def test_local_path_for_artifact_restores_run_files(tmp_path: Path) -> None:
     ) == root / "runs" / "cloud_synced" / "quick" / "20260526_002837" / "pipeline_state.jsonl"
 
 
+def test_local_path_for_artifact_restores_run_json_files(tmp_path: Path) -> None:
+    root = tmp_path / "project"
+
+    assert local_path_for_artifact(
+        artifact_row(
+            "report_deep_diagnostics",
+            "industries/geo-agency/runs/2026-05-22-initial/quick/20260526_002837/json/"
+            "report_deep_diagnostics.json",
+        ),
+        root,
+    ) == root / "runs" / "cloud_synced" / "quick" / "20260526_002837" / "merged" / "report_deep_diagnostics.json"
+
+
 def test_hydrate_artifacts_downloads_filtered_rows(tmp_path: Path) -> None:
     rows = [
         artifact_row("processed_documents", "industries/geo-agency/processed/2026-05-22-initial/documents.jsonl"),

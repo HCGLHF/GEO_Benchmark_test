@@ -20,7 +20,7 @@ CORPUS_LOCAL_PATHS = {
     "processed_chunks": Path("data/processed/chunks.jsonl"),
 }
 RUN_ROOT_SECTIONS = {"manifest": {"run_manifest.json"}, "logs": {"pipeline_state.jsonl"}, "ui": {"progress.html"}}
-RUN_MERGED_SECTIONS = {"reports", "tables", "jsonl"}
+RUN_MERGED_SECTIONS = {"reports", "tables", "json", "jsonl"}
 RUN_MERGED_MANIFEST_FILES = {"merge_manifest.json"}
 
 
