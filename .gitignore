@@ -5,6 +5,7 @@
 .deps/
 __pycache__/
 .pytest_cache/
+.superpowers/
 *.pyc
 data/
 runs/
