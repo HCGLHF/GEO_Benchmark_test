@@ -93,6 +93,34 @@ def test_launch_guarded_run_wsl_records_platform_group_and_uses_bash(tmp_path: P
     assert '"process_group_id": 5151' in manifest
 
 
+def test_launch_guarded_run_linux_uses_configured_python(tmp_path: Path) -> None:
+    calls = []
+
+    def fake_popen(*args, **kwargs):
+        calls.append((args, kwargs))
+        return FakeProcess(pid=5252)
+
+    result = launch_guarded_run(
+        project_root=tmp_path,
+        request=RunPlanRequest(
+            platform="linux",
+            python_executable="/opt/resourcepool/Resourcepool_Gen/.venv/bin/python",
+            selected_models=["openai/gpt-4.1-mini"],
+            seed_queries_run_dir="runs/seed",
+            api_run_root="runs/full_api_parallel_ui",
+        ),
+        confirmed=True,
+        popen_factory=fake_popen,
+        stamp_factory=lambda: "20260528_010000",
+    )
+
+    assert result["status"] == "launched"
+    assert result["platform"] == "linux"
+    assert result["command"].startswith("/opt/resourcepool/Resourcepool_Gen/.venv/bin/python ")
+    assert " python scripts/full_api_parallel_runner.py" not in result["command"]
+    assert calls[0][0][0][:2] == ["bash", "-lc"]
+
+
 def test_launch_guarded_stage_requires_confirmation_and_uses_generated_command(tmp_path: Path) -> None:
     result = launch_guarded_stage(
         project_root=tmp_path,

@@ -147,6 +147,33 @@ def test_build_run_plan_wsl_parallel_uses_posix_paths_and_preserves_api_args() -
     assert "--run-stamp 20260526_120000" in api_command
 
 
+def test_build_run_plan_uses_configured_python_for_linux_launches() -> None:
+    request = RunPlanRequest(
+        platform="linux",
+        python_executable="/opt/resourcepool/Resourcepool_Gen/.venv/bin/python",
+        run_mode="quick",
+        selected_models=["openai/gpt-4.1-mini"],
+        recrawl_own_site=True,
+        rescan_corpus=False,
+        regenerate_scenarios=False,
+        parallel_api=True,
+        seed_queries_run_dir="runs/client_acquisition_simulator_full_api_20260517_200716",
+        api_run_root="runs/full_api_parallel_ui",
+        pipeline_run_root="runs/ui_pipeline/20260528_010000",
+        run_stamp="20260528_010000",
+    )
+
+    plan = build_run_plan(request)
+    commands = [command.command for command in plan.commands]
+    api_command = next(command for command in commands if "full_api_parallel_runner.py" in command)
+    crawl_command = next(command for command in commands if "refresh_owned_site_crawl.py" in command)
+
+    assert api_command.startswith("/opt/resourcepool/Resourcepool_Gen/.venv/bin/python ")
+    assert crawl_command.startswith("/opt/resourcepool/Resourcepool_Gen/.venv/bin/python scripts/run_pipeline_step.py")
+    assert " -- /opt/resourcepool/Resourcepool_Gen/.venv/bin/python scripts/refresh_owned_site_crawl.py " in crawl_command
+    assert not api_command.startswith("python scripts/full_api_parallel_runner.py")
+
+
 def test_build_run_plan_quotes_tricky_seed_urls_for_wsl_nested_command() -> None:
     tricky_url = 'https://docs.alphaxxxx.com/path with spaces/?q=$deal&name="quoted"`tick'
     request = RunPlanRequest(
@@ -198,5 +225,33 @@ def test_embedded_html_exposes_run_artifact_sync_toggle() -> None:
     assert 'params.set("sync_run_artifacts", checked("syncRunArtifacts"));' in server.HTML
 
 
+def test_server_injects_venv_python_for_linux_launch_platform(monkeypatch) -> None:
+    monkeypatch.setattr(server.sys, "platform", "linux")
+    monkeypatch.setattr(server.sys, "executable", "/opt/resourcepool/Resourcepool_Gen/.venv/bin/python")
+
+    assert (
+        server._python_executable_for_platform("linux")
+        == "/opt/resourcepool/Resourcepool_Gen/.venv/bin/python"
+    )
+    assert (
+        server._python_executable_for_platform("auto")
+        == "/opt/resourcepool/Resourcepool_Gen/.venv/bin/python"
+    )
+    assert server._python_executable_for_platform("windows") == ""
+
+
+def test_server_does_not_inject_windows_python_for_wsl_or_linux_launch(monkeypatch) -> None:
+    monkeypatch.setattr(server.sys, "platform", "win32")
+    monkeypatch.setattr(server.sys, "executable", r"C:\Users\hank1\AppData\Local\Programs\Python\Python313\python.exe")
+
+    assert server._python_executable_for_platform("windows").endswith("python.exe")
+    assert server._python_executable_for_platform("auto").endswith("python.exe")
+    assert server._python_executable_for_platform("wsl") == ""
+    assert server._python_executable_for_platform("linux") == ""
+
+
 def test_embedded_html_normalizes_pipeline_step_filter_for_wsl_paths() -> None:
-    assert 'replaceAll("\\\\", "/").startsWith("python scripts/run_pipeline_step.py")' in server.HTML
+    assert "function isPipelineStepCommand(command)" in server.HTML
+    assert 'normalized.startsWith("python scripts/run_pipeline_step.py")' in server.HTML
+    assert 'normalized.includes("/python scripts/run_pipeline_step.py")' in server.HTML
+    assert 'normalized.includes("/python.exe scripts/run_pipeline_step.py")' in server.HTML

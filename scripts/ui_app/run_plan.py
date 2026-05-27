@@ -10,6 +10,7 @@ from scripts.platform_runtime import PlatformRuntime, detect_platform
 @dataclass(frozen=True)
 class RunPlanRequest:
     platform: str = "auto"
+    python_executable: str = ""
     own_site_url: str = "https://alphaxxxx.com/"
     extra_site_urls: list[str] = field(default_factory=list)
     run_mode: str = "quick"
@@ -73,11 +74,18 @@ def _format_argv(runtime: PlatformRuntime, argv: Sequence[str]) -> str:
     return runtime.format_command(args)
 
 
+def _python_executable(request: RunPlanRequest, runtime: PlatformRuntime) -> str:
+    configured = request.python_executable.strip()
+    if configured:
+        return runtime.path(configured)
+    return "python"
+
+
 def _pipeline_step(request: RunPlanRequest, runtime: PlatformRuntime, stage: str, command: Sequence[str]) -> str:
     prefix = _format_argv(
         runtime,
         [
-            "python",
+            _python_executable(request, runtime),
             runtime.path("scripts/run_pipeline_step.py"),
             "--run-root",
             runtime.path(request.pipeline_run_root),
@@ -89,8 +97,9 @@ def _pipeline_step(request: RunPlanRequest, runtime: PlatformRuntime, stage: str
 
 
 def _parallel_api_command(request: RunPlanRequest, runtime: PlatformRuntime, queries_per_model: int) -> str:
+    python = _python_executable(request, runtime)
     argv = [
-        "python",
+        python,
         runtime.path("scripts/full_api_parallel_runner.py"),
         "--run-mode",
         request.run_mode,
@@ -123,6 +132,7 @@ def build_run_plan(request: RunPlanRequest) -> RunPlan:
     commands: list[PlannedCommand] = []
     warnings: list[str] = []
     queries_per_model = _queries_for_mode(request)
+    python = _python_executable(request, runtime)
 
     if request.recrawl_own_site:
         urls = [request.own_site_url] + [url for url in request.extra_site_urls if url.strip()]
@@ -135,7 +145,7 @@ def build_run_plan(request: RunPlanRequest) -> RunPlan:
                     runtime,
                     "owned_site_crawl",
                     [
-                        "python",
+                        python,
                         runtime.path("scripts/refresh_owned_site_crawl.py"),
                         "--brand",
                         "AlphaXXXX",
@@ -162,7 +172,7 @@ def build_run_plan(request: RunPlanRequest) -> RunPlan:
                     runtime,
                     "clean",
                     [
-                        "python",
+                        python,
                         runtime.path("scripts/refresh_owned_site_processed.py"),
                         "--raw-pages",
                         runtime.path("data/raw/alpha_update_pages.jsonl"),
@@ -183,17 +193,17 @@ def build_run_plan(request: RunPlanRequest) -> RunPlan:
             [
                 PlannedCommand(
                     label="Clean documents",
-                    command=_pipeline_step(request, runtime, "clean", ["python", runtime.path("scripts/clean_documents.py")]),
+                    command=_pipeline_step(request, runtime, "clean", [python, runtime.path("scripts/clean_documents.py")]),
                     note="Rebuild normalized documents from raw crawled pages.",
                 ),
                 PlannedCommand(
                     label="Chunk documents",
-                    command=_pipeline_step(request, runtime, "chunk", ["python", runtime.path("scripts/chunk_documents.py")]),
+                    command=_pipeline_step(request, runtime, "chunk", [python, runtime.path("scripts/chunk_documents.py")]),
                     note="Recreate retrieval chunks after document changes.",
                 ),
                 PlannedCommand(
                     label="Build keyword index",
-                    command=_pipeline_step(request, runtime, "index", ["python", runtime.path("scripts/build_keyword_index.py")]),
+                    command=_pipeline_step(request, runtime, "index", [python, runtime.path("scripts/build_keyword_index.py")]),
                     note="Refresh BM25 so retrieval uses the current resource library.",
                 ),
             ]
@@ -220,7 +230,7 @@ def build_run_plan(request: RunPlanRequest) -> RunPlan:
                     runtime,
                     "AWS sync",
                     [
-                        "python",
+                        python,
                         runtime.path("scripts/cloud/import_corpus.py"),
                         "--industry",
                         "geo-agency",
@@ -239,7 +249,7 @@ def build_run_plan(request: RunPlanRequest) -> RunPlan:
                     runtime,
                     "AWS sync",
                     [
-                        "python",
+                        python,
                         runtime.path("scripts/cloud/verify_cloud_import.py"),
                         "--industry",
                         "geo-agency",
@@ -272,7 +282,7 @@ def build_run_plan(request: RunPlanRequest) -> RunPlan:
                     command=_format_argv(
                         runtime,
                         [
-                            "python",
+                            python,
                             runtime.path("scripts/run_full_api_client_acquisition.py"),
                             "--config",
                             runtime.path("config/client_acquisition_simulator.yaml"),

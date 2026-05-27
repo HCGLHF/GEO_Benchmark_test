@@ -66,6 +66,9 @@ def test_runtime_recognizes_parallel_api_commands() -> None:
     runtime = posix_runtime(platform_id="linux")
 
     assert runtime.is_parallel_api_command("python scripts/full_api_parallel_runner.py --run-mode test")
+    assert runtime.is_parallel_api_command(
+        "/opt/resourcepool/Resourcepool_Gen/.venv/bin/python scripts/full_api_parallel_runner.py --run-mode test"
+    )
     assert runtime.is_parallel_api_command("bash scripts/run_full_api_parallel_with_watch.sh --run-mode test")
     assert runtime.is_parallel_api_command(
         "powershell -ExecutionPolicy Bypass -File scripts\\run_full_api_parallel_with_watch.ps1 -RunMode test"
@@ -90,6 +93,10 @@ def test_runtime_recognizes_guarded_pipeline_commands_across_path_styles() -> No
     runtime = posix_runtime(platform_id="wsl")
 
     assert runtime.is_guarded_pipeline_command("python scripts/run_pipeline_step.py --run-root runs/x --stage clean")
+    assert runtime.is_guarded_pipeline_command(
+        "/opt/resourcepool/Resourcepool_Gen/.venv/bin/python scripts/run_pipeline_step.py --run-root runs/x --stage clean "
+        "-- /opt/resourcepool/Resourcepool_Gen/.venv/bin/python scripts/clean_documents.py"
+    )
     assert runtime.is_guarded_pipeline_command("python scripts\\run_pipeline_step.py --run-root runs\\x --stage clean")
     assert not runtime.is_guarded_pipeline_command("python scripts/clean_documents.py")
     assert not runtime.is_guarded_pipeline_command(

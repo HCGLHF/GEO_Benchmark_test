@@ -179,7 +179,7 @@ class PlatformRuntime:
         if _has_shell_control_operator(command):
             return False
         tokens = _normalized_tokens(command)
-        if len(tokens) >= 2 and tokens[0] in {"python", "python3"}:
+        if len(tokens) >= 2 and _is_python_token(tokens[0]):
             return tokens[1] == "scripts/full_api_parallel_runner.py"
         if len(tokens) >= 2 and tokens[0] == "bash":
             return tokens[1] == "scripts/run_full_api_parallel_with_watch.sh"
@@ -193,7 +193,7 @@ class PlatformRuntime:
         if _has_shell_control_operator(command):
             return False
         tokens = _normalized_tokens(command)
-        return len(tokens) >= 2 and tokens[0] in {"python", "python3"} and tokens[1] == "scripts/run_pipeline_step.py"
+        return len(tokens) >= 2 and _is_python_token(tokens[0]) and tokens[1] == "scripts/run_pipeline_step.py"
 
 
 def windows_runtime(
@@ -283,6 +283,16 @@ def _split_command(command: str) -> list[str]:
 
 def _normalized_tokens(command: str) -> list[str]:
     return [_normalize_command_paths(token) for token in _split_command(_normalize_command_paths(command))]
+
+
+def _is_python_token(token: str) -> bool:
+    normalized = _normalize_command_paths(token).lower()
+    return (
+        normalized in {"python", "python3"}
+        or normalized.endswith("/python")
+        or normalized.endswith("/python3")
+        or normalized.endswith("/python.exe")
+    )
 
 
 def _has_shell_control_operator(command: str) -> bool:

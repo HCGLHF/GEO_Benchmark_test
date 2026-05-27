@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import sys
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -17,6 +18,15 @@ from scripts.ui_app.run_monitor import summarize_parallel_run
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
+
+
+def _python_executable_for_platform(platform: str) -> str:
+    requested = (platform or "auto").strip().lower()
+    if requested == "auto":
+        return sys.executable
+    if sys.platform.startswith("win"):
+        return sys.executable if requested == "windows" else ""
+    return sys.executable if requested in {"linux", "wsl"} else ""
 
 
 HTML = r"""<!doctype html>
@@ -1327,6 +1337,15 @@ HTML = r"""<!doctype html>
         </div>`;
     }
 
+    function isPipelineStepCommand(command) {
+      const normalized = String(command || "").replaceAll("\\", "/");
+      return normalized.startsWith("python scripts/run_pipeline_step.py")
+        || normalized.startsWith("python3 scripts/run_pipeline_step.py")
+        || normalized.includes("/python scripts/run_pipeline_step.py")
+        || normalized.includes("/python3 scripts/run_pipeline_step.py")
+        || normalized.includes("/python.exe scripts/run_pipeline_step.py");
+    }
+
     async function buildPlan() {
       const selectedStageLabel = byId("stageCommand").value;
       const params = collectRunParams();
@@ -1335,7 +1354,7 @@ HTML = r"""<!doctype html>
       lastPlan = plan;
       byId("commands").textContent = plan.commands.map((item, index) => `${index + 1}. ${item.label}\n${item.command}\n${item.note}`).join("\n\n");
       byId("warnings").innerHTML = plan.warnings.map((warning) => `<div class="warning">${warning}</div>`).join("");
-      const stageCommands = plan.commands.filter((item) => item.command.replaceAll("\\", "/").startsWith("python scripts/run_pipeline_step.py"));
+      const stageCommands = plan.commands.filter((item) => isPipelineStepCommand(item.command));
       const stageSelect = byId("stageCommand");
       stageSelect.innerHTML = stageCommands.map((item) => `<option value="${item.label}">${item.label}</option>`).join("");
       if (Array.from(stageSelect.options).some((option) => option.value === selectedStageLabel)) {
@@ -1668,6 +1687,7 @@ class UIHandler(BaseHTTPRequestHandler):
             custom_queries = params.get("custom_queries_per_model", [""])[0].strip()
             request = RunPlanRequest(
                 platform=params.get("platform", ["auto"])[0],
+                python_executable=_python_executable_for_platform(params.get("platform", ["auto"])[0]),
                 own_site_url=params.get("own_site_url", ["https://alphaxxxx.com/"])[0],
                 extra_site_urls=extra_urls,
                 run_mode=params.get("run_mode", ["quick"])[0],
@@ -1705,6 +1725,7 @@ class UIHandler(BaseHTTPRequestHandler):
         custom_queries = params.get("custom_queries_per_model", [""])[0].strip()
         return RunPlanRequest(
             platform=params.get("platform", ["auto"])[0],
+            python_executable=_python_executable_for_platform(params.get("platform", ["auto"])[0]),
             own_site_url=params.get("own_site_url", ["https://alphaxxxx.com/"])[0],
             extra_site_urls=extra_urls,
             run_mode=params.get("run_mode", ["quick"])[0],
