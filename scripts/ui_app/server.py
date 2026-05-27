@@ -310,6 +310,25 @@ HTML = r"""<!doctype html>
       margin-top: 10px;
       font-size: 13px;
     }
+    .notice {
+      border-radius: 7px;
+      border: 1px solid var(--line);
+      padding: 9px 10px;
+      font-size: 13px;
+      background: #fff;
+    }
+    .notice.warning { color: var(--warn); background: #fff7ed; border-color: #fed7aa; }
+    .notice.error { color: var(--danger); background: #fef3f2; border-color: #fecdca; }
+    .notice.ok { color: var(--ok); background: #ecfdf3; border-color: #abefc6; }
+    .log-toggle {
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      background: #fff;
+      color: var(--ink);
+      padding: 8px 10px;
+      margin-bottom: 8px;
+      cursor: pointer;
+    }
     .progress-cell {
       min-width: 160px;
     }
@@ -553,6 +572,7 @@ HTML = r"""<!doctype html>
             </div>
             <div class="panel">
               <h2>Monitor Log</h2>
+              <button class="log-toggle" type="button" data-log-target="monitorLog">Monitor logs</button>
               <pre id="monitorLog"></pre>
             </div>
           </div>
@@ -596,6 +616,7 @@ HTML = r"""<!doctype html>
         <section class="workspace" data-view="commands">
           <div class="panel">
             <h2>Dry Run Commands</h2>
+            <button class="log-toggle" type="button" data-log-target="commands">Command preview</button>
             <pre id="commands"></pre>
             <div id="warnings"></div>
           </div>
@@ -653,6 +674,29 @@ HTML = r"""<!doctype html>
       const globalHealthBadge = byId("globalHealthBadge");
       globalHealthBadge.className = `status-badge ${tone}`;
       globalHealthBadge.textContent = value.replaceAll("_", " ");
+    }
+
+    function setNotice(id, message, tone = "") {
+      const node = byId(id);
+      node.className = tone ? `notice ${tone}` : "muted";
+      node.textContent = message || "";
+    }
+
+    async function withButtonBusy(button, busyText, action) {
+      button.dataset.originalText = button.innerHTML;
+      button.disabled = true;
+      button.textContent = busyText;
+      try {
+        return await action();
+      } finally {
+        button.disabled = false;
+        button.innerHTML = button.dataset.originalText;
+      }
+    }
+
+    function toggleLogPanel(targetId) {
+      const target = byId(targetId);
+      target.hidden = !target.hidden;
     }
 
     async function loadState() {
@@ -910,7 +954,7 @@ HTML = r"""<!doctype html>
         body: params.toString(),
       });
       const launch = await response.json();
-      byId("launchStatus").textContent = `${launch.status}: pid ${launch.pid || "-"} - monitor ${launch.monitor_run_root || ""}`;
+      setNotice("launchStatus", `${launch.status}: pid ${launch.pid || "-"} - monitor ${launch.monitor_run_root || ""}`, "ok");
       if (launch.monitor_run_root) {
         setMonitorRunRoot(launch.monitor_run_root);
         await refreshMonitor();
@@ -921,7 +965,7 @@ HTML = r"""<!doctype html>
       await buildPlan();
       const label = byId("stageCommand").value;
       if (!label) {
-        byId("launchStatus").textContent = "No guarded pipeline step is available in the current plan.";
+        setNotice("launchStatus", "No guarded pipeline step is available in the current plan.", "warning");
         return;
       }
       const ok = window.confirm(`Launch pipeline step: ${label}?`);
@@ -935,7 +979,7 @@ HTML = r"""<!doctype html>
         body: params.toString(),
       });
       const launch = await response.json();
-      byId("launchStatus").textContent = `${launch.status}: ${launch.command_label || label} - pid ${launch.pid || "-"} - monitor ${launch.monitor_run_root || ""}`;
+      setNotice("launchStatus", `${launch.status}: ${launch.command_label || label} - pid ${launch.pid || "-"} - monitor ${launch.monitor_run_root || ""}`, "ok");
       if (launch.monitor_run_root) {
         setMonitorRunRoot(launch.monitor_run_root);
         await refreshMonitor();
@@ -1026,7 +1070,7 @@ HTML = r"""<!doctype html>
         body: params.toString(),
       });
       const result = await response.json();
-      byId("launchStatus").textContent = `${result.status}: stop ${result.monitor_run_root || runRoot} pid ${result.pid || "-"}`;
+      setNotice("launchStatus", `${result.status}: stop ${result.monitor_run_root || runRoot} pid ${result.pid || "-"}`, "warning");
       await refreshMonitor();
     }
 
@@ -1044,18 +1088,18 @@ HTML = r"""<!doctype html>
         body: params.toString(),
       });
       const result = await response.json();
-      byId("launchStatus").textContent = `${result.status}: resume ${result.monitor_run_root || runRoot} pid ${result.pid || "-"}`;
+      setNotice("launchStatus", `${result.status}: resume ${result.monitor_run_root || runRoot} pid ${result.pid || "-"}`, "ok");
       if (result.monitor_run_root) setMonitorRunRoot(result.monitor_run_root);
       await refreshMonitor();
     }
 
     byId("refresh").addEventListener("click", loadState);
     byId("plan").addEventListener("click", buildPlan);
-    byId("launchApi").addEventListener("click", launchApiRun);
-    byId("launchStage").addEventListener("click", launchStage);
-    byId("monitorRefresh").addEventListener("click", refreshMonitor);
-    byId("stopApiRun").addEventListener("click", stopApiRun);
-    byId("resumeApiRun").addEventListener("click", resumeApiRun);
+    byId("launchApi").addEventListener("click", () => withButtonBusy(byId("launchApi"), "Launching...", launchApiRun));
+    byId("launchStage").addEventListener("click", () => withButtonBusy(byId("launchStage"), "Launching...", launchStage));
+    byId("monitorRefresh").addEventListener("click", () => withButtonBusy(byId("monitorRefresh"), "Refreshing...", refreshMonitor));
+    byId("stopApiRun").addEventListener("click", () => withButtonBusy(byId("stopApiRun"), "Stopping...", stopApiRun));
+    byId("resumeApiRun").addEventListener("click", () => withButtonBusy(byId("resumeApiRun"), "Resuming...", resumeApiRun));
     byId("linkedMonitorRoot").addEventListener("change", () => {
       setMonitorRunRoot(byId("linkedMonitorRoot").value);
       refreshMonitor();
@@ -1068,6 +1112,9 @@ HTML = r"""<!doctype html>
     });
     document.querySelectorAll("[data-view-target]").forEach((button) => {
       button.addEventListener("click", () => setCurrentView(button.dataset.viewTarget));
+    });
+    document.querySelectorAll("[data-log-target]").forEach((button) => {
+      button.addEventListener("click", () => toggleLogPanel(button.dataset.logTarget));
     });
     setInterval(() => {
       if (byId("monitorAutoRefresh").checked) refreshMonitor();

@@ -139,6 +139,16 @@ def test_ui_html_updates_global_health_badge() -> None:
     assert "setGlobalHealth(health.status)" in HTML
 
 
+def test_ui_html_renders_action_feedback_and_collapsible_logs() -> None:
+    assert "async function withButtonBusy" in HTML
+    assert "button.disabled = true" in HTML
+    assert "button.dataset.originalText" in HTML
+    assert "class=\"log-toggle\"" in HTML
+    assert "data-log-target=\"monitorLog\"" in HTML
+    assert "function toggleLogPanel" in HTML
+    assert "setNotice(\"launchStatus\"" in HTML
+
+
 def test_ui_html_renders_pipeline_progress_bars() -> None:
     assert ".progress-track" in HTML
     assert ".progress-fill" in HTML
