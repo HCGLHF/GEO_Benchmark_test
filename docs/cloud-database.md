@@ -210,6 +210,15 @@ Hydrated run reports are restored under:
 runs/cloud_synced/{run_mode}/{run_id}/merged/
 ```
 
+For EC2 server updates, use the deployment wrapper so code and ignored data move together:
+
+```bash
+cd /opt/resourcepool/Resourcepool_Gen
+python scripts/cloud/deploy_ec2_update.py --execute
+```
+
+That wrapper runs Git fetch/checkout/pull, installs dependencies, hydrates current quick/standard artifacts for `geo-agency/2026-05-27-alpha-refresh`, runs the cloud verifier, restarts `resourcepool-ui.service`, checks `/api/state`, and writes a non-secret JSON log under `runs/deployments/`.
+
 ## Qdrant Responsibilities
 
 Qdrant remains a rebuildable retrieval index. It should not go into Git and should not be treated as the source of truth.

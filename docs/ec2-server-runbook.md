@@ -145,20 +145,27 @@ Security notes:
 
 ## Deployment Update
 
-After pushing a new branch or commit:
+After pushing a new branch or commit, use the deployment wrapper from the server checkout:
 
 ```bash
 cd /opt/resourcepool/Resourcepool_Gen
-git fetch origin
-git checkout <branch>
-git pull --ff-only
-source .venv/bin/activate
-python -m pip install -e ".[dev]"
-python scripts/cloud/hydrate_artifacts.py --industry geo-agency --corpus-version 2026-05-27-alpha-refresh --run-mode quick --run-mode standard --project-root .
-sudo systemctl restart resourcepool-ui.service
+python scripts/cloud/deploy_ec2_update.py --execute
 ```
 
-`git pull` updates code only. It does not bring back ignored local data directories such as `data/` and `runs/`. Run hydration before restart when the UI must show corpus counts, latest reports, report history, Top5/Mention trend charts, or run artifacts after a fresh deploy.
+The wrapper performs:
+
+- `git fetch origin`
+- checkout/pull of `codex/local-ops-logging`
+- dependency install into `.venv`
+- quick/standard artifact hydration for `geo-agency/2026-05-27-alpha-refresh`
+- cloud verification
+- `resourcepool-ui.service` restart
+- service and `/api/state` health checks
+- a non-secret deployment log in `runs/deployments/`
+
+If the server checkout predates this wrapper, first run the manual Git fetch/pull once to get the script, then run the wrapper.
+
+`git pull` updates code only. It does not bring back ignored local data directories such as `data/` and `runs/`. The wrapper includes hydration before restart so the UI can show corpus counts, latest reports, report history, Top5/Mention trend charts, and run artifacts after a fresh deploy.
 
 Hydration skips files that already exist by default, which protects Phase 1 copied data or newer server-local artifacts. Use `--overwrite` only when intentionally replacing server files with the S3/RDS artifact copy.
 

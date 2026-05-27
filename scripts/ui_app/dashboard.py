@@ -9,6 +9,7 @@ from urllib.parse import urlparse
 from scripts._common import load_dotenv
 from scripts.ui_app.config_summary import load_project_options
 from scripts.ui_app.corpus_summary import summarize_local_corpus
+from scripts.ui_app.deployment_status import summarize_deployment_status
 from scripts.ui_app.report_history import list_report_history
 from scripts.ui_app.report_summary import summarize_latest_report
 
@@ -70,4 +71,5 @@ def build_dashboard_state(project_root: Path | str = Path(".")) -> dict[str, Any
         "report_history": [item.to_dict() for item in list_report_history(root, target_brand=options.target_brand, limit=10)],
         "latest_monitor_run_root": _latest_monitor_run_root(root),
         "cloud": _cloud_status(root),
+        "deployment": summarize_deployment_status(root),
     }

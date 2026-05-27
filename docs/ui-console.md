@@ -48,6 +48,7 @@ That hostname is the `GEO Admin Console` Access application. It routes through C
 - Shows historical merged reports from `runs/**/merged*/competitive_gap_report.md`, with AlphaXXXX rank, Top5 share, mention rate, answer count, and an in-UI Markdown preview.
 - Shows owned-page drilldowns for the selected report: which AlphaXXXX URLs entered retrieval Top5 and which owned pages are weakest or never entered Top5.
 - Shows non-secret cloud configuration presence from environment variables.
+- Shows deployment status from local Git metadata and the latest `runs/deployments/*.json` log, including current corpus version, cloud verifier result, artifact count, API document/chunk counts, and latest hydrated report path.
 - Builds dry-run commands for owned-site recrawl/fetch, owned-site processed corpus replacement, optional AWS sync, and API benchmark execution.
 - Monitors a parallel run root with current stage, per-model progress, API calls, failure counts, log tails, and merged report status.
 - Shows chain health for API runs, including failed workers, API failures, missing outputs, and likely stalls.

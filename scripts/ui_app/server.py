@@ -718,11 +718,19 @@ HTML = r"""<!doctype html>
           </div>
         </section>
         <section class="workspace" data-view="cloud">
-          <div class="panel">
-            <h2>Cloud Store</h2>
-            <table>
-              <tbody id="cloudRows"></tbody>
-            </table>
+          <div class="panel-grid">
+            <div class="panel half">
+              <h2>Cloud Store</h2>
+              <table>
+                <tbody id="cloudRows"></tbody>
+              </table>
+            </div>
+            <div class="panel half">
+              <h2>Deployment Status</h2>
+              <table>
+                <tbody id="deploymentRows"></tbody>
+              </table>
+            </div>
           </div>
         </section>
         <section class="workspace" data-view="commands">
@@ -831,6 +839,7 @@ HTML = r"""<!doctype html>
       renderModels(state.options.models);
       renderCompetitors(state.options.competitors, report.brands_above_target);
       renderCloud(state.cloud);
+      renderDeployment(state.deployment);
       renderReportHistory(state.report_history || []);
       renderReportTrendChart(state.report_history || []);
       renderLatestTopBrands(report.top_brands || []);
@@ -1065,7 +1074,29 @@ HTML = r"""<!doctype html>
         ["AWS key", cloud.has_aws_access_key ? "configured" : "missing"],
         ["Postgres password", cloud.has_postgres_password ? "configured" : "missing"],
       ];
-      byId("cloudRows").innerHTML = rows.map(([key, value]) => `<tr><th>${key}</th><td>${value}</td></tr>`).join("");
+      byId("cloudRows").innerHTML = rows.map(([key, value]) => `<tr><th>${escapeHtml(key)}</th><td>${escapeHtml(value)}</td></tr>`).join("");
+    }
+
+    function renderDeployment(deployment) {
+      deployment = deployment || {};
+      const git = deployment.git || {};
+      const last = deployment.last_deployment || {};
+      const verification = deployment.cloud_verification || {};
+      const apiState = deployment.api_state || {};
+      const verifierStatus = verification.ok === null || verification.ok === undefined ? "-" : (verification.ok ? "ok" : "failed");
+      const rows = [
+        ["Git branch", git.branch || "-"],
+        ["Git commit", git.commit || "-"],
+        ["Default corpus", deployment.default_corpus_version || "-"],
+        ["Last deploy", `${last.status || "missing"}${last.completed_at ? " / " + last.completed_at : ""}`],
+        ["Failed step", last.failed_step || "-"],
+        ["Cloud verifier", verifierStatus],
+        ["Cloud artifacts", verification.artifacts ?? "-"],
+        ["API documents", apiState.document_count ?? "-"],
+        ["API chunks", apiState.chunk_count ?? "-"],
+        ["Latest report", apiState.latest_report_dir || "-"],
+      ];
+      byId("deploymentRows").innerHTML = rows.map(([key, value]) => `<tr><th>${escapeHtml(key)}</th><td>${escapeHtml(value)}</td></tr>`).join("");
     }
 
     function checked(id) {

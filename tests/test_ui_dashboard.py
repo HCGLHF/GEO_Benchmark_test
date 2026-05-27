@@ -34,6 +34,8 @@ models:
     assert state["report_history"] == []
     assert state["cloud"]["bucket"] is None
     assert state["cloud"]["rds_endpoint"] is None
+    assert state["deployment"]["default_corpus_version"] == "2026-05-27-alpha-refresh"
+    assert state["deployment"]["last_deployment"]["status"] == "missing"
 
 
 def test_build_dashboard_state_loads_non_secret_cloud_status_from_dotenv(tmp_path: Path, monkeypatch) -> None:
@@ -201,6 +203,13 @@ def test_ui_html_renders_owned_page_drilldown() -> None:
     assert "ownedTopPagesTable" in HTML
     assert "ownedWeakPagesTable" in HTML
     assert "/api/page-drilldown" in HTML
+
+
+def test_ui_html_renders_deployment_status() -> None:
+    assert "Deployment Status" in HTML
+    assert "deploymentRows" in HTML
+    assert "function renderDeployment" in HTML
+    assert "renderDeployment(state.deployment)" in HTML
 
 
 def test_ui_html_constrains_owned_page_tables() -> None:

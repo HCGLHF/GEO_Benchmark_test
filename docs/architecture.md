@@ -32,6 +32,7 @@
 - `scripts/build_corpus_variant.py`: builds evaluation corpus variants, currently `without_llms`, from processed artifacts without mutating the main corpus.
 - `scripts/compare_llms_ab_reports.py`: compares with-`llms.txt` and without-`llms.txt` merged benchmark reports for target-brand lift.
 - `scripts/cloud/config.py`: loads required cloud environment variables for explicit S3/RDS operations without exposing secrets in committed files.
+- `scripts/cloud/defaults.py`: keeps the active default industry, corpus version, deployment branch, and UI service identifiers in one place for runners and deployment tooling.
 - `scripts/cloud/corpus_quality.py`: audits inventory, documents, and chunks before cloud import, blocking unsafe corpus versions with duplicate IDs, orphan chunks, missing fields, or mojibake markers.
 - `scripts/cloud/import_corpus.py`: plans and executes the first cloud import path for URL inventory, processed documents, processed chunks, S3 artifact records, and PostgreSQL core corpus rows.
 - `scripts/cloud/create_industry.py`: creates or updates explicit industry registry rows before a new industry corpus is imported.
@@ -39,6 +40,7 @@
 - `scripts/cloud/sync_run_artifacts.py`: discovers completed quick/standard merged reports, uploads stable run/report artifacts to S3, and registers them in PostgreSQL.
 - `scripts/cloud/hydrate_artifacts.py`: restores corpus and quick/standard run artifacts from the S3/RDS registry into a local or EC2 project checkout without overwriting existing files by default.
 - `scripts/cloud/verify_cloud_import.py`: verifies an imported cloud corpus version by comparing PostgreSQL corpus counts with S3 artifact object sizes.
+- `scripts/cloud/deploy_ec2_update.py`: performs the repeatable EC2 update path: Git fast-forward, dependency install, artifact hydration, cloud verification, service restart, UI API check, and a deployment log under ignored `runs/deployments/`.
 - `scripts/cloud/s3_artifacts.py`: computes stable S3 object keys, hashes local artifacts, and uploads snapshots when an import is executed.
 - `scripts/cloud/postgres.py`: applies the PostgreSQL schema and upserts the core corpus into RDS using lazy `psycopg` imports so normal local tests do not require cloud dependencies.
 - `scripts/ui_app/corpus_summary.py`: reads local inventory, documents, and chunks to summarize resource-library size without loading raw page files.
@@ -46,6 +48,7 @@
 - `scripts/ui_app/page_drilldown_summary.py`: reads existing owned-page drilldown CSVs or computes them from a selected completed report and the processed owned-site corpus.
 - `scripts/ui_app/report_summary.py`: finds the latest merged run report and summarizes target ranking, top competitors, and model-level slices.
 - `scripts/ui_app/report_history.py`: discovers completed merged reports under `runs/`, summarizes historical AlphaXXXX performance, and safely previews known `competitive_gap_report.md` files.
+- `scripts/ui_app/deployment_status.py`: reads local Git state plus the latest ignored deployment log so the UI can show current code version, corpus version, cloud verification result, and latest hydrated report status without exposing secrets.
 - `scripts/ui_app/run_plan.py`: builds explicit dry-run command plans for owned-site refresh, corpus rebuild, optional cloud sync, and API benchmark execution.
 - `scripts/ui_app/run_monitor.py`: reads parallel run directories, per-model worker logs, pipeline log tails, `watch_full_api_run.py` summaries, chain-health diagnostics, API issue guidance, and merged reports to power the UI Run Monitor.
 - `scripts/ui_app/execution.py`: launches only backend-generated guarded API benchmark commands or `run_pipeline_step.py`-wrapped pipeline steps after explicit confirmation, records launch manifests/logs, and provides guarded stop/resume for UI-launched API benchmark runs.
@@ -71,6 +74,7 @@
 15. Optional pipeline state tracking through `run_manifest.json` and `pipeline_state.jsonl`
 16. Optional local UI review of corpus status, configured models, competitors, latest reports, historical reports, report previews, and dry-run command plans
 17. Optional server or developer checkout hydration from S3/RDS when ignored `data/` and `runs/` artifacts are missing
+18. Optional EC2 deployment update that combines code fast-forward, hydration, verifier, service restart, API state check, and a local deployment log
 
 ## Cloud Store
 
@@ -99,9 +103,11 @@ The cloud store follows the project split documented in `docs/cloud-database.md`
 - Cloud import depends on existing processed contracts; it must not become a hidden crawler or evaluator path.
 - Run artifact sync depends on completed quick/standard merged report outputs; it must not promote test runs or invent report data.
 - Hydration depends on the S3/RDS artifact registry and should restore missing files without replacing existing local artifacts unless explicitly requested.
+- The EC2 deployment update script depends on Git, the existing virtual environment, hydration, verifier, systemd, and `/api/state`; it writes operational logs under ignored `runs/deployments/` rather than Git.
 - PostgreSQL is the queryable corpus and benchmark ledger, S3 is the artifact store, and Qdrant remains a rebuildable retrieval index.
 - Industry isolation belongs in the cloud operation layer: industry registry creation, cloud imports, verification, S3 artifact keys, and Qdrant snapshots must require an explicit `industry_id`.
 - The local UI depends on existing configs, processed artifacts, reports, and cloud environment presence only; it must call orchestration scripts explicitly rather than reimplementing crawler, evaluator, or cloud import logic.
+- Deployment status in the UI depends on local Git metadata and `runs/deployments/*.json`; it must remain a read-only visibility surface and must not render secrets.
 - Run Monitor depends on run-output files as facts for status, but it can call guarded execution controls for stop/resume when the target run root maps to a known UI launch manifest.
 - Report history depends on completed `runs/**/merged*/competitive_gap_report.md` artifacts as facts; it must remain a read-only view over existing report outputs.
 - Owned-page drilldown depends on `retrieval_evidence_by_model.jsonl` and `data/processed/documents.jsonl`; it must summarize retrieval outcomes rather than changing index scores.
@@ -126,6 +132,7 @@ The cloud store follows the project split documented in `docs/cloud-database.md`
 - Do not treat Qdrant as the source of truth; it must be rebuildable from versioned chunks.
 - Cloud verification commands must remain read-only unless the user explicitly starts an import or snapshot command.
 - Do not run a cloud command without `--industry`; adding a new industry should create a new `industry_id`, not reuse `geo-agency`.
+- Do not treat a server `git pull` as a complete release. EC2 updates must hydrate ignored artifacts and verify cloud state before restart when the UI needs corpus and report data.
 - Do not let the UI become a hidden execution layer for paid crawlers, model APIs, or AWS writes; execution buttons need explicit command previews, logs, and guardrails.
 - Do not create a second run-status format for new stages; write `run_manifest.json` and append to `pipeline_state.jsonl`.
 - Do not accept raw shell commands over UI endpoints; launch endpoints must choose from known generated commands.
