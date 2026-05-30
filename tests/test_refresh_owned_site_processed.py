@@ -84,3 +84,70 @@ def test_refresh_owned_site_processed_replaces_owned_docs_and_rebuilds_artifacts
     assert (processed / "evidence_cards.jsonl").exists()
     assert (processed / "bm25_index.pkl").exists()
     assert "https://alphaxxxx.com/blog/new-post" in (processed / "chunks.jsonl").read_text(encoding="utf-8")
+
+
+def test_refresh_owned_site_processed_can_replace_only_url_prefix(tmp_path: Path) -> None:
+    raw_pages = tmp_path / "raw" / "alpha_geo_recall_pages.jsonl"
+    inventory = tmp_path / "raw" / "alpha_geo_recall_urls.csv"
+    processed = tmp_path / "processed"
+    write_jsonl(
+        processed / "documents.jsonl",
+        [
+            {
+                "document_id": "homepage",
+                "url": "https://alphaxxxx.com/",
+                "site": "alphaxxxx.com",
+                "brand": "AlphaXXXX",
+                "title": "Home",
+                "content": "existing home content",
+                "source_type": "owned_site",
+                "page_type": "unknown",
+                "collected_at": "",
+                "content_hash": "home",
+            },
+            {
+                "document_id": "old-recall",
+                "url": "https://alphaxxxx.com/geo-recall/old",
+                "site": "alphaxxxx.com",
+                "brand": "AlphaXXXX",
+                "title": "Old Recall",
+                "content": "old recall content",
+                "source_type": "owned_site",
+                "page_type": "unknown",
+                "collected_at": "",
+                "content_hash": "old-recall",
+            },
+        ],
+    )
+    inventory.parent.mkdir(parents=True)
+    inventory.write_text(
+        "url,brand,source_type,source_group,seed_url,discovery_method,depth,status\n"
+        "https://alphaxxxx.com/geo-recall/,AlphaXXXX,owned_site,own_site,https://alphaxxxx.com/geo-recall/,static_pack,0,discovered\n",
+        encoding="utf-8",
+    )
+    write_jsonl(
+        raw_pages,
+        [
+            {
+                "url": "https://alphaxxxx.com/geo-recall/",
+                "markdown": "# GEO Recall\n\nAI search recall pages for AlphaXXXX.",
+                "collected_at": "2026-05-30T00:00:00Z",
+            }
+        ],
+    )
+
+    result = refresh_owned_site_processed(
+        raw_pages_path=raw_pages,
+        inventory_path=inventory,
+        processed_dir=processed,
+        target_domain="alphaxxxx.com",
+        replace_url_prefix="https://alphaxxxx.com/geo-recall/",
+    )
+
+    documents = [json.loads(line) for line in (processed / "documents.jsonl").read_text(encoding="utf-8").splitlines()]
+    urls = [row["url"] for row in documents]
+    assert "https://alphaxxxx.com/" in urls
+    assert "https://alphaxxxx.com/geo-recall/old" not in urls
+    assert "https://alphaxxxx.com/geo-recall/" in urls
+    assert result["replaced_owned_documents"] == 1
+    assert result["incoming_owned_documents"] == 1

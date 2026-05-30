@@ -25,6 +25,12 @@ def target_domain_matches(url: str, target_domain: str) -> bool:
     return host == target
 
 
+def replace_scope_matches(url: str, *, target_domain: str, replace_url_prefix: str | None = None) -> bool:
+    if replace_url_prefix:
+        return str(url).startswith(replace_url_prefix)
+    return target_domain_matches(url, target_domain)
+
+
 def _write_jsonl_dicts(path: Path, rows: list[dict[str, Any]]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("w", encoding="utf-8") as handle:
@@ -44,6 +50,7 @@ def refresh_owned_site_processed(
     inventory_path: Path,
     processed_dir: Path,
     target_domain: str,
+    replace_url_prefix: str | None = None,
 ) -> dict[str, Any]:
     documents_path = processed_dir / "documents.jsonl"
     chunks_path = processed_dir / "chunks.jsonl"
@@ -57,7 +64,13 @@ def refresh_owned_site_processed(
         row for row in incoming_documents if target_domain_matches(str(row.get("url", "")), target_domain)
     ]
     kept_existing = [
-        row for row in existing_documents if not target_domain_matches(str(row.get("url", "")), target_domain)
+        row
+        for row in existing_documents
+        if not replace_scope_matches(
+            str(row.get("url", "")),
+            target_domain=target_domain,
+            replace_url_prefix=replace_url_prefix,
+        )
     ]
     merged_documents = kept_existing + incoming_owned
     write_jsonl(documents_path, merged_documents)
@@ -75,6 +88,7 @@ def refresh_owned_site_processed(
     result = {
         "processed_dir": str(processed_dir),
         "target_domain": target_domain,
+        "replace_url_prefix": replace_url_prefix or "",
         "replaced_owned_documents": len(existing_documents) - len(kept_existing),
         "incoming_owned_documents": len(incoming_owned),
         "total_documents": len(merged_documents),
@@ -95,12 +109,14 @@ def main() -> None:
     parser.add_argument("--url-inventory", default="data/raw/alpha_update_discovered_urls.csv")
     parser.add_argument("--processed-dir", default="data/processed")
     parser.add_argument("--target-domain", default="alphaxxxx.com")
+    parser.add_argument("--replace-url-prefix", default="")
     args = parser.parse_args()
     refresh_owned_site_processed(
         raw_pages_path=Path(args.raw_pages),
         inventory_path=Path(args.url_inventory),
         processed_dir=Path(args.processed_dir),
         target_domain=args.target_domain,
+        replace_url_prefix=args.replace_url_prefix or None,
     )
 
 

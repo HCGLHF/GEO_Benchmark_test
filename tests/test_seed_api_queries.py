@@ -1,5 +1,6 @@
 import csv
 import subprocess
+import sys
 from pathlib import Path
 
 from scripts.seed_api_queries import seed_queries_for_model
@@ -83,7 +84,7 @@ def test_seed_queries_cli_can_run_from_script_path(tmp_path: Path):
 
     result = subprocess.run(
         [
-            "python",
+            sys.executable,
             "scripts/seed_api_queries.py",
             "--seed-run-dir",
             str(seed_run),

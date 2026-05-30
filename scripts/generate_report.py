@@ -6,10 +6,20 @@ import sys
 from pathlib import Path
 
 
+def set_large_csv_field_limit() -> None:
+    limit = sys.maxsize
+    while True:
+        try:
+            csv.field_size_limit(limit)
+            return
+        except OverflowError:
+            limit //= 10
+
+
 def load_csv(path: Path) -> list[dict[str, str]]:
     if not path.exists():
         return []
-    csv.field_size_limit(sys.maxsize)
+    set_large_csv_field_limit()
     with path.open("r", encoding="utf-8", newline="") as handle:
         return list(csv.DictReader(handle))
 

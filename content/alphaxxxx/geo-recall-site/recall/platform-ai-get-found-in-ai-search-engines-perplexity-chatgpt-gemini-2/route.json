@@ -1,0 +1,11 @@
+{
+  "canonical_path": "/recall/platform-ai-get-found-in-ai-search-engines-perplexity-chatgpt-gemini-2",
+  "primary_intent": "platform_ai",
+  "target_money_page": "/get-found-in-ai-search-engines",
+  "internal_links": [
+    "/get-found-in-ai-search-engines",
+    "/audit",
+    "/geo-pricing"
+  ],
+  "route_summary": "Use /recall/platform-ai-get-found-in-ai-search-engines-perplexity-chatgpt-gemini-2 for platform ai Recall queries; route commercial action to /get-found-in-ai-search-engines."
+}

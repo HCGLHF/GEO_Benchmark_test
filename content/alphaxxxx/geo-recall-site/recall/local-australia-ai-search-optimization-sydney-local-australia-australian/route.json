@@ -1,0 +1,12 @@
+{
+  "canonical_path": "/recall/local-australia-ai-search-optimization-sydney-local-australia-australian",
+  "primary_intent": "local_australia",
+  "target_money_page": "/ai-search-optimization-sydney",
+  "internal_links": [
+    "/ai-search-optimization-sydney",
+    "/audit",
+    "/geo-pricing",
+    "/get-found-in-ai-search-engines"
+  ],
+  "route_summary": "Use /recall/local-australia-ai-search-optimization-sydney-local-australia-australian for local australia Recall queries; route commercial action to /ai-search-optimization-sydney."
+}

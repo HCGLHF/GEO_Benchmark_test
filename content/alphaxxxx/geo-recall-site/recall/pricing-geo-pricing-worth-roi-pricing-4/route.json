@@ -1,0 +1,11 @@
+{
+  "canonical_path": "/recall/pricing-geo-pricing-worth-roi-pricing-4",
+  "primary_intent": "pricing",
+  "target_money_page": "/geo-pricing",
+  "internal_links": [
+    "/geo-pricing",
+    "/audit",
+    "/get-found-in-ai-search-engines"
+  ],
+  "route_summary": "Use /recall/pricing-geo-pricing-worth-roi-pricing-4 for pricing Recall queries; route commercial action to /geo-pricing."
+}

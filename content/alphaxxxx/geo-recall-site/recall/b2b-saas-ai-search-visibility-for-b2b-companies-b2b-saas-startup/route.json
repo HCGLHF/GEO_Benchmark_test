@@ -1,0 +1,12 @@
+{
+  "canonical_path": "/recall/b2b-saas-ai-search-visibility-for-b2b-companies-b2b-saas-startup",
+  "primary_intent": "b2b_saas",
+  "target_money_page": "/ai-search-visibility-for-b2b-companies",
+  "internal_links": [
+    "/ai-search-visibility-for-b2b-companies",
+    "/audit",
+    "/geo-pricing",
+    "/get-found-in-ai-search-engines"
+  ],
+  "route_summary": "Use /recall/b2b-saas-ai-search-visibility-for-b2b-companies-b2b-saas-startup for b2b saas Recall queries; route commercial action to /ai-search-visibility-for-b2b-companies."
+}

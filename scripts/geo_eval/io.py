@@ -9,6 +9,16 @@ from typing import Any
 import yaml
 
 
+def set_large_csv_field_limit() -> None:
+    limit = sys.maxsize
+    while True:
+        try:
+            csv.field_size_limit(limit)
+            return
+        except OverflowError:
+            limit //= 10
+
+
 def load_config(path: Path) -> dict[str, Any]:
     with path.open("r", encoding="utf-8") as handle:
         return yaml.safe_load(handle) or {}
@@ -30,7 +40,7 @@ def write_json(path: Path, data: Any) -> None:
 def read_csv(path: Path) -> list[dict[str, str]]:
     if not path.exists():
         return []
-    csv.field_size_limit(sys.maxsize)
+    set_large_csv_field_limit()
     with path.open("r", encoding="utf-8", newline="") as handle:
         return list(csv.DictReader(handle))
 

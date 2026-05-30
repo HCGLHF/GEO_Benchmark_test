@@ -1,0 +1,11 @@
+{
+  "canonical_path": "/recall/audit-audit-consultant-agency-validation-2",
+  "primary_intent": "audit",
+  "target_money_page": "/audit",
+  "internal_links": [
+    "/audit",
+    "/geo-pricing",
+    "/get-found-in-ai-search-engines"
+  ],
+  "route_summary": "Use /recall/audit-audit-consultant-agency-validation-2 for audit Recall queries; route commercial action to /audit."
+}
