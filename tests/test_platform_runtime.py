@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import signal
 import subprocess
+import sys
 from pathlib import Path
 
 from scripts.platform_runtime import ProcessHandle, detect_platform, posix_runtime, windows_runtime
@@ -54,6 +55,12 @@ def test_windows_runtime_converts_paths_to_windows_style() -> None:
     runtime = windows_runtime()
 
     assert runtime.path("scripts/run_pipeline_step.py") == "scripts\\run_pipeline_step.py"
+
+
+def test_windows_runtime_uses_current_python_interpreter() -> None:
+    runtime = windows_runtime()
+
+    assert runtime.python_executable == str(Path(sys.executable).resolve())
 
 
 def test_posix_runtime_converts_paths_to_posix_style() -> None:

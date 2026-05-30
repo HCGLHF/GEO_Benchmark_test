@@ -206,7 +206,7 @@ def windows_runtime(
         platform_id="windows",
         path_style="windows",
         shell="powershell",
-        python_executable="python",
+        python_executable=str(Path(sys.executable).resolve()),
         popen_factory=popen_factory,
         process_runner=process_runner,
         killpg=killpg,
